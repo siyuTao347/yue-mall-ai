@@ -1,0 +1,98 @@
+.session-timeline {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 6px;
+  overflow-x: auto;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  scrollbar-width: none;
+}
+
+.session-timeline::-webkit-scrollbar {
+  display: none;
+}
+
+.session-tab {
+  position: relative;
+  flex: 1 0 130px;
+  min-height: 58px;
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-sub);
+  text-align: left;
+  transition: var(--transition);
+}
+
+.session-tab:hover {
+  background: var(--bg-subtle);
+}
+
+.session-tab.active {
+  background: var(--color-primary-soft);
+  border-color: #f4a9a5;
+}
+
+.session-time {
+  color: var(--text-main);
+  font-family: var(--font-number);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.session-status {
+  min-height: 18px;
+  padding: 1px 6px;
+  background: #f1f3f5;
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.session-tab.status-in-progress .session-status {
+  background: var(--color-green-soft);
+  color: var(--color-green);
+}
+
+.session-tab.status-upcoming .session-status {
+  background: var(--color-gold-soft);
+  color: var(--color-gold);
+}
+
+.session-tab.status-in-progress.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.session-tab.status-in-progress.active .session-time {
+  color: #fff;
+}
+
+.session-tab.status-in-progress.active .session-status {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  .session-timeline {
+    border-radius: var(--radius-md);
+  }
+
+  .session-tab {
+    flex-basis: 116px;
+    min-height: 54px;
+    padding: 8px 10px;
+  }
+}

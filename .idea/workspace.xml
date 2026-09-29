@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="8275a235-79d3-4837-87f7-ed524bd10d2f" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/mall-api/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-api/src/main/java/api/ItemDubboService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-api/src/main/resources/application.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/ItemApplication.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/controller/SeckillController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/entity/Item.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/entity/TccActionLog.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/listener/SeckillTransactionListener.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/mapper/ItemMapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/mapper/TccActionLogMapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/provider/ItemDubboServiceImpl.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/provider/SeckillServiceImpl.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/service/package-info.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/resources/application.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-order-service/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/OrderApplication.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/component/ReconciliationJobHandler.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/config/XxlJobConfig.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/controller/TccOrderController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/entity/Order.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/listener/SeckillOrderConsumer.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/mapper/OrderMapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/service/OrderServiceImpl.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/resources/application.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-user-service/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/UserApplication.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/annoation/RateLimitAspect.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/annoation/SendCodeLimit.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/controller/UserController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mall-user-service/src/main/resources/application.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/数据库.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/数据量化.md" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Interface" />
+        <option value="package-info" />
+        <option value="AnnotationType" />
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="localRepository" value="$MAVEN_REPOSITORY$" />
+        <option name="userSettingsFile" value="/opt/homebrew/opt/maven/libexec/conf/settings.xml" />
+      </MavenGeneralSettings>
+    </option>
+    <option name="importingSettings">
+      <MavenImportingSettings>
+        <option name="jdkForImporter" value="#JAVA_HOME" />
+      </MavenImportingSettings>
+    </option>
+  </component>
+  <component name="MavenRunner">
+    <option name="jreName" value="#JAVA_HOME" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3GwteCIk1fVjm3mwPKw3qGQx9B1" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Maven. [org.apache.maven.plugins:maven-archetype-plugin:RELEASE:generate].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.mall-parent [clean].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.mall-parent [install].executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
+    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
+    &quot;RequestMappingsPanelWidth0&quot;: &quot;75&quot;,
+    &quot;RequestMappingsPanelWidth1&quot;: &quot;75&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;Spring Boot.ItemApplication.executor&quot;: &quot;Run&quot;,
+    &quot;Spring Boot.OrderApplication.executor&quot;: &quot;Run&quot;,
+    &quot;Spring Boot.UserApplication.executor&quot;: &quot;Run&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/yu/IdeaProjects/mall-parent&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2413793&quot;,
+    &quot;run.configurations.included.in.services&quot;: &quot;true&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;MavenSettings&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/mall-order-service/src/main/resources" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/src" />
+    </key>
+  </component>
+  <component name="RunDashboard">
+    <option name="configurationTypes">
+      <set>
+        <option value="KtorApplicationConfigurationType" />
+        <option value="MicronautRunConfigurationType" />
+        <option value="QuarkusRunConfigurationType" />
+        <option value="SpringBootApplicationConfigurationType" />
+      </set>
+    </option>
+    <option name="configurationStatuses">
+      <map>
+        <entry key="SpringBootApplicationConfigurationType">
+          <value>
+            <map>
+              <entry key="ItemApplication" value="STOPPED" />
+              <entry key="OrderApplication" value="STOPPED" />
+              <entry key="UserApplication" value="STOPPED" />
+            </map>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="RunManager" selected="Spring Boot.UserApplication">
+    <configuration name="ItemApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
+      <module name="mall-item-service" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.item.ItemApplication" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.example.item.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="OrderApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
+      <module name="mall-order-service" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.item.OrderApplication" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.example.item.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="UserApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
+      <module name="mall-user-service" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.user.UserApplication" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.example.user.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Spring Boot.ItemApplication" />
+      <item itemvalue="Spring Boot.OrderApplication" />
+      <item itemvalue="Spring Boot.UserApplication" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Spring Boot.UserApplication" />
+        <item itemvalue="Spring Boot.OrderApplication" />
+        <item itemvalue="Spring Boot.ItemApplication" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.25134.95" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.25134.95" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="8275a235-79d3-4837-87f7-ed524bd10d2f" name="Changes" comment="" />
+      <created>1780723256047</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1780723256047</updated>
+      <workItem from="1780723259798" duration="949000" />
+      <workItem from="1784894553453" duration="1642000" />
+      <workItem from="1784896208086" duration="8976000" />
+      <workItem from="1784941918314" duration="15412000" />
+      <workItem from="1785031357360" duration="9000" />
+      <workItem from="1785068902674" duration="894000" />
+      <workItem from="1785080976069" duration="345000" />
+      <workItem from="1785485183565" duration="560000" />
+      <workItem from="1790351088289" duration="36000" />
+      <workItem from="1790384286128" duration="23000" />
+      <workItem from="1790403687503" duration="5393000" />
+      <workItem from="1790416877000" duration="788000" />
+      <workItem from="1790434931594" duration="3616000" />
+      <workItem from="1790493995848" duration="378000" />
+      <workItem from="1790577389068" duration="987000" />
+      <workItem from="1790579706543" duration="3545000" />
+      <workItem from="1790603327441" duration="1125000" />
+      <workItem from="1790605245800" duration="2060000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

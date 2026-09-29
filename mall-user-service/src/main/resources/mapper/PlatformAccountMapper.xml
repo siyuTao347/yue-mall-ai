@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.user.mapper.PlatformAccountMapper">
+    <update id="creditEscrow">
+        UPDATE t_platform_account
+        SET escrow_amount = escrow_amount + #{amount},
+            version = version + 1
+        WHERE account_code = 'PLATFORM_MAIN'
+    </update>
+
+    <update id="debitEscrow">
+        UPDATE t_platform_account
+        SET escrow_amount = escrow_amount - #{amount},
+            version = version + 1
+        WHERE account_code = 'PLATFORM_MAIN'
+          AND escrow_amount >= #{amount}
+    </update>
+
+    <update id="creditRevenue">
+        UPDATE t_platform_account
+        SET revenue_amount = revenue_amount + #{amount},
+            version = version + 1
+        WHERE account_code = 'PLATFORM_MAIN'
+    </update>
+
+    <update id="creditWithdrawPending">
+        UPDATE t_platform_account
+        SET withdraw_pending_amount = withdraw_pending_amount + #{amount},
+            version = version + 1
+        WHERE account_code = 'PLATFORM_MAIN'
+    </update>
+
+    <update id="debitWithdrawPending">
+        UPDATE t_platform_account
+        SET withdraw_pending_amount = withdraw_pending_amount - #{amount},
+            version = version + 1
+        WHERE account_code = 'PLATFORM_MAIN'
+          AND withdraw_pending_amount >= #{amount}
+    </update>
+
+    <update id="creditDeposit">
+        UPDATE t_platform_account
+        SET deposit_amount = deposit_amount + #{amount},
+            version = version + 1
+        WHERE account_code = 'PLATFORM_MAIN'
+    </update>
+</mapper>

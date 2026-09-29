@@ -1,0 +1,179 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "悦购商城首页" [ref=e6] [cursor=pointer]:
+        - /url: "#top"
+        - generic [ref=e7]: 悦
+        - generic [ref=e8]:
+          - generic [ref=e9]: 悦购商城
+          - generic [ref=e10]: 虚拟饰品精选
+      - search [ref=e11]:
+        - searchbox "搜索饰品" [ref=e12]
+        - button "搜索" [ref=e13] [cursor=pointer]
+      - navigation "页面导航" [ref=e17]:
+        - link "限时秒杀" [ref=e18] [cursor=pointer]:
+          - /url: "#seckillSection"
+        - link "饰品商城" [ref=e19] [cursor=pointer]:
+          - /url: "#catalogSection"
+      - generic [ref=e20]:
+        - button "我的积分 1,580" [ref=e21] [cursor=pointer]:
+          - generic [ref=e22]: 我的积分
+          - generic [ref=e23]: 1,580
+        - button "登录 / 注册" [ref=e24] [cursor=pointer]
+  - generic [ref=e26]:
+    - generic [ref=e27]: 商城快讯
+    - generic [ref=e31]:
+      - generic [ref=e32]: 20:00 场次即将开启，记得提前进入会场
+      - generic [ref=e33]: 会员消费 1 元得 1 积分，支付后自动入账
+      - generic [ref=e34]: 14:00 场次部分商品库存紧张
+      - generic [ref=e35]: 热门饰品每日上新，收藏页面随时查看
+    - generic [ref=e36]: 消费 1 元得 1 积分
+  - generic [ref=e38]:
+    - generic [ref=e39]:
+      - generic [ref=e42]:
+        - generic [ref=e43]: 今日主推
+        - heading "今晚 8 点精选专场" [level=2] [ref=e44]
+        - paragraph [ref=e45]: 多款热门饰品限量开抢，先到先得。
+        - generic [ref=e46]:
+          - link "去抢购" [ref=e47] [cursor=pointer]:
+            - /url: "#seckillSection"
+          - link "逛商城" [ref=e48] [cursor=pointer]:
+            - /url: "#catalogSection"
+      - generic [ref=e51]:
+        - generic [ref=e52]: 限时优惠
+        - heading "热门饰品低至 1 折" [level=2] [ref=e53]
+        - paragraph [ref=e54]: 每天多场秒杀，场次开启后即可下单。
+        - generic [ref=e55]:
+          - link "去抢购" [ref=e56] [cursor=pointer]:
+            - /url: "#seckillSection"
+          - link "逛商城" [ref=e57] [cursor=pointer]:
+            - /url: "#catalogSection"
+      - generic [ref=e60]:
+        - generic [ref=e61]: 会员权益
+        - heading "消费 1 元得 1 积分" [level=2] [ref=e62]
+        - paragraph [ref=e63]: 积分自动入账，可在我的积分中查看明细。
+        - generic [ref=e64]:
+          - link "去抢购" [ref=e65] [cursor=pointer]:
+            - /url: "#seckillSection"
+          - link "逛商城" [ref=e66] [cursor=pointer]:
+            - /url: "#catalogSection"
+    - button "上一张" [ref=e67] [cursor=pointer]: ‹
+    - button "下一张" [ref=e68] [cursor=pointer]: ›
+    - generic [ref=e69]:
+      - button "切换到第1张" [ref=e70] [cursor=pointer]
+      - button "切换到第2张" [ref=e71] [cursor=pointer]
+      - button "切换到第3张" [ref=e72] [cursor=pointer]
+  - main [ref=e73]:
+    - generic [ref=e74]:
+      - generic [ref=e75]:
+        - heading "限时秒杀" [level=2] [ref=e76]
+        - paragraph [ref=e77]: 每场限量，先到先得
+      - generic [ref=e78]:
+        - generic [ref=e79]: 暂无秒杀活动
+        - generic [ref=e80]:
+          - generic [ref=e81]: "00"
+          - generic [ref=e82]: ":"
+          - generic [ref=e83]: "00"
+          - generic [ref=e84]: ":"
+          - generic [ref=e85]: "00"
+          - generic [ref=e86]: ":"
+          - generic [ref=e87]: "0"
+    - generic [ref=e88]: 暂无秒杀活动
+  - generic [ref=e89]:
+    - generic [ref=e90]:
+      - generic [ref=e91]:
+        - heading "饰品商城" [level=2] [ref=e92]
+        - paragraph [ref=e93]: 现货商品，下单后立即支付
+      - generic [ref=e94]:
+        - button "全部" [ref=e95] [cursor=pointer]
+        - button "步枪" [ref=e96] [cursor=pointer]
+        - button "狙击枪" [ref=e97] [cursor=pointer]
+        - button "匕首" [ref=e98] [cursor=pointer]
+        - button "手套" [ref=e99] [cursor=pointer]
+    - generic [ref=e100]:
+      - article [ref=e101]:
+        - generic [ref=e102]:
+          - generic [ref=e103]: 库存 9100 件
+          - img "AK-47 | 火神（久经沙场）"
+        - generic [ref=e105]:
+          - heading "AK-47 | 火神（久经沙场）" [level=3] [ref=e106]
+          - generic [ref=e107]: 经典涂装 | 蓝白配色
+          - generic [ref=e108]:
+            - generic [ref=e109]: ¥
+            - generic [ref=e110]: "99.00"
+          - generic [ref=e111]: 得 99 积分
+          - button "立即购买" [ref=e112] [cursor=pointer]
+      - article [ref=e113]:
+        - generic [ref=e114]:
+          - generic [ref=e115]: 库存 50 件
+          - img "M4A4 | 咆哮（崭新出厂）"
+        - generic [ref=e117]:
+          - heading "M4A4 | 咆哮（崭新出厂）" [level=3] [ref=e118]
+          - generic [ref=e119]: 违禁级 | 火红图案
+          - generic [ref=e120]:
+            - generic [ref=e121]: ¥
+            - generic [ref=e122]: "999.00"
+          - generic [ref=e123]: 得 999 积分
+          - button "立即购买" [ref=e124] [cursor=pointer]
+      - article [ref=e125]:
+        - generic [ref=e126]:
+          - generic [ref=e127]: 库存 20 件
+          - img "AWP | 巨龙传说（纪念品级）"
+        - generic [ref=e129]:
+          - heading "AWP | 巨龙传说（纪念品级）" [level=3] [ref=e130]
+          - generic [ref=e131]: 比赛纪念 | 金色印花
+          - generic [ref=e132]:
+            - generic [ref=e133]: ¥
+            - generic [ref=e134]: "12999.00"
+          - generic [ref=e135]: 得 12999 积分
+          - button "立即购买" [ref=e136] [cursor=pointer]
+      - article [ref=e137]:
+        - generic [ref=e138]:
+          - generic [ref=e139]: 库存 30 件
+          - img "蝴蝶刀 | 渐变大理石"
+        - generic [ref=e141]:
+          - heading "蝴蝶刀 | 渐变大理石" [level=3] [ref=e142]
+          - generic [ref=e143]: 多彩纹理 | 蝴蝶刀型
+          - generic [ref=e144]:
+            - generic [ref=e145]: ¥
+            - generic [ref=e146]: "6599.00"
+          - generic [ref=e147]: 得 6599 积分
+          - button "立即购买" [ref=e148] [cursor=pointer]
+      - article [ref=e149]:
+        - generic [ref=e150]:
+          - generic [ref=e151]: 库存 25 件
+          - img "运动手套 | 迈阿密风云"
+        - generic [ref=e153]:
+          - heading "运动手套 | 迈阿密风云" [level=3] [ref=e154]
+          - generic [ref=e155]: 略有磨损 | 霓虹配色
+          - generic [ref=e156]:
+            - generic [ref=e157]: ¥
+            - generic [ref=e158]: "8888.00"
+          - generic [ref=e159]: 得 8888 积分
+          - button "立即购买" [ref=e160] [cursor=pointer]
+  - contentinfo [ref=e161]:
+    - generic [ref=e162]:
+      - generic [ref=e163]:
+        - link "限时秒杀" [ref=e164] [cursor=pointer]:
+          - /url: "#seckillSection"
+        - link "饰品商城" [ref=e165] [cursor=pointer]:
+          - /url: "#catalogSection"
+      - generic [ref=e166]: © 2026 悦购商城
+  - complementary [ref=e167]:
+    - generic [ref=e168]:
+      - generic [ref=e169]: 我的积分
+      - button "关闭" [ref=e170] [cursor=pointer]: ×
+    - generic [ref=e171]:
+      - generic [ref=e172]:
+        - generic [ref=e173]:
+          - generic [ref=e174]:
+            - generic [ref=e175]: 可用积分
+            - generic [ref=e176]: 1,580
+          - generic [ref=e178]:
+            - generic [ref=e179]: 累计获得
+            - generic [ref=e180]: 2,300
+        - generic [ref=e181]: 消费 1 元得 1 积分，支付成功后自动入账。
+      - generic [ref=e182]:
+        - generic [ref=e183]: 积分明细
+        - button "刷新" [ref=e184] [cursor=pointer]
+      - generic [ref=e185]: 暂无积分明细

@@ -1,0 +1,74 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: mall-user-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 100.121.74.115:8848
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://100.121.74.115:3306/db_user?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    hikari:
+      maximum-pool-size: 20
+  data:
+    redis:
+      host: 100.121.74.115
+      port: 6379
+      password: tsy347
+      lettuce:
+        pool:
+          max-active: 100
+          max-wait: 2000ms
+          max-idle: 20
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: 1677345232@qq.com
+    password: mfjdzzbjxcabcgbd
+    protocol: smtps
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+            fallback: false
+
+rocketmq:
+  name-server: 100.120.228.17:9876
+  producer:
+    group: user-service-producer-group
+
+dubbo:
+  application:
+    name: mall-user-service
+  registry:
+    address: nacos://100.121.74.115:8848/
+  protocol:
+    name: dubbo
+    port: 20881
+  scan:
+    base-packages: com.example.user.provider
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+seata:
+  tx-service-group: default_tx_group
+  service:
+    vgroup-mapping:
+      default_tx_group: default
+    grouplist:
+      default: 100.121.74.115:8091
+  registry:
+    type: file

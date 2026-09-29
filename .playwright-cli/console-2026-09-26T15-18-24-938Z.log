@@ -1,0 +1,147 @@
+[     929ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:15804
+[     953ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8082/api/home/overview:0
+[     953ms] [WARNING] Request failed: http://localhost:8082/api/home/overview TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getHomeOverview (http://127.0.0.1:3001/src/api/itemApi.js:24:22)
+    at http://127.0.0.1:3001/src/App.jsx:28:31
+    at http://127.0.0.1:3001/src/App.jsx:41:3
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8313:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8300:313) @ http://127.0.0.1:3001/@vite/client:298
+[     954ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8082/api/system/time:0
+[     954ms] [WARNING] Request failed: http://localhost:8082/api/system/time TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getServerTime (http://127.0.0.1:3001/src/api/itemApi.js:8:22)
+    at http://127.0.0.1:3001/src/context/AppContext.jsx:36:46
+    at http://127.0.0.1:3001/src/context/AppContext.jsx:122:3
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8313:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8300:313) @ http://127.0.0.1:3001/@vite/client:298
+[     958ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8081/api/user/point/summary?userId=1:0
+[     958ms] [WARNING] Request failed: http://localhost:8081/api/user/point/summary?userId=1 TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getPointSummary (http://127.0.0.1:3001/src/api/userApi.js:40:22)
+    at http://127.0.0.1:3001/src/context/AppContext.jsx:48:31
+    at http://127.0.0.1:3001/src/context/AppContext.jsx:137:4
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8313:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8300:313) @ http://127.0.0.1:3001/@vite/client:298
+[     958ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8082/api/home/overview:0
+[     958ms] [WARNING] Request failed: http://localhost:8082/api/home/overview TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getHomeOverview (http://127.0.0.1:3001/src/api/itemApi.js:24:22)
+    at http://127.0.0.1:3001/src/App.jsx:28:31
+    at http://127.0.0.1:3001/src/App.jsx:41:3
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at reconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8401:6)
+    at recursivelyTraverseReconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8388:5) @ http://127.0.0.1:3001/@vite/client:298
+[     958ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8082/api/system/time:0
+[     958ms] [WARNING] Request failed: http://localhost:8082/api/system/time TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getServerTime (http://127.0.0.1:3001/src/api/itemApi.js:8:22)
+    at http://127.0.0.1:3001/src/context/AppContext.jsx:36:46
+    at http://127.0.0.1:3001/src/context/AppContext.jsx:122:3
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at reconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8401:6)
+    at recursivelyTraverseReconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8388:5) @ http://127.0.0.1:3001/@vite/client:298
+[     958ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8081/api/user/point/summary?userId=1:0
+[     958ms] [WARNING] Request failed: http://localhost:8081/api/user/point/summary?userId=1 TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getPointSummary (http://127.0.0.1:3001/src/api/userApi.js:40:22)
+    at http://127.0.0.1:3001/src/context/AppContext.jsx:48:31
+    at http://127.0.0.1:3001/src/context/AppContext.jsx:137:4
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at reconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8401:6)
+    at recursivelyTraverseReconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8388:5) @ http://127.0.0.1:3001/@vite/client:298
+[ 1165148ms] [LOG] [vite] server connection lost. Polling for restart... @ http://127.0.0.1:3001/@vite/client:1030
+[ 1165246ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:15804
+[ 1165269ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8082/api/home/overview:0
+[ 1165269ms] [WARNING] Request failed: http://localhost:8082/api/home/overview TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getHomeOverview (http://127.0.0.1:3001/src/api/itemApi.js:24:22)
+    at http://127.0.0.1:3001/src/App.jsx?t=1790436208587:28:31
+    at http://127.0.0.1:3001/src/App.jsx?t=1790436208587:41:3
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8313:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8300:313) @ http://127.0.0.1:3001/@vite/client:298
+[ 1165269ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8082/api/system/time:0
+[ 1165269ms] [WARNING] Request failed: http://localhost:8082/api/system/time TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getServerTime (http://127.0.0.1:3001/src/api/itemApi.js:8:22)
+    at http://127.0.0.1:3001/src/context/AppContext.jsx?t=1790436208587:36:46
+    at http://127.0.0.1:3001/src/context/AppContext.jsx?t=1790436208587:122:3
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8313:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8300:313) @ http://127.0.0.1:3001/@vite/client:298
+[ 1165269ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8081/api/user/point/summary?userId=1:0
+[ 1165269ms] [WARNING] Request failed: http://localhost:8081/api/user/point/summary?userId=1 TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getPointSummary (http://127.0.0.1:3001/src/api/userApi.js?t=1790436208587:40:22)
+    at http://127.0.0.1:3001/src/context/AppContext.jsx?t=1790436208587:48:31
+    at http://127.0.0.1:3001/src/context/AppContext.jsx?t=1790436208587:137:4
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at commitPassiveMountOnFiber (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8313:22)
+    at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8300:313) @ http://127.0.0.1:3001/@vite/client:298
+[ 1165269ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8082/api/home/overview:0
+[ 1165269ms] [WARNING] Request failed: http://localhost:8082/api/home/overview TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getHomeOverview (http://127.0.0.1:3001/src/api/itemApi.js:24:22)
+    at http://127.0.0.1:3001/src/App.jsx?t=1790436208587:28:31
+    at http://127.0.0.1:3001/src/App.jsx?t=1790436208587:41:3
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at reconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8401:6)
+    at recursivelyTraverseReconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8388:5) @ http://127.0.0.1:3001/@vite/client:298
+[ 1165269ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8082/api/system/time:0
+[ 1165269ms] [WARNING] Request failed: http://localhost:8082/api/system/time TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getServerTime (http://127.0.0.1:3001/src/api/itemApi.js:8:22)
+    at http://127.0.0.1:3001/src/context/AppContext.jsx?t=1790436208587:36:46
+    at http://127.0.0.1:3001/src/context/AppContext.jsx?t=1790436208587:122:3
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at reconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8401:6)
+    at recursivelyTraverseReconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8388:5) @ http://127.0.0.1:3001/@vite/client:298
+[ 1165269ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8081/api/user/point/summary?userId=1:0
+[ 1165269ms] [WARNING] Request failed: http://localhost:8081/api/user/point/summary?userId=1 TypeError: Failed to fetch
+    at request (http://127.0.0.1:3001/src/api/client.js:14:21)
+    at Object.getPointSummary (http://127.0.0.1:3001/src/api/userApi.js?t=1790436208587:40:22)
+    at http://127.0.0.1:3001/src/context/AppContext.jsx?t=1790436208587:48:31
+    at http://127.0.0.1:3001/src/context/AppContext.jsx?t=1790436208587:137:4
+    at Object.react_stack_bottom_frame (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:14178:13)
+    at runWithFiberInDEV (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:944:66)
+    at commitHookEffectListMount (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6901:153)
+    at commitHookPassiveMountEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:6936:55)
+    at reconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8401:6)
+    at recursivelyTraverseReconnectPassiveEffects (http://127.0.0.1:3001/node_modules/.vite/deps/react-dom_client.js?v=75397333:8388:5) @ http://127.0.0.1:3001/@vite/client:298

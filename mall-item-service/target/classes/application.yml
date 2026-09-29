@@ -1,0 +1,57 @@
+server:
+  port: 8082
+  tomcat:
+    threads:
+      max: 1000
+      min-spare: 100
+    accept-count: 1000
+    max-connections: 2000
+spring:
+  application:
+    name: mall-item-service
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://100.121.74.115:3306/db_item?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    hikari:
+      maximum-pool-size: 50
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 100.121.74.115:8848 # 必须加上这个，覆盖掉 127.0.0.1 的默认值
+      config:
+        server-addr: 100.121.74.115:8848 # 如果你用到了Nacos配置中心，也加上
+  data:
+    redis:
+      host: 100.121.74.115
+      port: 6379
+      password: tsy347
+      lettuce:
+        pool:
+          max-active: 500  # Redis 最大连接数，默认8，调大！
+          max-wait: 2000ms # 获取连接的最大等待时间
+          max-idle: 100    # 最大空闲连接
+rocketmq:
+  name-server: 100.120.228.17:9876
+  producer:
+    group: seckill-item-producer-group
+seata:
+  tx-service-group: default_tx_group
+  service:
+    vgroup-mapping:
+      default_tx_group: default
+    grouplist:
+      default: 100.121.74.115:8091
+  registry:
+    type: file
+dubbo:
+  application:
+    name: mall-item-service
+  registry:
+    address: nacos://100.121.74.115:8848/ # Nacos 注册中心地址
+  protocol:
+    name: dubbo
+    port: 20882 # Dubbo 服务暴露端口
+  scan:
+    base-packages: com.example.item.provider # Dubbo 服务实现类所在的包
