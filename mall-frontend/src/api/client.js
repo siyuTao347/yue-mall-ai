@@ -1,7 +1,9 @@
+const gatewayBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+
 export const API_BASE = {
-  ITEM: 'http://localhost:8082',
-  ORDER: 'http://localhost:8083',
-  USER: 'http://localhost:8081'
+  ITEM: gatewayBaseUrl,
+  ORDER: gatewayBaseUrl,
+  USER: gatewayBaseUrl
 };
 
 export async function request(url, options = {}) {

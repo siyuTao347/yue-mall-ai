@@ -1,0 +1,14 @@
+# Build outputs
+target/
+*.class
+
+# Frontend outputs and dependencies
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Local logs and system files
+logs/
+*.log
+.DS_Store

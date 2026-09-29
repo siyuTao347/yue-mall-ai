@@ -11,7 +11,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @RestController
 @RequestMapping("/api/seckill")
-@CrossOrigin(origins = "*")
 public class SeckillController {
 
     @Autowired

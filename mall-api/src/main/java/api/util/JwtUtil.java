@@ -12,7 +12,8 @@ import java.util.Map;
 
 public class JwtUtil {
 
-    private static final String SECRET = "VALOR_MALL_JWT_SECRET_KEY_2026_HIGH_CONCURRENCY";
+    private static final String DEFAULT_SECRET = "VALOR_MALL_JWT_SECRET_KEY_2026_HIGH_CONCURRENCY";
+    private static final String SECRET = resolveSecret();
     private static final String HEADER_JSON = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
     private static final long EXPIRE_MS = 7L * 24 * 3600 * 1000; // 7 天过期
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -52,14 +53,12 @@ public class JwtUtil {
      * 校验并提取 UserId (校验失败或过期返回 null)
      */
     public static Long parseUserId(String token) {
-        if (token == null || token.trim().isEmpty()) {
+        String normalizedToken = normalizeToken(token);
+        if (normalizedToken == null) {
             return null;
         }
-        if (token.startsWith("Bearer ")) {
-            token = token.substring(7).trim();
-        }
 
-        String[] parts = token.split("\\.");
+        String[] parts = normalizedToken.split("\\.");
         if (parts.length != 3) {
             return null;
         }
@@ -94,9 +93,10 @@ public class JwtUtil {
      * 解析 Payload JsonNode
      */
     public static JsonNode parsePayload(String token) {
-        if (token == null || token.trim().isEmpty()) return null;
-        if (token.startsWith("Bearer ")) token = token.substring(7).trim();
-        String[] parts = token.split("\\.");
+        String normalizedToken = normalizeToken(token);
+        if (normalizedToken == null) return null;
+
+        String[] parts = normalizedToken.split("\\.");
         if (parts.length != 3) return null;
         try {
             byte[] payloadBytes = Base64.getUrlDecoder().decode(parts[1]);
@@ -112,6 +112,18 @@ public class JwtUtil {
         hmac.init(keySpec);
         byte[] sigBytes = hmac.doFinal(data.getBytes(StandardCharsets.UTF_8));
         return base64UrlEncode(sigBytes);
+    }
+
+    private static String normalizeToken(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            return null;
+        }
+        return token.startsWith("Bearer ") ? token.substring("Bearer ".length()).trim() : token.trim();
+    }
+
+    private static String resolveSecret() {
+        String secret = System.getenv("JWT_SECRET");
+        return secret == null || secret.isBlank() ? DEFAULT_SECRET : secret.trim();
     }
 
     private static String base64UrlEncode(byte[] bytes) {

@@ -1,0 +1,173 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mall-gateway-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      httpclient:
+        connect-timeout: 2000
+        response-timeout: 5s
+      routes:
+        - id: mall-user-route
+          uri: lb://mall-user-service
+          predicates:
+            - Path=/api/user/**,/api/account/**,/api/merchant/**,/api/withdraw/**
+        - id: mall-item-route
+          uri: lb://mall-item-service
+          predicates:
+            - Path=/api/home/**,/api/item/**,/api/seckill/**,/api/asset/**,/api/system/time
+        - id: mall-order-route
+          uri: lb://mall-order-service
+          predicates:
+            - Path=/api/order/**,/api/trade/**,/api/payment/**,/api/audit/**
+        - id: mall-risk-route
+          uri: lb://mall-risk-service
+          predicates:
+            - Path=/api/admin/risk/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns:
+              - ${FRONTEND_ORIGIN:http://localhost:3000}
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - X-Requested-With
+            allowCredentials: true
+            maxAge: 3600
+  data:
+    redis:
+      host: ${REDIS_HOST:100.121.74.115}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 200
+          max-wait: 2000ms
+          max-idle: 50
+
+mall:
+  gateway:
+    security:
+      jwt-secret: ${JWT_SECRET:VALOR_MALL_JWT_SECRET_KEY_2026_HIGH_CONCURRENCY}
+      public-paths:
+        - "OPTIONS:/**"
+        - "GET:/api/home/overview"
+        - "GET:/api/seckill/sessions"
+        - "GET:/api/item/list"
+        - "GET:/api/item/*"
+        - "GET:/api/system/time"
+        - "POST:/api/user/sendEmailCode"
+        - "POST:/api/user/register"
+        - "POST:/api/user/login"
+        - "POST:/api/payment/callback"
+      admin-paths:
+        - "ANY:/api/merchant/admin/**"
+        - "ANY:/api/withdraw/admin/**"
+        - "ANY:/api/asset/admin/**"
+        - "ANY:/api/trade/admin/**"
+        - "ANY:/api/audit/**"
+        - "ANY:/api/admin/risk/**"
+        - "POST:/api/seckill/preheat"
+        - "POST:/api/user/point/mockReward"
+    network:
+      trusted-proxies:
+        - 127.0.0.1
+        - "::1"
+    rate-limit:
+      enabled: true
+      rules:
+        - id: send-email-code
+          path-pattern: /api/user/sendEmailCode
+          key-type: EMAIL
+          replenish-rate: 0.0167
+          burst-capacity: 1
+        - id: login
+          path-pattern: /api/user/login
+          key-type: IP
+          replenish-rate: 0.1667
+          burst-capacity: 10
+        - id: register
+          path-pattern: /api/user/register
+          key-type: IP
+          replenish-rate: 0.0833
+          burst-capacity: 5
+        - id: seckill-path
+          path-pattern: /api/seckill/getPath
+          key-type: SECKILL_PATH
+          replenish-rate: 2
+          burst-capacity: 4
+        - id: seckill-execute
+          path-pattern: /api/seckill/*/doSeckill
+          key-type: SECKILL_EXECUTE
+          replenish-rate: 0.5
+          burst-capacity: 5
+        - id: public-browse
+          path-pattern: /api/home/**
+          key-type: IP
+          replenish-rate: 2
+          burst-capacity: 120
+        - id: public-item
+          path-pattern: /api/item/**
+          key-type: IP
+          replenish-rate: 2
+          burst-capacity: 120
+        - id: admin-api
+          path-pattern: /api/merchant/admin/**
+          key-type: USER_OR_IP
+          replenish-rate: 2
+          burst-capacity: 120
+        - id: admin-withdraw
+          path-pattern: /api/withdraw/admin/**
+          key-type: USER_OR_IP
+          replenish-rate: 2
+          burst-capacity: 120
+        - id: admin-asset
+          path-pattern: /api/asset/admin/**
+          key-type: USER_OR_IP
+          replenish-rate: 2
+          burst-capacity: 120
+        - id: admin-trade
+          path-pattern: /api/trade/admin/**
+          key-type: USER_OR_IP
+          replenish-rate: 2
+          burst-capacity: 120
+        - id: admin-risk
+          path-pattern: /api/admin/risk/**
+          key-type: USER_OR_IP
+          replenish-rate: 2
+          burst-capacity: 120
+        - id: default-api
+          path-pattern: /api/**
+          key-type: USER_OR_IP
+          replenish-rate: 1
+          burst-capacity: 60
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    com.example.gateway: info

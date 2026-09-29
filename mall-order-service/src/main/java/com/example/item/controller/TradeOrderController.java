@@ -21,7 +21,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/trade")
-@CrossOrigin(origins = "*")
 public class TradeOrderController {
     private final TradeOrderService tradeOrderService;
     @DubboReference(timeout = 5000, retries = 0, check = false)

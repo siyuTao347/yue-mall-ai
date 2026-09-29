@@ -10,6 +10,7 @@
     <description>高并发虚拟饰品交易平台 - 父工程</description>
     <modules>
         <module>mall-api</module>
+        <module>mall-gateway-service</module>
         <module>mall-user-service</module>
         <module>mall-item-service</module>
         <module>mall-order-service</module>
@@ -123,6 +124,15 @@
     </dependencies>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

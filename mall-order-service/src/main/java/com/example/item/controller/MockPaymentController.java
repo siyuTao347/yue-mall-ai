@@ -16,7 +16,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payment")
-@CrossOrigin(origins = "*")
 public class MockPaymentController {
     private final TradeOrderService tradeOrderService;
     private final ObjectMapper objectMapper;

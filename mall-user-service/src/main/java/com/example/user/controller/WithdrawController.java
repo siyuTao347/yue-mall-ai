@@ -13,7 +13,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/withdraw")
-@CrossOrigin(origins = "*")
 public class WithdrawController {
     private final WithdrawService withdrawService;
     private final MerchantService merchantService;

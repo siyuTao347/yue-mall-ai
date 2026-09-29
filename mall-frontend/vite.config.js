@@ -6,6 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    host: true
+    host: true,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_GATEWAY_URL || 'http://localhost:8080',
+        changeOrigin: true
+      }
+    }
   }
 })

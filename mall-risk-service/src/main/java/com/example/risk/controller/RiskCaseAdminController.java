@@ -4,7 +4,6 @@ import api.util.JwtUtil;
 import com.example.risk.entity.RiskCase;
 import com.example.risk.service.RiskCommandService;
 import com.fasterxml.jackson.databind.JsonNode;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +18,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/risk")
-@CrossOrigin(origins = "*")
 public class RiskCaseAdminController {
     private final RiskCommandService riskCommandService;
 

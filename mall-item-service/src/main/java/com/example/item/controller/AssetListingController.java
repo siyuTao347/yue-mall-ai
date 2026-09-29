@@ -15,7 +15,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/asset")
-@CrossOrigin(origins = "*")
 public class AssetListingController {
     private final AssetListingService listingService;
     @DubboReference(timeout = 5000, retries = 0, check = false)
