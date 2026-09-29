@@ -13,6 +13,7 @@
         <module>mall-user-service</module>
         <module>mall-item-service</module>
         <module>mall-order-service</module>
+        <module>mall-risk-service</module>
     </modules>
 
     <packaging>pom</packaging>
@@ -26,6 +27,7 @@
         <mybatis-plus.version>3.5.6</mybatis-plus.version>
         <mysql.version>8.0.33</mysql.version>
         <rocketmq.version>5.3.0</rocketmq.version>
+        <lombok.version>1.18.32</lombok.version>
     </properties>
 
     <dependencyManagement>
@@ -131,6 +133,13 @@
                     <target>${java.version}</target>
                     <parameters>true</parameters>
                     <encoding>UTF-8</encoding>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>

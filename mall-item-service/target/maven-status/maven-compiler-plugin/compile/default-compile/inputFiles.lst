@@ -4,6 +4,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/provider/AssetDubboServiceImpl.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/TccActionLog.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/provider/SeckillServiceImpl.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/listener/ItemRiskCommandConsumer.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/ItemMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/SeckillSessionMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/controller/AssetListingController.java
@@ -11,6 +12,8 @@
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/BannerMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/ItemAuditMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/Banner.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/service/RiskClient.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/service/ItemRiskCommandHandler.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/CardSecretMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/TccActionLogMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/SeckillItem.java

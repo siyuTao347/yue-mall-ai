@@ -17,6 +17,7 @@ com/example/item/service/AuditLogService.class
 com/example/item/entity/DeliveryRecord.class
 com/example/item/controller/TccOrderController.class
 com/example/item/mapper/OrderSettlementMapper.class
+com/example/item/service/RiskClient.class
 com/example/item/config/UserContextInterceptor.class
 com/example/item/mapper/DisputeMapper.class
 com/example/item/entity/PaymentOrder.class
@@ -24,9 +25,11 @@ com/example/item/mapper/TradeReconciliationDiffMapper.class
 com/example/item/mapper/OrderMapper.class
 com/example/item/service/TradeStatusLogService.class
 com/example/item/entity/Dispute.class
+com/example/item/service/OrderRiskCommandHandler.class
 com/example/item/controller/MockPaymentController.class
 com/example/item/mapper/DisputeMessageMapper.class
 com/example/item/job/TradeOrderJobHandler.class
+com/example/item/service/OrderRiskStateWriter.class
 com/example/item/mapper/OrderReviewMapper.class
 com/example/item/entity/Arbitration.class
 com/example/item/entity/TradeOrderStatusLog.class
@@ -45,8 +48,10 @@ com/example/item/service/TradeOrderService.class
 com/example/item/component/ReconciliationJobHandler.class
 com/example/item/listener/AuditLogConsumer.class
 com/example/item/entity/AuditLog$AuditLogBuilder.class
+com/example/item/listener/OrderRiskCommandConsumer.class
 com/example/item/mapper/DeliveryEvidenceMapper.class
 com/example/item/entity/OrderSettlement.class
+com/example/item/service/RiskClient$1.class
 com/example/item/entity/DeliveryEvidence.class
 com/example/item/controller/OrderController.class
 com/example/item/entity/TradeOrder.class

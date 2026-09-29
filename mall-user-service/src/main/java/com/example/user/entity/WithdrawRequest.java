@@ -26,6 +26,11 @@ public class WithdrawRequest {
     private Long auditAdminId;
     private String auditReason;
     private String mockPayoutNo;
+    private String riskStatus;
+    private String riskLevel;
+    private String riskDecisionNo;
+    private String riskReason;
+    private LocalDateTime payoutDelayUntil;
     private LocalDateTime createdTime;
     private LocalDateTime updatedTime;
 }

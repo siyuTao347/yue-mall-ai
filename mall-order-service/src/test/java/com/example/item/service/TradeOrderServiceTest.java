@@ -1,5 +1,8 @@
 package com.example.item.service;
 
+import api.risk.RiskDecisionResult;
+import api.risk.RiskEvaluateRequest;
+import api.risk.SensitiveWordScanner;
 import api.trade.AssetDubboService;
 import api.trade.AssetReservationResult;
 import api.trade.FundDubboService;
@@ -59,6 +62,7 @@ class TradeOrderServiceTest {
     private TradeStatusLogService statusLog;
     private DisputeMapper disputeMapper;
     private DeliveryRecordMapper deliveryMapper;
+    private RiskClient riskClient;
     private TradeOrderService service;
 
     @BeforeEach
@@ -77,11 +81,15 @@ class TradeOrderServiceTest {
         statusLog = mock(TradeStatusLogService.class);
         disputeMapper = mock(DisputeMapper.class);
         deliveryMapper = mock(DeliveryRecordMapper.class);
+        riskClient = mock(RiskClient.class);
+        when(riskClient.sensitiveWords()).thenReturn(SensitiveWordScanner.defaultWords());
+        when(riskClient.evaluate(any(RiskEvaluateRequest.class))).thenReturn(pass());
         service = new TradeOrderService(orderMapper, paymentMapper, mock(PaymentCallbackMapper.class),
                 deliveryMapper, mock(DeliveryEvidenceMapper.class), disputeMapper,
                 mock(DisputeMessageMapper.class), mock(ArbitrationMapper.class),
                 mock(OrderSettlementMapper.class), mock(OrderReviewMapper.class),
-                statusLog, new ObjectMapper(), transactionTemplate);
+                statusLog, new ObjectMapper(), transactionTemplate, riskClient,
+                mock(OrderRiskStateWriter.class));
         ReflectionTestUtils.setField(service, "assetService", assetService);
         ReflectionTestUtils.setField(service, "fundService", fundService);
         ReflectionTestUtils.setField(service, "merchantService", merchantService);
@@ -474,6 +482,36 @@ class TradeOrderServiceTest {
         verify(orderMapper).markSettled(eq("TR1"), any());
     }
 
+    @Test
+    void startPayRejectsOrderWaitingForManualRiskReview() {
+        PaymentOrder payment = payment();
+        payment.setStatus("INIT");
+        TradeOrder order = order();
+        order.setPayDeadline(LocalDateTime.now().plusMinutes(10));
+        order.setRiskStatus("MANUAL_REVIEW");
+        when(paymentMapper.selectOne(any())).thenReturn(payment);
+        when(orderMapper.selectOne(any())).thenReturn(order);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> service.startPay("PAY1"));
+
+        verify(paymentMapper, never()).startPaying(eq("TR1"), any());
+    }
+
+    @Test
+    void settleRejectsFrozenOrderBeforeTouchingFunds() {
+        TradeOrder order = order();
+        order.setOrderStatus("CONFIRMED");
+        order.setEscrowStatus("SETTLE_PENDING");
+        order.setSettleAvailableTime(LocalDateTime.now().minusHours(1));
+        order.setRiskStatus("FROZEN");
+        when(orderMapper.selectOne(any())).thenReturn(order);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> service.settle("TR1"));
+
+        verify(orderMapper, never()).markSettling(eq("TR1"), any());
+        verify(fundService, never()).settle(any(), any(), any(), any(), any(), any());
+    }
+
     private TradeOrder order() {
         TradeOrder order = new TradeOrder();
         order.setOrderNo("TR1");
@@ -486,6 +524,7 @@ class TradeOrderServiceTest {
         order.setDeliveryStatus("WAIT_DELIVERY");
         order.setEscrowStatus("NONE");
         order.setDisputeStatus("NONE");
+        order.setRiskStatus("NORMAL");
         order.setPayDeadline(LocalDateTime.now().minusMinutes(1));
         return order;
     }
@@ -515,7 +554,7 @@ class TradeOrderServiceTest {
                 mock(DeliveryEvidenceMapper.class), disputeMapper,
                 mock(DisputeMessageMapper.class), mock(ArbitrationMapper.class),
                 settlementMapper, mock(OrderReviewMapper.class), mock(TradeStatusLogService.class),
-                new ObjectMapper(), transactionTemplate);
+                new ObjectMapper(), transactionTemplate, riskClient, mock(OrderRiskStateWriter.class));
         ReflectionTestUtils.setField(settleService, "assetService", assetService);
         ReflectionTestUtils.setField(settleService, "fundService", fundService);
         ReflectionTestUtils.setField(settleService, "merchantService", merchantService);
@@ -534,5 +573,16 @@ class TradeOrderServiceTest {
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private RiskDecisionResult pass() {
+        return RiskDecisionResult.builder()
+                .action(RiskDecisionResult.ACTION_PASS)
+                .riskScore(0)
+                .riskLevel("LOW")
+                .degraded(false)
+                .message("pass")
+                .hitRules(List.of())
+                .build();
     }
 }

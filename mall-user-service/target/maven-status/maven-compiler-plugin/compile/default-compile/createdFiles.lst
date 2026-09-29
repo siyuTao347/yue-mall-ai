@@ -11,6 +11,7 @@ com/example/user/entity/FundFlow.class
 com/example/user/dto/PlatformAccountBalanceDTO.class
 com/example/user/entity/PointRecord.class
 com/example/user/dto/UserAccountBalanceDTO.class
+com/example/user/service/RiskClient.class
 com/example/user/dto/RegisterDTO.class
 com/example/user/listener/OrderPaidPointConsumer.class
 com/example/user/entity/PlatformAccount.class
@@ -32,6 +33,7 @@ com/example/user/mapper/MerchantAuditMapper.class
 com/example/user/mapper/WithdrawRequestMapper.class
 com/example/user/annoation/SendCodeLimit.class
 com/example/user/dto/WithdrawFundBalanceDTO.class
+com/example/user/service/UserRiskCommandHandler.class
 com/example/user/entity/User.class
 com/example/user/annoation/RateLimitAspect.class
 com/example/user/entity/FundReconciliationDiff.class
@@ -49,5 +51,7 @@ com/example/user/mapper/MerchantMapper.class
 com/example/user/mapper/FundReconciliationDiffMapper.class
 com/example/user/mapper/UserAccountMapper.class
 com/example/user/entity/MerchantCredit.class
+com/example/user/service/RiskClient$1.class
+com/example/user/listener/UserRiskCommandConsumer.class
 com/example/user/service/FundService$FundAction.class
 com/example/user/mapper/PlatformAccountMapper.class

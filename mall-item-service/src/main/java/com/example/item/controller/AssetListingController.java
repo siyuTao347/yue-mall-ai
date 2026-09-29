@@ -58,7 +58,7 @@ public class AssetListingController {
         try {
             MerchantDTO merchant = requireApprovedMerchant(userId);
             requireEnoughDeposit(merchant);
-            return response(200, "已提交审核", listingService.submit(id, merchant.getId()));
+            return response(200, "已提交审核", listingService.submit(id, merchant.getId(), merchant, body));
         } catch (Exception e) {
             return response(400, e.getMessage(), null);
         }

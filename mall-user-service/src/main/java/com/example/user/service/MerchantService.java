@@ -2,6 +2,11 @@ package com.example.user.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import api.trade.FundOperationResult;
+import api.risk.RiskDecisionResult;
+import api.risk.RiskEvaluateRequest;
+import api.risk.RiskSupport;
+import api.risk.SensitiveWordHitDTO;
+import api.risk.SensitiveWordScanner;
 import com.example.user.entity.Merchant;
 import com.example.user.entity.MerchantAudit;
 import com.example.user.entity.MerchantCredit;
@@ -18,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class MerchantService {
@@ -25,6 +31,8 @@ public class MerchantService {
     public static final String STATUS_APPROVED = "APPROVED";
     public static final String STATUS_REJECTED = "REJECTED";
     public static final String STATUS_FROZEN = "FROZEN";
+    private static final List<String> RISK_BLOCKED_STATUSES =
+            List.of("MANUAL_REVIEW", "FROZEN", "REJECTED");
 
     private final MerchantMapper merchantMapper;
     private final MerchantAuditMapper auditMapper;
@@ -32,16 +40,18 @@ public class MerchantService {
     private final MerchantCreditMapper creditMapper;
     private final UserMapper userMapper;
     private final FundService fundService;
+    private final RiskClient riskClient;
 
     public MerchantService(MerchantMapper merchantMapper, MerchantAuditMapper auditMapper,
                            MerchantDepositMapper depositMapper, MerchantCreditMapper creditMapper,
-                           UserMapper userMapper, FundService fundService) {
+                           UserMapper userMapper, FundService fundService, RiskClient riskClient) {
         this.merchantMapper = merchantMapper;
         this.auditMapper = auditMapper;
         this.depositMapper = depositMapper;
         this.creditMapper = creditMapper;
         this.userMapper = userMapper;
         this.fundService = fundService;
+        this.riskClient = riskClient;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -58,8 +68,56 @@ public class MerchantService {
         merchant.setLevel(1);
         merchant.setCreatedTime(LocalDateTime.now());
         merchant.setUpdatedTime(LocalDateTime.now());
+        merchant.setRiskStatus("NORMAL");
+        merchant.setRiskLevel("LOW");
+        String content = merchantContent(merchantName, contactEmail, introduction);
+        List<SensitiveWordHitDTO> sensitiveHits =
+                SensitiveWordScanner.scan(content, riskClient.sensitiveWords());
+        requireLocalSafeMerchant(sensitiveHits);
         merchantMapper.insert(merchant);
+
+        String eventNo = RiskSupport.nextEventNo("MERCHANT");
+        RiskDecisionResult decision = riskClient.evaluate(RiskEvaluateRequest.builder()
+                .eventNo(eventNo)
+                .scene("MERCHANT")
+                .eventType("CREATE")
+                .bizType("MERCHANT")
+                .bizNo(String.valueOf(merchant.getId()))
+                .userId(userId)
+                .merchantId(merchant.getId())
+                .ipHash(riskClient.ipHash())
+                .deviceHash(riskClient.deviceHash())
+                .payload(merchantPayload(content, sensitiveHits))
+                .sensitiveHits(sensitiveHits)
+                .build());
+
+        String riskStatus = RiskSupport.toRiskStatus(decision.getAction());
+        if (!"NORMAL".equals(riskStatus)) {
+            merchantMapper.updateRiskStatus(merchant.getId(), riskStatus, decision.getRiskLevel(),
+                    decision.getDecisionNo(), decision.getMessage(), LocalDateTime.now());
+            merchant.setRiskStatus(riskStatus);
+            merchant.setRiskLevel(decision.getRiskLevel());
+            merchant.setRiskDecisionNo(decision.getDecisionNo());
+            merchant.setRiskReason(decision.getMessage());
+        }
+        if (RiskDecisionResult.ACTION_REJECT.equals(decision.getAction())) {
+            String reason = decision.getMessage();
+            merchantMapper.updateStatus(merchant.getId(), STATUS_SUBMITTED, STATUS_REJECTED,
+                    reason, LocalDateTime.now());
+            merchant.setStatus(STATUS_REJECTED);
+            merchant.setRejectReason(reason);
+            insertAudit(merchant.getId(), "RISK_REJECT", null, reason);
+            riskClient.confirmAfterCommit(eventNo);
+            return merchant;
+        }
         insertAudit(merchant.getId(), "SUBMIT", null, "商家提交入驻申请");
+        if (RiskDecisionResult.ACTION_FREEZE.equals(decision.getAction())
+                || RiskDecisionResult.ACTION_MANUAL_REVIEW.equals(decision.getAction())) {
+            insertAudit(merchant.getId(), "RISK_REVIEW", null, decision.getMessage());
+            riskClient.confirmAfterCommit(eventNo);
+            return merchant;
+        }
+        riskClient.confirmAfterCommit(eventNo);
         return merchant;
     }
 
@@ -79,6 +137,9 @@ public class MerchantService {
         };
         if (!valid) {
             throw new IllegalArgumentException("商家当前状态不允许该操作");
+        }
+        if ("APPROVE".equals(action) && RISK_BLOCKED_STATUSES.contains(nullToNormal(merchant.getRiskStatus()))) {
+            throw new IllegalStateException("商家安全审核中或已冻结，不能通过入驻审核");
         }
         String targetStatus = switch (action) {
             case "APPROVE" -> STATUS_APPROVED;
@@ -143,7 +204,8 @@ public class MerchantService {
 
     public Merchant getApprovedMerchant(Long merchantId, Long userId) {
         Merchant merchant = merchantMapper.selectById(merchantId);
-        if (merchant == null || !merchant.getUserId().equals(userId) || !STATUS_APPROVED.equals(merchant.getStatus())) {
+        if (merchant == null || !merchant.getUserId().equals(userId) || !STATUS_APPROVED.equals(merchant.getStatus())
+                || RISK_BLOCKED_STATUSES.contains(nullToNormal(merchant.getRiskStatus()))) {
             throw new IllegalArgumentException("商家不存在、未通过审核或不属于当前用户");
         }
         return merchant;
@@ -208,7 +270,8 @@ public class MerchantService {
 
     public Merchant getApprovedMerchantById(Long merchantId) {
         Merchant merchant = merchantMapper.selectById(merchantId);
-        if (merchant == null || !STATUS_APPROVED.equals(merchant.getStatus())) {
+        if (merchant == null || !STATUS_APPROVED.equals(merchant.getStatus())
+                || RISK_BLOCKED_STATUSES.contains(nullToNormal(merchant.getRiskStatus()))) {
             throw new IllegalArgumentException("商家不存在或未通过审核");
         }
         return merchant;
@@ -227,5 +290,32 @@ public class MerchantService {
         audit.setReason(reason);
         audit.setCreatedTime(LocalDateTime.now());
         auditMapper.insert(audit);
+    }
+
+    private String merchantContent(String merchantName, String contactEmail, String introduction) {
+        return String.join("\n",
+                merchantName == null ? "" : merchantName,
+                contactEmail == null ? "" : contactEmail,
+                introduction == null ? "" : introduction);
+    }
+
+    private void requireLocalSafeMerchant(List<SensitiveWordHitDTO> hits) {
+        boolean unsafe = hits.stream().map(SensitiveWordHitDTO::getCategory).anyMatch(category ->
+                "ILLEGAL_ASSET".equals(category) || "OFF_PLATFORM_CONTACT".equals(category)
+                        || "PRIVATE_TRANSACTION".equals(category));
+        if (unsafe) {
+            throw new IllegalArgumentException("商家申请包含禁售或站外交易信息");
+        }
+    }
+
+    private Map<String, Object> merchantPayload(String content, List<SensitiveWordHitDTO> hits) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("contentHash", RiskSupport.sha256(content));
+        payload.put("contentLength", content.length());
+        return payload;
+    }
+
+    private String nullToNormal(String value) {
+        return value == null || value.isBlank() ? "NORMAL" : value;
     }
 }

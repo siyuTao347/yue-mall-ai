@@ -29,7 +29,10 @@ public class MerchantDubboServiceImpl implements MerchantDubboService {
     }
 
     private MerchantDTO toDto(Merchant merchant) {
-        if (merchant == null || !"APPROVED".equals(merchant.getStatus())) {
+        if (merchant == null || !"APPROVED".equals(merchant.getStatus())
+                || "MANUAL_REVIEW".equals(merchant.getRiskStatus())
+                || "FROZEN".equals(merchant.getRiskStatus())
+                || "REJECTED".equals(merchant.getRiskStatus())) {
             return null;
         }
         MerchantDeposit deposit = merchantService.getDeposit(merchant.getId(), merchant.getUserId());
@@ -44,6 +47,7 @@ public class MerchantDubboServiceImpl implements MerchantDubboService {
                 .totalDeposit(total)
                 .frozenDeposit(frozen)
                 .deductedDeposit(deducted)
+                .createdTime(merchant.getCreatedTime())
                 .build();
     }
 

@@ -4,11 +4,13 @@ com/example/item/controller/HomeController.class
 com/example/item/entity/ItemAudit.class
 com/example/item/entity/Item.class
 com/example/item/entity/Banner.class
+com/example/item/listener/ItemRiskCommandConsumer.class
 com/example/item/mapper/CardSecretMapper.class
 com/example/item/provider/AssetDubboServiceImpl.class
 com/example/item/listener/SeckillTransactionListener.class
 com/example/item/vo/HomeOverviewVO.class
 com/example/item/vo/HomeOverviewVO$HomeOverviewVOBuilder.class
+com/example/item/service/ItemRiskCommandHandler.class
 com/example/item/provider/ItemDubboServiceImpl.class
 com/example/item/vo/SeckillSessionVO.class
 com/example/item/config/WebMvcConfig.class
@@ -23,6 +25,7 @@ com/example/item/vo/SeckillItemVO$SeckillItemVOBuilder.class
 com/example/item/controller/SeckillController.class
 com/example/item/ItemApplication.class
 com/example/item/mapper/AssetReservationMapper.class
+com/example/item/service/RiskClient.class
 com/example/item/mapper/SeckillItemMapper.class
 com/example/item/vo/SeckillItemVO.class
 com/example/item/config/UserContextInterceptor.class
@@ -34,4 +37,5 @@ com/example/item/provider/SeckillServiceImpl.class
 com/example/item/controller/AssetListingController.class
 com/example/item/service/ProductCatalogService.class
 com/example/item/entity/TccActionLog.class
+com/example/item/service/RiskClient$1.class
 com/example/item/vo/SeckillSessionVO$SeckillSessionVOBuilder.class

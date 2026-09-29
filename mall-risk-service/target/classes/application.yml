@@ -1,0 +1,39 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: mall-risk-service
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://100.121.74.115:3306/db_risk?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    hikari:
+      maximum-pool-size: 20
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 100.121.74.115:8848
+      config:
+        server-addr: 100.121.74.115:8848
+
+rocketmq:
+  name-server: 100.120.228.17:9876
+  producer:
+    group: risk-command-producer-group
+
+risk:
+  identity-salt: change-me-in-production
+  precheck-expire-minutes: 10
+
+dubbo:
+  application:
+    name: mall-risk-service
+  registry:
+    address: nacos://100.121.74.115:8848/
+  protocol:
+    name: dubbo
+    port: 20884
+  scan:
+    base-packages: com.example.risk.provider

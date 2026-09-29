@@ -124,4 +124,27 @@ public interface TradeOrderMapper extends BaseMapper<TradeOrder> {
             "WHERE id = #{id}")
     int updateFeeAndIncome(@Param("id") Long id, @Param("feeAmount") BigDecimal feeAmount,
                            @Param("sellerIncome") BigDecimal sellerIncome);
+
+    @Update("UPDATE t_trade_order SET risk_status = #{riskStatus}, risk_level = #{riskLevel}, " +
+            "risk_decision_no = #{decisionNo}, risk_reason = #{reason}, version = version + 1, " +
+            "updated_time = #{now} WHERE order_no = #{orderNo} AND risk_status <> #{riskStatus}")
+    int updateRiskStatus(@Param("orderNo") String orderNo, @Param("riskStatus") String riskStatus,
+                         @Param("riskLevel") String riskLevel, @Param("decisionNo") String decisionNo,
+                         @Param("reason") String reason, @Param("now") LocalDateTime now);
+
+    @Update("UPDATE t_trade_order SET risk_status = #{riskStatus}, risk_level = #{riskLevel}, " +
+            "risk_decision_no = #{decisionNo}, risk_reason = #{reason}, version = version + 1, " +
+            "updated_time = #{now} WHERE order_no = #{orderNo} " +
+            "AND order_status IN ('WAIT_PAY', 'PAID', 'DELIVERED', 'CONFIRMED', 'SETTLING') " +
+            "AND risk_status <> #{riskStatus}")
+    int updateRiskStatusIfAllowed(@Param("orderNo") String orderNo, @Param("riskStatus") String riskStatus,
+                                  @Param("riskLevel") String riskLevel, @Param("decisionNo") String decisionNo,
+                                  @Param("reason") String reason, @Param("now") LocalDateTime now);
+
+    @Update("UPDATE t_trade_order SET settle_available_time = GREATEST(settle_available_time, #{until}), " +
+            "version = version + 1, updated_time = #{now} WHERE order_no = #{orderNo} " +
+            "AND order_status IN ('CONFIRMED', 'SETTLING') AND escrow_status = 'SETTLE_PENDING' " +
+            "AND settle_available_time < #{until}")
+    int delaySettlement(@Param("orderNo") String orderNo, @Param("until") LocalDateTime until,
+                        @Param("now") LocalDateTime now);
 }

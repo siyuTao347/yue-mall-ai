@@ -21,14 +21,19 @@ public class JwtUtil {
      * 签发 JWT Token
      */
     public static String generateToken(Long userId, String email, String nickname) {
+        return generateToken(userId, email, nickname, "USER");
+    }
+
+    public static String generateToken(Long userId, String email, String nickname, String role) {
         try {
             long now = System.currentTimeMillis();
             long exp = now + EXPIRE_MS;
 
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("userId", userId);
-            payload.put("email", email);
-            payload.put("nickname", nickname != null ? nickname : "VALOR特工");
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("userId", userId);
+        payload.put("email", email);
+        payload.put("nickname", nickname != null ? nickname : "VALOR特工");
+            payload.put("role", role == null || role.isBlank() ? "USER" : role);
             payload.put("iat", now);
             payload.put("exp", exp);
 
@@ -78,6 +83,11 @@ public class JwtUtil {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public static String parseRole(String token) {
+        JsonNode node = parsePayload(token);
+        return node == null ? null : node.path("role").asText("USER");
     }
 
     /**

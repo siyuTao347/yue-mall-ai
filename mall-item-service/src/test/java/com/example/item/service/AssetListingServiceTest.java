@@ -1,5 +1,8 @@
 package com.example.item.service;
 
+import api.risk.RiskDecisionResult;
+import api.risk.RiskEvaluateRequest;
+import api.risk.SensitiveWordScanner;
 import com.example.item.entity.CardSecret;
 import com.example.item.entity.Item;
 import com.example.item.mapper.CardSecretMapper;
@@ -25,6 +28,7 @@ class AssetListingServiceTest {
     private ItemMapper itemMapper;
     private CardSecretMapper cardSecretMapper;
     private CryptoService cryptoService;
+    private RiskClient riskClient;
     private AssetListingService service;
 
     @BeforeEach
@@ -32,8 +36,11 @@ class AssetListingServiceTest {
         itemMapper = mock(ItemMapper.class);
         cardSecretMapper = mock(CardSecretMapper.class);
         cryptoService = new CryptoService("unit-test-card-key");
+        riskClient = mock(RiskClient.class);
+        when(riskClient.sensitiveWords()).thenReturn(SensitiveWordScanner.defaultWords());
+        when(riskClient.evaluate(any(RiskEvaluateRequest.class))).thenReturn(pass());
         service = new AssetListingService(itemMapper, mock(ItemAuditMapper.class),
-                cardSecretMapper, cryptoService);
+                cardSecretMapper, cryptoService, riskClient);
     }
 
     @Test
@@ -108,6 +115,33 @@ class AssetListingServiceTest {
     }
 
     @Test
+    void submitRejectsIllegalAssetBeforeCallingRiskService() {
+        Item item = draftItem();
+        item.setItemName("虚拟货币账号");
+        when(itemMapper.selectById(1L)).thenReturn(item);
+
+        Assertions.assertThrows(IllegalArgumentException.class, () -> service.submit(1L, 10L));
+
+        verify(riskClient, never()).evaluate(any(RiskEvaluateRequest.class));
+        verify(itemMapper, never()).submitAudit(any(), any());
+    }
+
+    @Test
+    void submitContinuesWhenRiskServiceDegradesToPass() {
+        Item item = draftItem();
+        item.setItemName("Valor AK47");
+        when(itemMapper.selectById(1L)).thenReturn(item);
+        when(riskClient.evaluate(any(RiskEvaluateRequest.class)))
+                .thenReturn(RiskDecisionResult.degraded("RE-LISTING-TEST"));
+        when(itemMapper.submitAudit(1L, 10L)).thenReturn(1);
+
+        Item result = service.submit(1L, 10L);
+
+        Assertions.assertEquals("PENDING", result.getAuditStatus());
+        verify(itemMapper).submitAudit(1L, 10L);
+    }
+
+    @Test
     void createSupportsManualDeliveryStock() {
         Item item = service.create(20L, 10L, Map.of(
                 "itemName", "Valor AK47",
@@ -152,5 +186,16 @@ class AssetListingServiceTest {
         item.setDeliveryMode("AUTO_CARD");
         item.setAuditStatus("DRAFT");
         return item;
+    }
+
+    private RiskDecisionResult pass() {
+        return RiskDecisionResult.builder()
+                .action(RiskDecisionResult.ACTION_PASS)
+                .riskScore(0)
+                .riskLevel("LOW")
+                .degraded(false)
+                .message("pass")
+                .hitRules(List.of())
+                .build();
     }
 }

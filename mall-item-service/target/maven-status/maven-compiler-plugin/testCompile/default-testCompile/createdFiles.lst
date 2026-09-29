@@ -1,2 +1,3 @@
 com/example/item/service/AssetServiceTest.class
 com/example/item/service/AssetListingServiceTest.class
+com/example/item/service/ItemRiskCommandHandlerTest.class

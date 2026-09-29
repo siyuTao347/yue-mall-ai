@@ -1,6 +1,12 @@
 package com.example.item.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import api.risk.RiskDecisionResult;
+import api.risk.RiskEvaluateRequest;
+import api.risk.RiskSupport;
+import api.risk.SensitiveWordHitDTO;
+import api.risk.SensitiveWordScanner;
+import api.trade.MerchantDTO;
 import com.example.item.entity.CardSecret;
 import com.example.item.entity.Item;
 import com.example.item.entity.ItemAudit;
@@ -23,13 +29,16 @@ public class AssetListingService {
     private final ItemAuditMapper auditMapper;
     private final CardSecretMapper cardSecretMapper;
     private final CryptoService cryptoService;
+    private final RiskClient riskClient;
 
     public AssetListingService(ItemMapper itemMapper, ItemAuditMapper auditMapper,
-                               CardSecretMapper cardSecretMapper, CryptoService cryptoService) {
+                               CardSecretMapper cardSecretMapper, CryptoService cryptoService,
+                               RiskClient riskClient) {
         this.itemMapper = itemMapper;
         this.auditMapper = auditMapper;
         this.cardSecretMapper = cardSecretMapper;
         this.cryptoService = cryptoService;
+        this.riskClient = riskClient;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -69,12 +78,62 @@ public class AssetListingService {
 
     @Transactional(rollbackFor = Exception.class)
     public Item submit(Long itemId, Long merchantId) {
+        return submit(itemId, merchantId, null, Map.of());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Item submit(Long itemId, Long merchantId, MerchantDTO merchant) {
+        return submit(itemId, merchantId, merchant, Map.of());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Item submit(Long itemId, Long merchantId, MerchantDTO merchant, Map<String, Object> body) {
         Item item = getOwnedItem(itemId, merchantId);
+        String content = listingContent(item);
+        List<SensitiveWordHitDTO> sensitiveHits =
+                SensitiveWordScanner.scan(content, riskClient.sensitiveWords());
+        requireLocalSafeListing(sensitiveHits);
+
+        String eventNo = RiskSupport.nextEventNo("LISTING");
+        RiskEvaluateRequest request = RiskEvaluateRequest.builder()
+                .eventNo(eventNo)
+                .scene("LISTING")
+                .eventType("SUBMIT")
+                .bizType("ITEM")
+                .bizNo(String.valueOf(itemId))
+                .userId(item.getSellerId())
+                .merchantId(merchantId)
+                .itemId(itemId)
+                .amount(item.getPrice())
+                .ipHash(riskClient.ipHash())
+                .deviceHash(riskClient.deviceHash())
+                .payload(listingPayload(item, merchant, body, content))
+                .sensitiveHits(sensitiveHits)
+                .build();
+        RiskDecisionResult decision = riskClient.evaluate(request);
+        if (RiskDecisionResult.ACTION_REJECT.equals(decision.getAction())) {
+            throw new IllegalArgumentException(decision.getMessage());
+        }
+        String riskStatus = RiskSupport.toRiskStatus(decision.getAction());
+        if (!"NORMAL".equals(riskStatus)) {
+            itemMapper.updateRiskStatus(itemId, riskStatus, decision.getRiskLevel(),
+                    decision.getDecisionNo(), decision.getMessage());
+            item.setRiskStatus(riskStatus);
+            item.setRiskLevel(decision.getRiskLevel());
+            item.setRiskDecisionNo(decision.getDecisionNo());
+            item.setRiskReason(decision.getMessage());
+        }
+        if (RiskDecisionResult.ACTION_FREEZE.equals(decision.getAction())
+                || RiskDecisionResult.ACTION_MANUAL_REVIEW.equals(decision.getAction())) {
+            riskClient.confirmAfterCommit(eventNo);
+            return item;
+        }
         if (itemMapper.submitAudit(itemId, merchantId) <= 0) {
             throw new IllegalArgumentException("当前状态不能提交审核");
         }
         item.setAuditStatus("PENDING");
         insertAudit(itemId, "SUBMIT", null, "提交审核");
+        riskClient.confirmAfterCommit(eventNo);
         return item;
     }
 
@@ -186,6 +245,55 @@ public class AssetListingService {
             throw new IllegalArgumentException(message);
         }
         return String.valueOf(value).trim();
+    }
+
+    private String listingContent(Item item) {
+        return String.join("\n",
+                nullToEmpty(item.getItemName()),
+                nullToEmpty(item.getSubTitle()),
+                nullToEmpty(item.getDetailHtml()),
+                nullToEmpty(item.getSourceDescription()),
+                nullToEmpty(item.getRiskNotice()));
+    }
+
+    private void requireLocalSafeListing(List<SensitiveWordHitDTO> hits) {
+        boolean unsafe = hits.stream().map(SensitiveWordHitDTO::getCategory).anyMatch(category ->
+                "ILLEGAL_ASSET".equals(category) || "OFF_PLATFORM_CONTACT".equals(category)
+                        || "PRIVATE_TRANSACTION".equals(category));
+        if (unsafe) {
+            throw new IllegalArgumentException("商品内容包含禁售或站外交易信息");
+        }
+    }
+
+    private Map<String, Object> listingPayload(Item item, MerchantDTO merchant,
+                                               Map<String, Object> body, String content) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("contentHash", RiskSupport.sha256(content));
+        payload.put("contentLength", content.length());
+        payload.put("deliveryMode", item.getDeliveryMode());
+        if (merchant != null && merchant.getCreatedTime() != null) {
+            payload.put("merchantAgeHours", RiskSupport.hoursBetween(merchant.getCreatedTime(), null));
+        }
+        if (body != null) {
+            putDecimal(payload, "categoryMedianPrice", body.get("categoryMedianPrice"));
+            putDecimal(payload, "categoryP95Price", body.get("categoryP95Price"));
+        }
+        return payload;
+    }
+
+    private void putDecimal(Map<String, Object> payload, String key, Object value) {
+        if (value == null || String.valueOf(value).isBlank()) {
+            return;
+        }
+        try {
+            payload.put(key, new BigDecimal(String.valueOf(value)));
+        } catch (NumberFormatException ignored) {
+            // 非法统计值不进入风控指标，由规则记录缺失指标。
+        }
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private String requiredOption(Object value, String defaultValue, List<String> options) {

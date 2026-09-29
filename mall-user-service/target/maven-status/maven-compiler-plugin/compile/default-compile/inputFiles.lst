@@ -8,6 +8,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/PlatformAccount.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/dto/MissingFundFlowDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/listener/OrderPaidPointConsumer.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/UserRiskCommandHandler.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/FundService.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/dto/RegisterDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/WithdrawRequest.java
@@ -30,6 +31,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/MerchantAuditMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/WithdrawService.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/provider/MerchantDubboServiceImpl.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/listener/UserRiskCommandConsumer.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/controller/PointController.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/dto/LoginDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/FundReconciliationDiff.java
@@ -37,6 +39,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/MerchantCreditMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/WithdrawRequestMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/FundFlow.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/RiskClient.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/FundTransactionMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/MerchantAudit.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/FundReconciliationService.java

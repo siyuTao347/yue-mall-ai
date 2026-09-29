@@ -1,6 +1,8 @@
 package com.example.user.service;
 
 import api.util.JwtUtil;
+import api.risk.RiskEvaluateRequest;
+import api.risk.RiskSupport;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.user.dto.LoginDTO;
 import com.example.user.dto.RegisterDTO;
@@ -34,6 +36,9 @@ public class UserService {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private RiskClient riskClient;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -98,12 +103,13 @@ public class UserService {
         // 5. 初始化用户积分资产 (赠送注册礼 100 积分)
         pointService.rewardPointsForOrder("WELCOME_BONUS_" + user.getId(), user.getId(), new java.math.BigDecimal("100.00"));
         UserPoint point = pointService.getUserPointSummary(user.getId());
+        recordUserEvent(user.getId(), "REGISTER", "CREATE");
 
         // 6. 用后即焚清理验证码
         redisTemplate.delete(codeKey);
 
         // 7. 签发 JWT Token
-        String token = JwtUtil.generateToken(user.getId(), user.getEmail(), user.getNickname());
+        String token = JwtUtil.generateToken(user.getId(), user.getEmail(), user.getNickname(), user.getRole());
 
         log.info("用户注册成功: id={}, email={}", user.getId(), user.getEmail());
         user.setPassword(null); // 抹除密码哈希后再返回
@@ -152,6 +158,7 @@ public class UserService {
                 user.setCreateTime(LocalDateTime.now());
                 userMapper.insert(user);
                 pointService.rewardPointsForOrder("WELCOME_BONUS_" + user.getId(), user.getId(), new java.math.BigDecimal("100.00"));
+                recordUserEvent(user.getId(), "REGISTER", "CREATE");
             }
             redisTemplate.delete(codeKey);
 
@@ -180,7 +187,8 @@ public class UserService {
         userMapper.updateById(user);
 
         UserPoint point = pointService.getUserPointSummary(user.getId());
-        String token = JwtUtil.generateToken(user.getId(), user.getEmail(), user.getNickname());
+        recordUserEvent(user.getId(), "LOGIN", "LOGIN_SUCCESS");
+        String token = JwtUtil.generateToken(user.getId(), user.getEmail(), user.getNickname(), user.getRole());
 
         user.setPassword(null);
         return AuthVO.builder().token(token).user(user).point(point).build();
@@ -197,5 +205,18 @@ public class UserService {
         user.setPassword(null);
         UserPoint point = pointService.getUserPointSummary(userId);
         return AuthVO.builder().user(user).point(point).build();
+    }
+
+    private void recordUserEvent(Long userId, String scene, String eventType) {
+        riskClient.recordEvent(RiskEvaluateRequest.builder()
+                .eventNo(RiskSupport.nextEventNo(scene))
+                .scene(scene)
+                .eventType(eventType)
+                .bizType("USER")
+                .bizNo(String.valueOf(userId))
+                .userId(userId)
+                .ipHash(riskClient.ipHash())
+                .deviceHash(riskClient.deviceHash())
+                .build());
     }
 }

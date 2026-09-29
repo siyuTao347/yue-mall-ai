@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -20,4 +21,5 @@ public class MerchantDTO implements Serializable {
     private BigDecimal totalDeposit;
     private BigDecimal frozenDeposit;
     private BigDecimal deductedDeposit;
+    private LocalDateTime createdTime;
 }

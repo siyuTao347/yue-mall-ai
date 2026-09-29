@@ -23,6 +23,10 @@ public class Merchant {
     private String status;
     private Integer level;
     private String rejectReason;
+    private String riskStatus;
+    private String riskLevel;
+    private String riskDecisionNo;
+    private String riskReason;
     private LocalDateTime createdTime;
     private LocalDateTime updatedTime;
 }

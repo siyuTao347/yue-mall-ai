@@ -34,4 +34,8 @@ public class Item {
     private String riskNotice;
     private String auditStatus;
     private String auditRemark;
+    private String riskStatus;
+    private String riskLevel;
+    private String riskDecisionNo;
+    private String riskReason;
 }

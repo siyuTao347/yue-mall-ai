@@ -55,4 +55,33 @@ public interface ItemMapper extends BaseMapper<Item> {
     @Update("UPDATE t_item SET stock = stock + #{count}, frozen_stock = frozen_stock - #{count} " +
             "WHERE id = #{itemId} AND frozen_stock >= #{count}")
     int cancelDeductStock(@Param("itemId") Long itemId, @Param("count") Integer count);
+
+    @Update("UPDATE t_item SET risk_status = #{riskStatus}, risk_level = #{riskLevel}, " +
+            "risk_decision_no = #{decisionNo}, risk_reason = #{reason}, version = version + 1 " +
+            "WHERE id = #{itemId} AND risk_status <> #{riskStatus}")
+    int updateRiskStatus(@Param("itemId") Long itemId, @Param("riskStatus") String riskStatus,
+                         @Param("riskLevel") String riskLevel, @Param("decisionNo") String decisionNo,
+                         @Param("reason") String reason);
+
+    @Update("UPDATE t_item SET risk_status = #{riskStatus}, risk_level = #{riskLevel}, " +
+            "risk_decision_no = #{decisionNo}, risk_reason = #{reason}, version = version + 1 " +
+            "WHERE id = #{itemId} AND audit_status IN ('DRAFT', 'PENDING', 'APPROVED', 'REJECTED') " +
+            "AND risk_status <> #{riskStatus}")
+    int updateRiskStatusIfAllowed(@Param("itemId") Long itemId, @Param("riskStatus") String riskStatus,
+                                  @Param("riskLevel") String riskLevel, @Param("decisionNo") String decisionNo,
+                                  @Param("reason") String reason);
+
+    @Update("UPDATE t_item SET audit_status = 'REJECTED', status = 0, audit_remark = #{reason}, " +
+            "risk_status = 'REJECTED', risk_level = #{riskLevel}, risk_decision_no = #{decisionNo}, " +
+            "risk_reason = #{reason}, version = version + 1 WHERE id = #{itemId} " +
+            "AND audit_status IN ('DRAFT', 'PENDING') AND risk_status <> 'REJECTED'")
+    int rejectByRisk(@Param("itemId") Long itemId, @Param("riskLevel") String riskLevel,
+                     @Param("decisionNo") String decisionNo, @Param("reason") String reason);
+
+    @Update("UPDATE t_item SET status = 0, risk_status = 'FROZEN', risk_level = #{riskLevel}, " +
+            "risk_decision_no = #{decisionNo}, risk_reason = #{reason}, version = version + 1 " +
+            "WHERE id = #{itemId} AND audit_status IN ('DRAFT', 'PENDING', 'APPROVED') " +
+            "AND risk_status <> 'FROZEN'")
+    int freezeByRisk(@Param("itemId") Long itemId, @Param("riskLevel") String riskLevel,
+                     @Param("decisionNo") String decisionNo, @Param("reason") String reason);
 }

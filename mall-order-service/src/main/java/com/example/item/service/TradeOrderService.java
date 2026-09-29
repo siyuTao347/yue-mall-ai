@@ -7,6 +7,11 @@ import api.trade.FundDubboService;
 import api.trade.FundOperationResult;
 import api.trade.ItemSnapshotDTO;
 import api.trade.MerchantDubboService;
+import api.risk.RiskDecisionResult;
+import api.risk.RiskEvaluateRequest;
+import api.risk.RiskSupport;
+import api.risk.SensitiveWordHitDTO;
+import api.risk.SensitiveWordScanner;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.item.entity.Arbitration;
 import com.example.item.entity.DeliveryEvidence;
@@ -45,6 +50,7 @@ import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -65,10 +71,14 @@ public class TradeOrderService {
     private final TradeStatusLogService statusLog;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
+    private final RiskClient riskClient;
+    private final OrderRiskStateWriter riskStateWriter;
     private static final List<String> SECRET_VIEWABLE_ORDER_STATUSES =
             List.of("DELIVERED", "CONFIRMED", "SETTLING", "SETTLED");
     private static final List<String> SECRET_VIEWABLE_ESCROW_STATUSES =
             List.of("FROZEN", "SETTLE_PENDING", "SETTLED");
+    private static final List<String> RISK_BLOCKED_STATUSES =
+            List.of("MANUAL_REVIEW", "FROZEN", "REJECTED");
 
     @Value("${trade.fee-rate:2}")
     private BigDecimal feeRatePercent = new BigDecimal("2");
@@ -94,9 +104,10 @@ public class TradeOrderService {
                              PaymentCallbackMapper callbackMapper, DeliveryRecordMapper deliveryMapper,
                              DeliveryEvidenceMapper evidenceMapper, DisputeMapper disputeMapper,
                              DisputeMessageMapper disputeMessageMapper, ArbitrationMapper arbitrationMapper,
-                             OrderSettlementMapper settlementMapper, OrderReviewMapper reviewMapper,
-                             TradeStatusLogService statusLog, ObjectMapper objectMapper,
-                             TransactionTemplate transactionTemplate) {
+                            OrderSettlementMapper settlementMapper, OrderReviewMapper reviewMapper,
+                            TradeStatusLogService statusLog, ObjectMapper objectMapper,
+                            TransactionTemplate transactionTemplate, RiskClient riskClient,
+                            OrderRiskStateWriter riskStateWriter) {
         this.orderMapper = orderMapper;
         this.paymentMapper = paymentMapper;
         this.callbackMapper = callbackMapper;
@@ -110,6 +121,8 @@ public class TradeOrderService {
         this.statusLog = statusLog;
         this.objectMapper = objectMapper;
         this.transactionTemplate = transactionTemplate;
+        this.riskClient = riskClient;
+        this.riskStateWriter = riskStateWriter;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -123,8 +136,32 @@ public class TradeOrderService {
         try {
             ItemSnapshotDTO snapshot = reservation.getItemSnapshot();
             calculateFee(snapshot.getPrice().multiply(BigDecimal.valueOf(quantity)));
+            if (buyerId.equals(snapshot.getSellerId())) {
+                throw new IllegalArgumentException("买家和卖家不能是同一个用户");
+            }
+            String eventNo = RiskSupport.nextEventNo("ORDER");
+            RiskEvaluateRequest riskRequest = RiskEvaluateRequest.builder()
+                    .eventNo(eventNo)
+                    .scene("ORDER")
+                    .eventType("CREATE")
+                    .bizType("ORDER")
+                    .bizNo(orderNo)
+                    .userId(buyerId)
+                    .merchantId(snapshot.getMerchantId())
+                    .itemId(itemId)
+                    .orderNo(orderNo)
+                    .amount(snapshot.getPrice().multiply(BigDecimal.valueOf(quantity)))
+                    .ipHash(riskClient.ipHash())
+                    .deviceHash(riskClient.deviceHash())
+                    .payload(createOrderPayload(snapshot, quantity))
+                    .build();
+            RiskDecisionResult decision = riskClient.evaluate(riskRequest);
+            if (RiskDecisionResult.ACTION_REJECT.equals(decision.getAction())) {
+                throw new IllegalArgumentException(decision.getMessage());
+            }
             LocalDateTime now = LocalDateTime.now();
             TradeOrder order = buildOrder(buyerId, orderNo, snapshot, quantity, now);
+            applyDecisionToOrder(order, decision);
             orderMapper.insert(order);
             PaymentOrder payment = buildPayment(order, now);
             paymentMapper.insert(payment);
@@ -132,6 +169,7 @@ public class TradeOrderService {
             TradeOrder stored = order;
             stored.setPaymentNo(payment.getPaymentNo());
             statusLog.log(orderNo, null, "WAIT_PAY", "ORDER", "BUYER", buyerId, "创建担保订单");
+            riskClient.confirmAfterCommit(eventNo);
             return stored;
         } catch (RuntimeException e) {
             assetService.release(orderNo);
@@ -157,6 +195,7 @@ public class TradeOrderService {
         if (closeExpiredOrderIfPayExpired(order)) {
             throw new IllegalArgumentException("支付已超时，订单已关闭");
         }
+        requirePaymentAllowed(order);
         if (!"INIT".equals(payment.getStatus())) {
             return payment;
         }
@@ -184,6 +223,7 @@ public class TradeOrderService {
         }
 
         TradeOrder order = requireOrder(orderNo);
+        requirePaymentAllowed(order);
         LocalDateTime now = LocalDateTime.now();
         if (order.getOrderAmount() == null || amount.compareTo(order.getOrderAmount()) != 0) {
             return "AMOUNT_MISMATCH";
@@ -274,6 +314,7 @@ public class TradeOrderService {
         if (!"FROZEN".equals(order.getEscrowStatus())) {
             throw new IllegalStateException("资金未冻结，不能交付");
         }
+        requireProgressAllowed(order);
         if (hasActiveDispute(order.getDisputeStatus())) {
             throw new IllegalStateException("售后处理中，不能交付");
         }
@@ -291,6 +332,7 @@ public class TradeOrderService {
         if (orderMapper.markDelivered(orderNo, now, autoConfirmHours) <= 0) {
             throw new IllegalStateException("当前状态不能交付");
         }
+        recordOrderEvent(order, "DELIVERY", "DELIVER", order.getRiskStatus());
         DeliveryRecord record = new DeliveryRecord();
         record.setOrderNo(orderNo);
         record.setDeliveryType(autoCard ? "AUTO_CARD" : "MANUAL_DELIVERY");
@@ -370,6 +412,7 @@ public class TradeOrderService {
         if (hasActiveDispute(order.getDisputeStatus())) {
             throw new IllegalStateException("售后处理中，不能确认收货");
         }
+        requireProgressAllowed(order);
         LocalDateTime now = LocalDateTime.now();
         int updated = "SYSTEM".equals(operatorType)
                 ? orderMapper.markConfirmedForAutoConfirm(orderNo, now, settleCooldownHours)
@@ -378,6 +421,10 @@ public class TradeOrderService {
             throw new IllegalStateException("当前状态不能确认");
         }
         deliveryMapper.confirmDelivery(orderNo, now);
+        if ("LIMITED".equals(order.getRiskStatus())) {
+            orderMapper.delaySettlement(orderNo, now.plusHours(settleCooldownHours), now);
+        }
+        recordOrderEvent(order, "CONFIRM", "CONFIRM", order.getRiskStatus());
         statusLog.log(orderNo, "DELIVERED", "CONFIRMED", "ORDER", operatorType, operatorId, "确认收货");
         return requireOrder(orderNo);
     }
@@ -386,6 +433,7 @@ public class TradeOrderService {
     public TradeOrder settle(String orderNo) {
         LocalDateTime now = LocalDateTime.now();
         TradeOrder order = requireOrder(orderNo);
+        requireProgressAllowed(order);
         if (!"CONFIRMED".equals(order.getOrderStatus()) && !"SETTLING".equals(order.getOrderStatus())) {
             return order;
         }
@@ -442,6 +490,38 @@ public class TradeOrderService {
         if (hasActiveDispute(order.getDisputeStatus())) {
             throw new IllegalArgumentException("该订单已有处理中的售后");
         }
+        List<SensitiveWordHitDTO> sensitiveHits =
+                SensitiveWordScanner.scan(reason, riskClient.sensitiveWords());
+        requireSafeDisputeContent(sensitiveHits);
+        String eventNo = RiskSupport.nextEventNo("DISPUTE");
+        RiskEvaluateRequest riskRequest = RiskEvaluateRequest.builder()
+                .eventNo(eventNo)
+                .scene("DISPUTE")
+                .eventType("OPEN")
+                .bizType("ORDER")
+                .bizNo(orderNo)
+                .userId(userId)
+                .merchantId(order.getMerchantId())
+                .orderNo(orderNo)
+                .amount(refundAmount == null ? order.getOrderAmount() : refundAmount)
+                .ipHash(riskClient.ipHash())
+                .deviceHash(riskClient.deviceHash())
+                .payload(disputePayload(order))
+                .sensitiveHits(sensitiveHits)
+                .build();
+        RiskDecisionResult decision = riskClient.evaluate(riskRequest);
+        if (RiskDecisionResult.ACTION_REJECT.equals(decision.getAction())) {
+            throw new IllegalArgumentException(decision.getMessage());
+        }
+        String riskStatus = RiskSupport.toRiskStatus(decision.getAction());
+        if (!"NORMAL".equals(riskStatus)) {
+            riskStateWriter.updateRiskStatus(orderNo, riskStatus, decision.getRiskLevel(),
+                    decision.getDecisionNo(), decision.getMessage());
+        }
+        if (RiskDecisionResult.ACTION_FREEZE.equals(decision.getAction())
+                || RiskDecisionResult.ACTION_MANUAL_REVIEW.equals(decision.getAction())) {
+            throw new IllegalStateException(decision.getMessage());
+        }
         if (orderMapper.markDispute(orderNo, "ARBITRATING", LocalDateTime.now()) <= 0) {
             throw new IllegalArgumentException("订单售后状态已变化，请刷新后重试");
         }
@@ -459,6 +539,7 @@ public class TradeOrderService {
         dispute.setUpdatedTime(LocalDateTime.now());
         disputeMapper.insert(dispute);
         transactionTemplate.executeWithoutResult(status -> merchantService.disputeOrder(order.getMerchantId()));
+        riskClient.confirmAfterCommit(eventNo);
         statusLog.log(orderNo, "NONE", "ARBITRATING", "DISPUTE", "USER", userId, "发起售后");
         return dispute;
     }
@@ -696,11 +777,101 @@ public class TradeOrderService {
         order.setDeliveryStatus("WAIT_DELIVERY");
         order.setEscrowStatus("NONE");
         order.setDisputeStatus("NONE");
+        order.setRiskStatus("NORMAL");
+        order.setRiskLevel("LOW");
         order.setPayDeadline(now.plusMinutes(paymentExpireMinutes));
         order.setVersion(0);
         order.setCreatedTime(now);
         order.setUpdatedTime(now);
         return order;
+    }
+
+    private void applyDecisionToOrder(TradeOrder order, RiskDecisionResult decision) {
+        String riskStatus = RiskSupport.toRiskStatus(decision.getAction());
+        order.setRiskStatus(riskStatus);
+        order.setRiskLevel(decision.getRiskLevel() == null ? "LOW" : decision.getRiskLevel());
+        order.setRiskDecisionNo(decision.getDecisionNo());
+        order.setRiskReason(decision.getMessage());
+    }
+
+    private void recordOrderEvent(TradeOrder order, String scene, String eventType, String orderRiskStatus) {
+        riskClient.recordEvent(RiskEvaluateRequest.builder()
+                .eventNo(RiskSupport.nextEventNo(scene))
+                .scene(scene)
+                .eventType(eventType)
+                .bizType("ORDER")
+                .bizNo(order.getOrderNo())
+                .userId(order.getBuyerId())
+                .merchantId(order.getMerchantId())
+                .itemId(order.getItemId())
+                .orderNo(order.getOrderNo())
+                .amount(order.getOrderAmount())
+                .ipHash(riskClient.ipHash())
+                .deviceHash(riskClient.deviceHash())
+                .payload(orderEventPayload(order, orderRiskStatus))
+                .build());
+    }
+
+    private Map<String, Object> orderEventPayload(TradeOrder order, String orderRiskStatus) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("orderId", order.getId());
+        payload.put("sellerId", order.getSellerId());
+        payload.put("quantity", order.getQuantity());
+        payload.put("deliveryMode", deliveryModeOf(order));
+        payload.put("orderRiskStatus", nullToNormal(orderRiskStatus));
+        if (order.getDeliveredTime() != null && order.getConfirmedTime() != null) {
+            payload.put("payToDeliverSeconds", java.time.Duration.between(
+                    order.getDeliveredTime(), order.getConfirmedTime()).toSeconds());
+        }
+        return payload;
+    }
+
+    private Map<String, Object> createOrderPayload(ItemSnapshotDTO snapshot, Integer quantity) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("sellerId", snapshot.getSellerId());
+        payload.put("quantity", quantity);
+        payload.put("deliveryMode", snapshot.getDeliveryMode());
+        payload.put("orderRiskStatus", "NORMAL");
+        return payload;
+    }
+
+    private String deliveryModeOf(TradeOrder order) {
+        try {
+            ItemSnapshotDTO snapshot = readSnapshot(order);
+            return String.valueOf(snapshot.getDeliveryMode());
+        } catch (RuntimeException e) {
+            return "UNKNOWN";
+        }
+    }
+
+    private Map<String, Object> disputePayload(TradeOrder order) {
+        Map<String, Object> payload = orderEventPayload(order, order.getRiskStatus());
+        return payload;
+    }
+
+    private void requirePaymentAllowed(TradeOrder order) {
+        if (RISK_BLOCKED_STATUSES.contains(nullToNormal(order.getRiskStatus()))) {
+            throw new IllegalStateException("订单安全审核中或已冻结，禁止支付");
+        }
+    }
+
+    private void requireProgressAllowed(TradeOrder order) {
+        if (RISK_BLOCKED_STATUSES.contains(nullToNormal(order.getRiskStatus()))) {
+            throw new IllegalStateException("订单安全审核中或已冻结，禁止推进");
+        }
+    }
+
+    private void requireSafeDisputeContent(List<SensitiveWordHitDTO> hits) {
+        boolean unsafe = hits.stream().map(SensitiveWordHitDTO::getCategory).anyMatch(category ->
+                "ILLEGAL_ASSET".equals(category) || "OFF_PLATFORM_CONTACT".equals(category)
+                        || "PRIVATE_TRANSACTION".equals(category));
+        if (unsafe) {
+            throw new IllegalArgumentException("售后说明包含不安全内容");
+        }
+    }
+
+    private String nullToNormal(String value) {
+        return value == null || value.isBlank() ? "NORMAL" : value;
     }
 
     private PaymentOrder buildPayment(TradeOrder order, LocalDateTime now) {

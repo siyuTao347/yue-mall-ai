@@ -10,8 +10,17 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+      </profile>
+      <profile name="Annotation profile for mall-parent" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.32/lombok-1.18.32.jar" />
+        </processorPath>
         <module name="mall-item-service" />
         <module name="mall-order-service" />
+        <module name="mall-risk-service" />
         <module name="mall-api" />
         <module name="mall-user-service" />
       </profile>
@@ -23,6 +32,7 @@
       <module name="mall-item-service" options="-parameters" />
       <module name="mall-order-service" options="-parameters" />
       <module name="mall-parent" options="-parameters" />
+      <module name="mall-risk-service" options="-parameters" />
       <module name="mall-user-service" options="-parameters" />
     </option>
   </component>

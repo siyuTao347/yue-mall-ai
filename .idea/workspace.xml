@@ -5,40 +5,67 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8275a235-79d3-4837-87f7-ed524bd10d2f" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/mall-api/pom.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-api/src/main/java/api/ItemDubboService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-api/src/main/resources/application.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/pom.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/ItemApplication.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/controller/SeckillController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/entity/Item.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/entity/TccActionLog.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/listener/SeckillTransactionListener.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/mapper/ItemMapper.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/mapper/TccActionLogMapper.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/provider/ItemDubboServiceImpl.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/provider/SeckillServiceImpl.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/service/package-info.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-item-service/src/main/resources/application.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-order-service/pom.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/OrderApplication.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/component/ReconciliationJobHandler.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/config/XxlJobConfig.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/controller/TccOrderController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/entity/Order.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/listener/SeckillOrderConsumer.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/mapper/OrderMapper.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/service/OrderServiceImpl.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-order-service/src/main/resources/application.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-user-service/pom.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/UserApplication.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/annoation/RateLimitAspect.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/annoation/SendCodeLimit.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/controller/UserController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mall-user-service/src/main/resources/application.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/数据库.sql" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/数据量化.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/xxl-job/jobhandler/2026-07-25/10.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/xxl-job/jobhandler/2026-07-25/8.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/xxl-job/jobhandler/2026-07-25/9.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/src/main/java/api/trade/MerchantDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/src/main/java/api/trade/MerchantDTO.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/src/main/java/api/util/JwtUtil.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/src/main/java/api/util/JwtUtil.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/target/classes/api/trade/MerchantDTO$MerchantDTOBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/classes/api/trade/MerchantDTO$MerchantDTOBuilder.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/target/classes/api/trade/MerchantDTO.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/classes/api/trade/MerchantDTO.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/target/classes/api/util/JwtUtil.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/classes/api/util/JwtUtil.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/controller/AssetListingController.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/controller/AssetListingController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/entity/Item.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/entity/Item.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/mapper/ItemMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/mapper/ItemMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/service/AssetListingService.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/service/AssetListingService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/src/test/java/com/example/item/service/AssetListingServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/src/test/java/com/example/item/service/AssetListingServiceTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/controller/AssetListingController.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/controller/AssetListingController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/entity/Item.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/entity/Item.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/mapper/ItemMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/mapper/ItemMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/service/AssetListingService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/service/AssetListingService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/target/test-classes/com/example/item/service/AssetListingServiceTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/test-classes/com/example/item/service/AssetListingServiceTest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/entity/TradeOrder.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/entity/TradeOrder.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/mapper/TradeOrderMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/mapper/TradeOrderMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/service/TradeOrderService.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/service/TradeOrderService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/src/test/java/com/example/item/service/TradeOrderServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/src/test/java/com/example/item/service/TradeOrderServiceTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/entity/TradeOrder.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/entity/TradeOrder.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/mapper/TradeOrderMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/mapper/TradeOrderMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/service/TradeOrderService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/service/TradeOrderService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/service/TradeOrderServiceTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/service/TradeOrderServiceTest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/entity/Merchant.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/entity/Merchant.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/entity/WithdrawRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/entity/WithdrawRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/mapper/MerchantMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/mapper/MerchantMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/mapper/WithdrawRequestMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/mapper/WithdrawRequestMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/provider/MerchantDubboServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/provider/MerchantDubboServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/service/MerchantService.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/service/MerchantService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/service/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/service/UserService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/service/WithdrawService.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/service/WithdrawService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/test/java/com/example/user/service/WithdrawServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/test/java/com/example/user/service/WithdrawServiceTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/entity/Merchant.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/entity/Merchant.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/entity/WithdrawRequest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/entity/WithdrawRequest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/mapper/MerchantMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/mapper/MerchantMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/mapper/WithdrawRequestMapper.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/mapper/WithdrawRequestMapper.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/provider/MerchantDubboServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/provider/MerchantDubboServiceImpl.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/service/MerchantService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/service/MerchantService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/service/UserService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/service/UserService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/service/WithdrawService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/service/WithdrawService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/test-classes/com/example/user/service/WithdrawServiceTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/test-classes/com/example/user/service/WithdrawServiceTest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -106,6 +133,7 @@
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
     &quot;Spring Boot.ItemApplication.executor&quot;: &quot;Run&quot;,
     &quot;Spring Boot.OrderApplication.executor&quot;: &quot;Run&quot;,
+    &quot;Spring Boot.RiskApplication.executor&quot;: &quot;Run&quot;,
     &quot;Spring Boot.UserApplication.executor&quot;: &quot;Run&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
@@ -145,6 +173,7 @@
             <map>
               <entry key="ItemApplication" value="STOPPED" />
               <entry key="OrderApplication" value="STOPPED" />
+              <entry key="RiskApplication" value="STOPPED" />
               <entry key="UserApplication" value="STOPPED" />
             </map>
           </value>
@@ -152,7 +181,7 @@
       </map>
     </option>
   </component>
-  <component name="RunManager" selected="Spring Boot.UserApplication">
+  <component name="RunManager" selected="Spring Boot.RiskApplication">
     <configuration name="ItemApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
       <module name="mall-item-service" />
       <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.item.ItemApplication" />
@@ -179,6 +208,19 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <configuration name="RiskApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
+      <module name="mall-risk-service" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.risk.RiskApplication" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.example.risk.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="UserApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
       <module name="mall-user-service" />
       <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.user.UserApplication" />
@@ -193,15 +235,17 @@
       </method>
     </configuration>
     <list>
+      <item itemvalue="Spring Boot.RiskApplication" />
       <item itemvalue="Spring Boot.ItemApplication" />
       <item itemvalue="Spring Boot.OrderApplication" />
       <item itemvalue="Spring Boot.UserApplication" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Spring Boot.RiskApplication" />
+        <item itemvalue="Spring Boot.ItemApplication" />
         <item itemvalue="Spring Boot.UserApplication" />
         <item itemvalue="Spring Boot.OrderApplication" />
-        <item itemvalue="Spring Boot.ItemApplication" />
       </list>
     </recent_temporary>
   </component>
@@ -238,10 +282,25 @@
       <workItem from="1790579706543" duration="3545000" />
       <workItem from="1790603327441" duration="1125000" />
       <workItem from="1790605245800" duration="2060000" />
+      <workItem from="1790646333222" duration="5551000" />
+      <workItem from="1790653364945" duration="12000" />
+      <workItem from="1790654068961" duration="2451000" />
+      <workItem from="1790661285017" duration="1838000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
 </project>

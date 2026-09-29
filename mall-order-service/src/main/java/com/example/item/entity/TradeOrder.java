@@ -32,6 +32,10 @@ public class TradeOrder {
     private String deliveryStatus;
     private String escrowStatus;
     private String disputeStatus;
+    private String riskStatus;
+    private String riskLevel;
+    private String riskDecisionNo;
+    private String riskReason;
     private String paymentNo;
     private LocalDateTime payDeadline;
     private LocalDateTime deliveryDeadline;

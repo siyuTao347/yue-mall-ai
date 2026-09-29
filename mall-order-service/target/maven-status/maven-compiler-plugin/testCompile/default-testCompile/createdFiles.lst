@@ -1,4 +1,5 @@
 com/example/item/audit/AuditLogBenchmarkTest$ConcurrentMetrics.class
+com/example/item/service/OrderRiskCommandHandlerTest.class
 com/example/item/audit/AuditLogBenchmarkTest$LatencyMetrics.class
 com/example/item/audit/AuditLogTest$SampleOrderService.class
 com/example/item/service/TradeOrderServiceTest.class
