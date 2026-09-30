@@ -95,6 +95,28 @@ class RateLimitKeyFactoryTest {
         assertThat(firstKey).isNotEqualTo(secondKey);
     }
 
+    @Test
+    void createsPaymentCallbackKeyByIpAndPaymentNo() {
+        MockServerWebExchange firstExchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/payment/callback")
+                        .remoteAddress(new InetSocketAddress("127.0.0.1", 50000))
+                        .build()
+        );
+        firstExchange.getAttributes().put(RateLimitKeyFactory.PAYMENT_NO_ATTRIBUTE, "PAY1");
+        MockServerWebExchange secondExchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/payment/callback")
+                        .remoteAddress(new InetSocketAddress("127.0.0.1", 50001))
+                        .build()
+        );
+        secondExchange.getAttributes().put(RateLimitKeyFactory.PAYMENT_NO_ATTRIBUTE, "PAY2");
+
+        String firstKey = keyFactory.create(firstExchange, paymentCallbackRule());
+        String secondKey = keyFactory.create(secondExchange, paymentCallbackRule());
+
+        assertThat(firstKey).startsWith("mall:gateway:rate-limit:payment-callback:");
+        assertThat(firstKey).isNotEqualTo(secondKey);
+    }
+
     private GatewayRateLimitProperties.RateLimitRule emailRule() {
         return new GatewayRateLimitProperties.RateLimitRule(
                 "send-email-code",
@@ -122,6 +144,16 @@ class RateLimitKeyFactoryTest {
                 GatewayRateLimitProperties.KeyType.SECKILL_PATH,
                 2,
                 4
+        );
+    }
+
+    private GatewayRateLimitProperties.RateLimitRule paymentCallbackRule() {
+        return new GatewayRateLimitProperties.RateLimitRule(
+                "payment-callback",
+                "/api/payment/callback",
+                GatewayRateLimitProperties.KeyType.PAYMENT_CALLBACK,
+                1,
+                10
         );
     }
 }

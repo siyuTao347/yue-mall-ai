@@ -22,7 +22,8 @@ public record GatewayRateLimitProperties(
         IP,
         EMAIL,
         SECKILL_PATH,
-        SECKILL_EXECUTE
+        SECKILL_EXECUTE,
+        PAYMENT_CALLBACK
     }
 
     public record RateLimitRule(

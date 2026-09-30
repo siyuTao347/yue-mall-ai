@@ -17,6 +17,7 @@ com/example/risk/listener/OrderRiskCommandDlqConsumer.class
 com/example/risk/service/RiskEvaluateService$2.class
 com/example/risk/entity/RiskCase.class
 com/example/risk/service/RiskCommandService.class
+com/example/risk/config/XxlJobConfig.class
 com/example/risk/service/RiskActionPolicy.class
 com/example/risk/entity/RiskEvent.class
 com/example/risk/mapper/RiskRuleMapper.class

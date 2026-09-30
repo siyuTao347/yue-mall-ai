@@ -18,6 +18,8 @@ public class AssetReservation {
     private Long id;
     private String reservationNo;
     private String orderNo;
+    private String idempotencyKey;
+    private String snapshotJson;
     private Long itemId;
     private Long merchantId;
     private String assetType;

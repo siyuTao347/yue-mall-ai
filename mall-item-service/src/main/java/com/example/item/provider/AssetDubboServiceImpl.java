@@ -22,13 +22,29 @@ public class AssetDubboServiceImpl implements AssetDubboService {
     }
 
     @Override
+    public AssetReservationResult reserve(Long itemId, Integer quantity, String orderNo, Integer expireMinutes,
+                                          String idempotencyKey) {
+        return assetService.reserve(itemId, quantity, orderNo, expireMinutes, idempotencyKey);
+    }
+
+    @Override
     public boolean release(String orderNo) {
         return assetService.release(orderNo);
     }
 
     @Override
+    public boolean release(String orderNo, String idempotencyKey) {
+        return assetService.release(orderNo, idempotencyKey);
+    }
+
+    @Override
     public boolean confirm(String orderNo) {
         return assetService.confirm(orderNo);
+    }
+
+    @Override
+    public boolean confirm(String orderNo, String idempotencyKey) {
+        return assetService.confirm(orderNo, idempotencyKey);
     }
 
     @Override
@@ -39,5 +55,10 @@ public class AssetDubboServiceImpl implements AssetDubboService {
     @Override
     public boolean invalidateByOrderNo(String orderNo) {
         return assetService.invalidateByOrderNo(orderNo);
+    }
+
+    @Override
+    public boolean invalidateByOrderNo(String orderNo, String idempotencyKey) {
+        return assetService.invalidateByOrderNo(orderNo, idempotencyKey);
     }
 }

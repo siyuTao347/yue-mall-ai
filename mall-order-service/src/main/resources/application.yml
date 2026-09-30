@@ -23,6 +23,27 @@ rocketmq:
     group: audit-log-producer-group
     send-message-timeout: 3000
 
+trade:
+  payment-callback:
+    secret: ${PAYMENT_CALLBACK_SECRET}
+    secret-version: ${PAYMENT_CALLBACK_SECRET_VERSION:1}
+    clock-skew-seconds: ${PAYMENT_CALLBACK_CLOCK_SKEW_SECONDS:300}
+    nonce-ttl-seconds: ${PAYMENT_CALLBACK_NONCE_TTL_SECONDS:900}
+    mock-enabled: ${PAYMENT_MOCK_ENABLED:false}
+  orchestration:
+    enabled: ${TRADE_ORCHESTRATION_ENABLED:true}
+    recover-batch-size: ${TRADE_ORCHESTRATION_RECOVER_BATCH_SIZE:100}
+    lock-seconds: ${TRADE_ORCHESTRATION_LOCK_SECONDS:60}
+    max-retry-count: ${TRADE_ORCHESTRATION_MAX_RETRY_COUNT:5}
+    retry-delay-seconds: ${TRADE_ORCHESTRATION_RETRY_DELAY_SECONDS:30}
+    topic: ${TRADE_ORCHESTRATION_TOPIC:trade-orchestration-task-topic}
+    delivery-timeout-minutes: ${TRADE_DELIVERY_TIMEOUT_MINUTES:30}
+    payment-expire-minutes: ${TRADE_PAYMENT_EXPIRE_MINUTES:15}
+    fee-rate-percent: ${TRADE_FEE_RATE_PERCENT:2}
+    min-fee: ${TRADE_MIN_FEE:0.01}
+  reconciliation:
+    interrupted-minutes: ${TRADE_RECONCILIATION_INTERRUPTED_MINUTES:10}
+
 # 审计日志配置 (简历亮点：支持动态配置全局异步MQ解耦 vs 同步落库)
 audit:
   delivery-mode: ASYNC_MQ # 全局默认投递模式：ASYNC_MQ / SYNC_DB
@@ -49,13 +70,10 @@ dubbo:
 xxl:
   job:
     admin:
-      # 这里使用你提供的 IP 和 8090 端口
-      addresses: http://100.121.74.115:8090/xxl-job-admin
+      addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://100.121.74.115:8090/xxl-job-admin}
     executor:
-      # 执行器名称，稍后要在 XXL-Job 后台配置这个名字
-      appname: mall-order-executor
-      # 执行器端口（订单服务与 XXL-Job 通信的端口，默认 9999）
-      port: 9999
-      logpath: ./logs/xxl-job/jobhandler
-      logretentiondays: 30
-    accessToken: default_token
+      appname: ${XXL_JOB_EXECUTOR_APPNAME:mall-order-executor}
+      port: ${XXL_JOB_EXECUTOR_PORT:9999}
+      logpath: ${XXL_JOB_LOG_PATH:./logs/xxl-job/jobhandler}
+      logretentiondays: ${XXL_JOB_LOG_RETENTION_DAYS:30}
+    accessToken: ${XXL_JOB_ACCESS_TOKEN:default_token}

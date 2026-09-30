@@ -4,11 +4,16 @@ import com.example.gateway.config.GatewayRateLimitProperties;
 import com.example.gateway.exception.GatewayDependencyUnavailableException;
 import com.example.gateway.exception.GatewayRateLimitedException;
 import com.example.gateway.web.RequestMatcher;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
 import org.springframework.core.Ordered;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.http.HttpMethod;
@@ -19,6 +24,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Optional;
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class RedisTokenBucketRateLimitFilter implements GlobalFilter, Ordered {
@@ -58,17 +64,20 @@ public class RedisTokenBucketRateLimitFilter implements GlobalFilter, Ordered {
     private final ReactiveStringRedisTemplate redisTemplate;
     private final RequestMatcher requestMatcher;
     private final RateLimitKeyFactory keyFactory;
+    private final ObjectMapper objectMapper;
 
     public RedisTokenBucketRateLimitFilter(
             GatewayRateLimitProperties properties,
             ReactiveStringRedisTemplate redisTemplate,
             RequestMatcher requestMatcher,
-            RateLimitKeyFactory keyFactory
+            RateLimitKeyFactory keyFactory,
+            ObjectMapper objectMapper
     ) {
         this.properties = properties;
         this.redisTemplate = redisTemplate;
         this.requestMatcher = requestMatcher;
         this.keyFactory = keyFactory;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -82,8 +91,45 @@ public class RedisTokenBucketRateLimitFilter implements GlobalFilter, Ordered {
                 .filter(candidate -> requestMatcher.matches(candidate.pathPattern(), request.getPath().value()))
                 .findFirst();
 
-        return rule.map(value -> enforce(exchange, chain, value))
+        return rule.map(value -> value.keyType() == GatewayRateLimitProperties.KeyType.PAYMENT_CALLBACK
+                ? enforceWithPaymentNo(exchange, chain, value)
+                : enforce(exchange, chain, value))
                 .orElseGet(() -> chain.filter(exchange));
+    }
+
+    private Mono<Void> enforceWithPaymentNo(
+            ServerWebExchange exchange,
+            GatewayFilterChain chain,
+            GatewayRateLimitProperties.RateLimitRule rule
+    ) {
+        return ServerWebExchangeUtils.cacheRequestBodyAndRequest(exchange, cachedRequest ->
+                readPaymentNo(cachedRequest).flatMap(paymentNo -> {
+                    ServerWebExchange effectiveExchange = exchange.mutate().request(cachedRequest).build();
+                    effectiveExchange.getAttributes().put(RateLimitKeyFactory.PAYMENT_NO_ATTRIBUTE, paymentNo);
+                    return enforce(effectiveExchange, chain, rule);
+                })
+        );
+    }
+
+    private Mono<String> readPaymentNo(ServerHttpRequest request) {
+        return DataBufferUtils.join(request.getBody())
+                .map(this::parsePaymentNo)
+                .defaultIfEmpty("")
+                .onErrorResume(exception -> Mono.just(""));
+    }
+
+    private String parsePaymentNo(DataBuffer dataBuffer) {
+        try {
+            byte[] bytes = new byte[dataBuffer.readableByteCount()];
+            dataBuffer.read(bytes);
+            JsonNode body = objectMapper.readTree(bytes);
+            String paymentNo = body.path("paymentNo").asText("");
+            return paymentNo == null ? "" : paymentNo.trim();
+        } catch (Exception exception) {
+            return "";
+        } finally {
+            DataBufferUtils.release(dataBuffer);
+        }
     }
 
     private Mono<Void> enforce(

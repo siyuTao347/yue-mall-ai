@@ -53,4 +53,10 @@ public class TradeOrderJobHandler {
         int fundDiffs = fundService.reconcile();
         XxlJobHelper.log("资金对账完成，交易差异: " + tradeDiffs + "，资金差异: " + fundDiffs);
     }
+
+    @XxlJob("tradeConsistencyReconciliationJob")
+    public void reconcileConsistency() {
+        int diffs = reconciliationService.reconcileConsistency();
+        XxlJobHelper.log("担保交易一致性对账完成，差异: " + diffs);
+    }
 }

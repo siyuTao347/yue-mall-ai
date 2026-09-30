@@ -4,12 +4,10 @@ import api.risk.RiskDecisionResult;
 import api.risk.RiskEvaluateRequest;
 import api.risk.SensitiveWordScanner;
 import api.trade.AssetDubboService;
-import api.trade.AssetReservationResult;
 import api.trade.FundDubboService;
-import api.trade.FundOperationResult;
 import api.trade.ItemSnapshotDTO;
-import api.trade.MerchantDubboService;
 import api.trade.CardSecretDTO;
+import com.example.item.dto.PaymentCallbackRequest;
 import com.example.item.entity.OrderSettlement;
 import com.example.item.entity.DeliveryRecord;
 import com.example.item.entity.Dispute;
@@ -22,7 +20,6 @@ import com.example.item.mapper.DisputeMapper;
 import com.example.item.mapper.DisputeMessageMapper;
 import com.example.item.mapper.OrderReviewMapper;
 import com.example.item.mapper.OrderSettlementMapper;
-import com.example.item.mapper.PaymentCallbackMapper;
 import com.example.item.mapper.PaymentOrderMapper;
 import com.example.item.mapper.TradeOrderMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,13 +27,11 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -57,12 +52,12 @@ class TradeOrderServiceTest {
     private PaymentOrderMapper paymentMapper;
     private AssetDubboService assetService;
     private FundDubboService fundService;
-    private MerchantDubboService merchantService;
     private TransactionTemplate transactionTemplate;
     private TradeStatusLogService statusLog;
     private DisputeMapper disputeMapper;
     private DeliveryRecordMapper deliveryMapper;
     private RiskClient riskClient;
+    private TradeOrchestrationService orchestrationService;
     private TradeOrderService service;
 
     @BeforeEach
@@ -71,42 +66,32 @@ class TradeOrderServiceTest {
         paymentMapper = mock(PaymentOrderMapper.class);
         assetService = mock(AssetDubboService.class);
         fundService = mock(FundDubboService.class);
-        merchantService = mock(MerchantDubboService.class);
         transactionTemplate = mock(TransactionTemplate.class);
         doAnswer(invocation -> {
             Consumer<TransactionStatus> action = invocation.getArgument(0);
             action.accept(null);
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
+        doAnswer(invocation -> {
+            TransactionCallback<?> action = invocation.getArgument(0);
+            return action.doInTransaction(null);
+        }).when(transactionTemplate).execute(any());
         statusLog = mock(TradeStatusLogService.class);
         disputeMapper = mock(DisputeMapper.class);
         deliveryMapper = mock(DeliveryRecordMapper.class);
         riskClient = mock(RiskClient.class);
+        orchestrationService = mock(TradeOrchestrationService.class);
         when(riskClient.sensitiveWords()).thenReturn(SensitiveWordScanner.defaultWords());
         when(riskClient.evaluate(any(RiskEvaluateRequest.class))).thenReturn(pass());
-        service = new TradeOrderService(orderMapper, paymentMapper, mock(PaymentCallbackMapper.class),
+        service = new TradeOrderService(orderMapper, paymentMapper,
                 deliveryMapper, mock(DeliveryEvidenceMapper.class), disputeMapper,
                 mock(DisputeMessageMapper.class), mock(ArbitrationMapper.class),
                 mock(OrderSettlementMapper.class), mock(OrderReviewMapper.class),
                 statusLog, new ObjectMapper(), transactionTemplate, riskClient,
-                mock(OrderRiskStateWriter.class));
+                mock(OrderRiskStateWriter.class), orchestrationService);
         ReflectionTestUtils.setField(service, "assetService", assetService);
-        ReflectionTestUtils.setField(service, "fundService", fundService);
-        ReflectionTestUtils.setField(service, "merchantService", merchantService);
         ReflectionTestUtils.setField(service, "deliveryTimeoutMinutes", 30);
         ReflectionTestUtils.setField(service, "settleCooldownHours", 24);
-    }
-
-    @Test
-    void callbackRejectsOrderNoMismatch() {
-        PaymentOrder payment = payment();
-        when(paymentMapper.selectOne(any())).thenReturn(payment);
-
-        String result = service.handleCallback("CB1", "PAY1", "TR2", payment.getAmount(),
-                "SUCCESS", "signature", "{}");
-
-        Assertions.assertEquals("ORDER_NO_MISMATCH", result);
-        verify(paymentMapper, never()).markSuccess(eq("PAY1"), any());
     }
 
     @Test
@@ -118,12 +103,12 @@ class TradeOrderServiceTest {
         when(orderMapper.markCancellingFromWaitPay(eq("TR1"), any())).thenReturn(0);
         when(orderMapper.selectByOrderNoForUpdate("TR1")).thenReturn(order());
 
-        String result = service.handleCallback("CB1", "PAY1", "TR1", payment.getAmount(),
-                "SUCCESS", signature(payment), "{}");
+        String result = service.handleVerifiedCallback(callbackRequest(payment), payment);
 
         Assertions.assertEquals("PAY_EXPIRED_LATE_SUCCESS", result);
         verify(paymentMapper).markLateSuccess(eq("PAY1"), any());
         verify(fundService, never()).freezeEscrow(any(), any(), any(), any());
+        verify(orchestrationService, never()).createPaymentConfirmTask(any(), any());
     }
 
     @Test
@@ -134,12 +119,12 @@ class TradeOrderServiceTest {
         when(orderMapper.selectOne(any())).thenReturn(order());
         when(orderMapper.markPaid(eq("TR1"), any(LocalDateTime.class), eq(30))).thenReturn(0);
 
-        String result = service.handleCallback("CB1", "PAY1", "TR1", payment.getAmount(),
-                "SUCCESS", signature(payment), "{}");
+        String result = service.handleVerifiedCallback(callbackRequest(payment), payment);
 
-        Assertions.assertEquals("CALLBACK_DUPLICATED", result);
+        Assertions.assertEquals("PAY_CALLBACK_DUPLICATED", result);
         verify(paymentMapper, never()).markLateSuccess(eq("PAY1"), any());
         verify(fundService, never()).freezeEscrow(any(), any(), any(), any());
+        verify(orchestrationService, never()).createPaymentConfirmTask(any(), any());
     }
 
     @Test
@@ -153,26 +138,26 @@ class TradeOrderServiceTest {
         when(orderMapper.markPaid(eq("TR1"), any(LocalDateTime.class), eq(30))).thenReturn(0);
         when(orderMapper.selectByOrderNoForUpdate("TR1")).thenReturn(paidOrder);
 
-        String result = service.handleCallback("CB1", "PAY1", "TR1", payment.getAmount(),
-                "SUCCESS", signature(payment), "{}");
+        String result = service.handleVerifiedCallback(callbackRequest(payment), payment);
 
-        Assertions.assertEquals("CALLBACK_DUPLICATED", result);
+        Assertions.assertEquals("PAY_CALLBACK_DUPLICATED", result);
         verify(paymentMapper, never()).markLateSuccess(any(), any());
         verify(orderMapper, never()).markCancellingFromWaitPay(any(), any());
         verify(fundService, never()).freezeEscrow(any(), any(), any(), any());
+        verify(orchestrationService, never()).createPaymentConfirmTask(any(), any());
     }
 
     @Test
-    void createRejectsOrderAmountNotGreaterThanMinFee() {
-        ReflectionTestUtils.setField(service, "minFee", new BigDecimal("0.01"));
-        ItemSnapshotDTO snapshot = new ItemSnapshotDTO();
-        snapshot.setPrice(new BigDecimal("0.01"));
-        when(assetService.reserve(any(), any(), any(), any()))
-                .thenReturn(AssetReservationResult.success("RSV1", snapshot, List.of()));
+    void createStoresPendingOrderAndTaskWithoutRemoteCalls() {
+        TradeOrder result = service.create(10L, 1L, 1);
 
-        Assertions.assertThrows(IllegalArgumentException.class,
-                () -> service.create(10L, 1L, 1));
-        verify(assetService).release(anyString());
+        Assertions.assertEquals("CREATE_PENDING", result.getOrderStatus());
+        verify(orderMapper).insert(any(TradeOrder.class));
+        verify(orchestrationService).createOrderCreateTask(
+                any(TradeOrder.class), anyString(), any(), any(), any());
+        verify(assetService, never()).reserve(any(), any(), any(), any());
+        verify(assetService, never()).release(anyString());
+        verify(riskClient, never()).evaluate(any(RiskEvaluateRequest.class));
     }
 
     @Test
@@ -189,6 +174,7 @@ class TradeOrderServiceTest {
 
         Assertions.assertThrows(IllegalArgumentException.class, () -> service.settle("TR1"));
         verify(fundService, never()).settle(any(), any(), any(), any(), any(), any());
+        verify(orchestrationService, never()).createSettlementTask(any(), any(), any());
     }
 
     @Test
@@ -199,31 +185,30 @@ class TradeOrderServiceTest {
         when(orderMapper.selectOne(any())).thenReturn(order());
 
         BigDecimal signedAmount = new BigDecimal("99.00");
-        String result = service.handleCallback("CB1", "PAY1", "TR1", signedAmount,
-                "SUCCESS", signatureWithAmount(payment, signedAmount), "{}");
-
-        Assertions.assertEquals("AMOUNT_MISMATCH", result);
+        PaymentCallbackRequest request = callbackRequest(payment, signedAmount);
+        Assertions.assertThrows(PaymentCallbackRejectedException.class,
+                () -> service.handleVerifiedCallback(request, payment));
         verify(orderMapper, never()).markPaid(any(), any(), anyInt());
         verify(fundService, never()).freezeEscrow(any(), any(), any(), any());
+        verify(orchestrationService, never()).createPaymentConfirmTask(any(), any());
     }
 
     @Test
-    void callbackFreezesEscrowAfterPaymentAndAssetConfirm() {
+    void callbackCreatesPaymentConfirmTaskAfterShortTransaction() {
         PaymentOrder payment = payment();
         TradeOrder order = order();
         when(paymentMapper.selectOne(any())).thenReturn(payment);
         when(orderMapper.selectOne(any())).thenReturn(order);
-        when(orderMapper.markPaid(eq("TR1"), any(LocalDateTime.class), eq(30))).thenReturn(1);
-        when(fundService.freezeEscrow("TR1", 20L, 30L, order.getOrderAmount()))
-                .thenReturn(FundOperationResult.success("FUND1"));
-        when(assetService.confirm("TR1")).thenReturn(true);
-        when(orderMapper.markEscrowFrozen(eq("TR1"), any(LocalDateTime.class))).thenReturn(1);
+        when(orderMapper.markPayConfirming(eq("TR1"), any(LocalDateTime.class))).thenReturn(1);
 
-        String result = service.handleCallback("CB1", "PAY1", "TR1", payment.getAmount(),
-                "SUCCESS", signature(payment), "{}");
+        String result = service.handleVerifiedCallback(callbackRequest(payment), payment);
 
-        Assertions.assertEquals("SUCCESS", result);
-        verify(orderMapper).markEscrowFrozen(eq("TR1"), any(LocalDateTime.class));
+        Assertions.assertEquals("PAY_CALLBACK_ACCEPTED", result);
+        verify(orderMapper).markPayConfirming(eq("TR1"), any());
+        verify(paymentMapper).markSuccessPending(eq("PAY1"), any());
+        verify(orchestrationService).createPaymentConfirmTask(order, "PAY1");
+        verify(fundService, never()).freezeEscrow(any(), any(), any(), any());
+        verify(assetService, never()).confirm(anyString());
     }
 
     @Test
@@ -232,14 +217,14 @@ class TradeOrderServiceTest {
         order.setPayDeadline(LocalDateTime.now().plusMinutes(10));
         when(orderMapper.selectOne(any())).thenReturn(order);
         when(orderMapper.markCancellingByBuyer(eq("TR1"), any(LocalDateTime.class))).thenReturn(1);
-        when(assetService.release("TR1")).thenReturn(true);
 
         int result = service.cancelUnpaidOrder(10L, "TR1", "买家取消未支付订单");
 
         Assertions.assertEquals(1, result);
         verify(paymentMapper).closeByOrder(eq("TR1"), any());
-        verify(assetService).release("TR1");
-        verify(orderMapper).markCancelled(eq("TR1"), any());
+        verify(orchestrationService).createAssetReleaseTask(order, "买家取消未支付订单");
+        verify(assetService, never()).release(anyString());
+        verify(orderMapper, never()).markCancelled(any(), any());
     }
 
     @Test
@@ -253,6 +238,8 @@ class TradeOrderServiceTest {
         service.confirm(10L, "TR1", "BUYER");
 
         verify(orderMapper).markConfirmedByBuyer(eq("TR1"), any(LocalDateTime.class), eq(24));
+        verify(orchestrationService).createRiskEventTask(
+                any(TradeOrder.class), eq("CONFIRM"), eq("CONFIRM"), any(), any(), any());
     }
 
     @Test
@@ -268,6 +255,8 @@ class TradeOrderServiceTest {
 
         verify(orderMapper).markConfirmedForAutoConfirm(eq("TR1"), any(LocalDateTime.class), eq(24));
         verify(orderMapper, never()).markConfirmedByBuyer(any(), any(), anyInt());
+        verify(orchestrationService).createRiskEventTask(
+                any(TradeOrder.class), eq("CONFIRM"), eq("CONFIRM"), any(), any(), any());
     }
 
     @Test
@@ -334,21 +323,15 @@ class TradeOrderServiceTest {
         order.setPayStatus("SUCCESS");
         order.setEscrowStatus("FROZEN");
         when(orderMapper.selectDeliveryTimeoutOrders(any(LocalDateTime.class), eq(100))).thenReturn(List.of(order));
-        when(fundService.refundEscrow("TR1", 10L, order.getOrderAmount()))
-                .thenReturn(FundOperationResult.success("REFUND1"));
-        when(assetService.invalidateByOrderNo("TR1")).thenReturn(true);
-        when(orderMapper.markRefunded(eq("TR1"), any(LocalDateTime.class))).thenReturn(1);
-        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
-            org.springframework.transaction.support.TransactionCallback<?> callback = invocation.getArgument(0);
-            return callback.doInTransaction(null);
-        });
+        when(orderMapper.markRefunding(eq("TR1"), any(LocalDateTime.class))).thenReturn(1);
 
         int result = service.handleDeliveryTimeout(100);
 
         Assertions.assertEquals(1, result);
-        verify(fundService).refundEscrow("TR1", 10L, order.getOrderAmount());
-        verify(assetService).invalidateByOrderNo("TR1");
-        verify(merchantService).refundOrder(30L);
+        verify(orchestrationService).createDeliveryTimeoutRefundTask(order);
+        verify(fundService, never()).refundEscrow(any(), any(), any());
+        verify(assetService, never()).invalidateByOrderNo(anyString());
+        verify(orchestrationService).createDeliveryTimeoutRefundTask(order);
         verify(disputeMapper, never()).insert(any());
     }
 
@@ -375,25 +358,16 @@ class TradeOrderServiceTest {
             order.setEscrowStatus("SETTLE_PENDING");
             return 1;
         }).when(orderMapper).markSettlingByArbitration(eq("TR1"), any(LocalDateTime.class));
-        when(fundService.settle(eq("TR1"), eq(20L), eq(30L), eq(order.getOrderAmount()),
-                eq(new BigDecimal("2.00")), eq(new BigDecimal("98.00"))))
-                .thenReturn(FundOperationResult.success("FUND_SETTLE"));
-        when(fundService.settlePendingToAvailable(eq("TR1"), eq(20L), eq(new BigDecimal("98.00"))))
-                .thenReturn(FundOperationResult.success("FUND_AVAILABLE"));
-        doAnswer(invocation -> {
-            order.setOrderStatus("SETTLED");
-            order.setEscrowStatus("SETTLED");
-            return 1;
-        }).when(orderMapper).markSettled(eq("TR1"), any(LocalDateTime.class));
 
         TradeOrderService settleService = serviceWithSettlementMapper(settlementMapper);
         settleService.arbitrate(1L, "DP1", "RELEASE_ALL", "卖家已提供有效交付");
 
         verify(orderMapper).markSettlingByArbitration(eq("TR1"), any(LocalDateTime.class));
-        verify(fundService).settle(eq("TR1"), eq(20L), eq(30L), eq(order.getOrderAmount()),
+        verify(orchestrationService).createArbitrationReleaseTask(
+                eq(order), eq("DP1"), eq(1L), eq("卖家已提供有效交付"),
                 eq(new BigDecimal("2.00")), eq(new BigDecimal("98.00")));
-        verify(fundService).settlePendingToAvailable(eq("TR1"), eq(20L), eq(new BigDecimal("98.00")));
-        verify(orderMapper).markSettled(eq("TR1"), any(LocalDateTime.class));
+        verify(fundService, never()).settle(any(), any(), any(), any(), any(), any());
+        verify(fundService, never()).settlePendingToAvailable(any(), any(), any());
     }
 
     @Test
@@ -415,17 +389,13 @@ class TradeOrderServiceTest {
         order.setPayDeadline(LocalDateTime.now().minusMinutes(1));
         when(orderMapper.selectOne(any())).thenReturn(order);
         when(orderMapper.markCancellingFromWaitPay(eq("TR1"), any(LocalDateTime.class))).thenReturn(1);
-        when(assetService.release("TR1")).thenReturn(true);
-        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
-            org.springframework.transaction.support.TransactionCallback<?> callback = invocation.getArgument(0);
-            return callback.doInTransaction(null);
-        });
 
         Assertions.assertThrows(IllegalArgumentException.class, () -> service.getPayment("TR1"));
 
         verify(paymentMapper).markTimeout(eq("TR1"), any());
-        verify(assetService).release("TR1");
-        verify(orderMapper).markCancelled(eq("TR1"), any());
+        verify(orchestrationService).createAssetReleaseTask(order, "支付超时被动关单");
+        verify(assetService, never()).release(anyString());
+        verify(orderMapper, never()).markCancelled(any(), any());
     }
 
     @Test
@@ -437,17 +407,13 @@ class TradeOrderServiceTest {
         when(paymentMapper.selectOne(any())).thenReturn(payment);
         when(orderMapper.selectOne(any())).thenReturn(order);
         when(orderMapper.markCancellingFromWaitPay(eq("TR1"), any(LocalDateTime.class))).thenReturn(1);
-        when(assetService.release("TR1")).thenReturn(true);
-        when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
-            org.springframework.transaction.support.TransactionCallback<?> callback = invocation.getArgument(0);
-            return callback.doInTransaction(null);
-        });
 
         Assertions.assertThrows(IllegalArgumentException.class, () -> service.startPay("PAY1"));
 
         verify(paymentMapper).markTimeout(eq("TR1"), any());
-        verify(assetService).release("TR1");
-        verify(orderMapper).markCancelled(eq("TR1"), any());
+        verify(orchestrationService).createAssetReleaseTask(order, "支付超时被动关单");
+        verify(assetService, never()).release(anyString());
+        verify(orderMapper, never()).markCancelled(any(), any());
         verify(paymentMapper, never()).startPaying(eq("TR1"), any());
     }
 
@@ -468,9 +434,6 @@ class TradeOrderServiceTest {
         when(orderMapper.selectOne(any())).thenReturn(order);
         OrderSettlementMapper settlementMapper = mock(OrderSettlementMapper.class);
         when(settlementMapper.selectOne(any())).thenReturn(settlement);
-        when(fundService.settlePendingToAvailable("TR1", 20L, settlement.getSellerIncome()))
-                .thenReturn(FundOperationResult.success("FUND_AVAILABLE"));
-        when(orderMapper.markSettled(eq("TR1"), any(LocalDateTime.class))).thenReturn(1);
 
         TradeOrderService settleService = serviceWithSettlementMapper(settlementMapper);
         TradeOrder result = settleService.settle("TR1");
@@ -478,8 +441,9 @@ class TradeOrderServiceTest {
         Assertions.assertEquals("SETTLING", result.getOrderStatus());
         verify(orderMapper, never()).markSettling(any(), any());
         verify(fundService, never()).settle(any(), any(), any(), any(), any(), any());
-        verify(fundService).settlePendingToAvailable("TR1", 20L, settlement.getSellerIncome());
-        verify(orderMapper).markSettled(eq("TR1"), any());
+        verify(fundService, never()).settlePendingToAvailable(any(), any(), any());
+        verify(orchestrationService).createSettlementTask(
+                order, new BigDecimal("2.00"), new BigDecimal("98.00"));
     }
 
     @Test
@@ -510,6 +474,7 @@ class TradeOrderServiceTest {
 
         verify(orderMapper, never()).markSettling(eq("TR1"), any());
         verify(fundService, never()).settle(any(), any(), any(), any(), any(), any());
+        verify(orchestrationService, never()).createSettlementTask(any(), any(), any());
     }
 
     private TradeOrder order() {
@@ -550,29 +515,32 @@ class TradeOrderServiceTest {
 
     private TradeOrderService serviceWithSettlementMapper(OrderSettlementMapper settlementMapper) {
         TradeOrderService settleService = new TradeOrderService(orderMapper, paymentMapper,
-                mock(PaymentCallbackMapper.class), mock(DeliveryRecordMapper.class),
+                mock(DeliveryRecordMapper.class),
                 mock(DeliveryEvidenceMapper.class), disputeMapper,
                 mock(DisputeMessageMapper.class), mock(ArbitrationMapper.class),
                 settlementMapper, mock(OrderReviewMapper.class), mock(TradeStatusLogService.class),
-                new ObjectMapper(), transactionTemplate, riskClient, mock(OrderRiskStateWriter.class));
+                new ObjectMapper(), transactionTemplate, riskClient, mock(OrderRiskStateWriter.class),
+                orchestrationService);
         ReflectionTestUtils.setField(settleService, "assetService", assetService);
-        ReflectionTestUtils.setField(settleService, "fundService", fundService);
-        ReflectionTestUtils.setField(settleService, "merchantService", merchantService);
         return settleService;
     }
 
-    private String signature(PaymentOrder payment) {
-        return signatureWithAmount(payment, payment.getAmount());
+    private PaymentCallbackRequest callbackRequest(PaymentOrder payment) {
+        return callbackRequest(payment, payment.getAmount());
     }
 
-    private String signatureWithAmount(PaymentOrder payment, BigDecimal amount) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            String raw = payment.getPaymentNo() + "|" + amount + "|" + payment.getCallbackTokenHash();
-            return HexFormat.of().formatHex(digest.digest(raw.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
+    private PaymentCallbackRequest callbackRequest(PaymentOrder payment, BigDecimal amount) {
+        return new PaymentCallbackRequest(
+                "CB1",
+                payment.getPaymentNo(),
+                payment.getOrderNo(),
+                amount,
+                "SUCCESS",
+                System.currentTimeMillis(),
+                "nonce",
+                "signature",
+                "{}"
+        );
     }
 
     private RiskDecisionResult pass() {

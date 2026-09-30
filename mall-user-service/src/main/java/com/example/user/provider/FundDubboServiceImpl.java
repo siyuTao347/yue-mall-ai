@@ -25,14 +25,34 @@ public class FundDubboServiceImpl implements FundDubboService {
     }
 
     @Override
+    public FundOperationResult freezeEscrow(String orderNo, Long sellerId, Long merchantId, BigDecimal amount,
+                                            String idempotencyKey) {
+        return fundService.freezeEscrow(orderNo, sellerId, merchantId, amount, idempotencyKey);
+    }
+
+    @Override
     public FundOperationResult refundEscrow(String orderNo, Long buyerId, BigDecimal amount) {
         return fundService.refundEscrow(orderNo, buyerId, amount);
+    }
+
+    @Override
+    public FundOperationResult refundEscrow(String orderNo, Long buyerId, BigDecimal amount,
+                                            String idempotencyKey) {
+        return fundService.refundEscrow(orderNo, buyerId, amount, idempotencyKey);
     }
 
     @Override
     public FundOperationResult settle(String orderNo, Long sellerId, Long merchantId,
                                       BigDecimal orderAmount, BigDecimal feeAmount, BigDecimal sellerIncome) {
         return fundService.settle(orderNo, sellerId, merchantId, orderAmount, feeAmount, sellerIncome);
+    }
+
+    @Override
+    public FundOperationResult settle(String orderNo, Long sellerId, Long merchantId,
+                                      BigDecimal orderAmount, BigDecimal feeAmount, BigDecimal sellerIncome,
+                                      String idempotencyKey) {
+        return fundService.settle(orderNo, sellerId, merchantId, orderAmount, feeAmount, sellerIncome,
+                idempotencyKey);
     }
 
     @Override
@@ -53,6 +73,12 @@ public class FundDubboServiceImpl implements FundDubboService {
     @Override
     public FundOperationResult settlePendingToAvailable(String orderNo, Long userId, BigDecimal amount) {
         return fundService.settlePendingToAvailable(orderNo, userId, amount);
+    }
+
+    @Override
+    public FundOperationResult settlePendingToAvailable(String orderNo, Long userId, BigDecimal amount,
+                                                        String idempotencyKey) {
+        return fundService.settlePendingToAvailable(orderNo, userId, amount, idempotencyKey);
     }
 
     @Override

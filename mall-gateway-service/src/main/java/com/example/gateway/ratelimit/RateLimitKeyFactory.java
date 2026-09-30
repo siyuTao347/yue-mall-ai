@@ -17,6 +17,8 @@ import java.util.Map;
 @Component
 public class RateLimitKeyFactory {
 
+    public static final String PAYMENT_NO_ATTRIBUTE = "gateway.paymentCallback.paymentNo";
+
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
     private static final String SECKILL_EXECUTE_PATTERN = "/api/seckill/{pathToken}/doSeckill";
 
@@ -42,6 +44,8 @@ public class RateLimitKeyFactory {
             case SECKILL_EXECUTE -> "seckill-execute:" + userId(exchange)
                     + ":" + pathToken(request)
                     + ":" + request.getQueryParams().getFirst("itemId");
+            case PAYMENT_CALLBACK -> "payment-callback:" + clientIpResolver.resolve(request)
+                    + ":" + paymentNo(exchange);
         };
 
         String identityHash = sha256Hex(identity.getBytes(StandardCharsets.UTF_8));
@@ -79,5 +83,10 @@ public class RateLimitKeyFactory {
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to create rate limit key", exception);
         }
+    }
+
+    private String paymentNo(ServerWebExchange exchange) {
+        String paymentNo = exchange.getAttribute(PAYMENT_NO_ATTRIBUTE);
+        return paymentNo == null || paymentNo.isBlank() ? "unknown" : paymentNo;
     }
 }

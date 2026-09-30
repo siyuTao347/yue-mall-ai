@@ -1,6 +1,7 @@
 package com.example.user.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.example.user.entity.MerchantCreditOperation;
 import com.example.user.entity.MerchantCredit;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -11,6 +12,11 @@ import java.math.BigDecimal;
 
 @Mapper
 public interface MerchantCreditMapper extends BaseMapper<MerchantCredit> {
+    @Insert("INSERT INTO t_merchant_credit_operation " +
+            "(operation_key, merchant_id, operation_type, score, created_time) " +
+            "VALUES (#{operationKey}, #{merchantId}, #{operationType}, #{score}, #{createdTime})")
+    int insertOperation(MerchantCreditOperation operation);
+
     @Insert("INSERT INTO t_merchant_credit (merchant_id, total_order_count, completed_order_count, " +
             "refund_order_count, dispute_order_count, avg_score, credit_score) " +
             "VALUES (#{merchantId}, 0, 0, 0, 0, 5.00, 80) " +

@@ -52,17 +52,32 @@ public class MerchantDubboServiceImpl implements MerchantDubboService {
     }
 
     @Override
-    public void completeOrder(Long merchantId, BigDecimal score) {
-        merchantService.completeOrder(merchantId, score);
+    public void completeOrder(Long merchantId, BigDecimal score, String orderNo) {
+        merchantService.completeOrder(merchantId, score, orderNo);
     }
 
     @Override
-    public void refundOrder(Long merchantId) {
-        merchantService.refundOrder(merchantId);
+    public void completeOrder(Long merchantId, BigDecimal score, String orderNo, String idempotencyKey) {
+        merchantService.completeOrder(merchantId, score, orderNo, idempotencyKey);
     }
 
     @Override
-    public void disputeOrder(Long merchantId) {
-        merchantService.disputeOrder(merchantId);
+    public void refundOrder(Long merchantId, String orderNo) {
+        merchantService.refundOrder(merchantId, orderNo);
+    }
+
+    @Override
+    public void refundOrder(Long merchantId, String orderNo, String idempotencyKey) {
+        merchantService.refundOrder(merchantId, orderNo, idempotencyKey);
+    }
+
+    @Override
+    public void disputeOrder(Long merchantId, String orderNo) {
+        merchantService.disputeOrder(merchantId, orderNo);
+    }
+
+    @Override
+    public void disputeOrder(Long merchantId, String orderNo, String idempotencyKey) {
+        merchantService.disputeOrder(merchantId, orderNo, idempotencyKey);
     }
 }

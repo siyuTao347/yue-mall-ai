@@ -64,6 +64,9 @@ spring:
 
 mall:
   gateway:
+    payment-callback:
+      source-control-enabled: ${PAYMENT_CALLBACK_SOURCE_CONTROL_ENABLED:false}
+      allowed-source-ips: ${PAYMENT_CALLBACK_ALLOWED_SOURCE_IPS:}
     security:
       jwt-secret: ${JWT_SECRET:VALOR_MALL_JWT_SECRET_KEY_2026_HIGH_CONCURRENCY}
       public-paths:
@@ -118,6 +121,11 @@ mall:
           key-type: SECKILL_EXECUTE
           replenish-rate: 0.5
           burst-capacity: 5
+        - id: payment-callback
+          path-pattern: /api/payment/callback
+          key-type: PAYMENT_CALLBACK
+          replenish-rate: 1
+          burst-capacity: 10
         - id: public-browse
           path-pattern: /api/home/**
           key-type: IP

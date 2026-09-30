@@ -7,6 +7,7 @@ import com.example.item.entity.Item;
 import com.example.item.mapper.AssetReservationMapper;
 import com.example.item.mapper.CardSecretMapper;
 import com.example.item.mapper.ItemMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,8 @@ class AssetServiceTest {
         itemMapper = mock(ItemMapper.class);
         cardSecretMapper = mock(CardSecretMapper.class);
         reservationMapper = mock(AssetReservationMapper.class);
-        service = new AssetService(itemMapper, cardSecretMapper, reservationMapper, mock(CryptoService.class));
+        service = new AssetService(itemMapper, cardSecretMapper, reservationMapper,
+                mock(CryptoService.class), new ObjectMapper());
     }
 
     @Test

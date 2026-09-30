@@ -1,6 +1,7 @@
 package com.example.item.service;
 
 import api.trade.FundDubboService;
+import com.example.item.config.TradeReconciliationProperties;
 import com.example.item.dto.ReconciliationDiffDTO;
 import com.example.item.entity.TradeReconciliationDiff;
 import com.example.item.mapper.TradeReconciliationDiffMapper;
@@ -19,18 +20,33 @@ public class TradeReconciliationService {
     private FundDubboService fundService;
 
     private final TradeReconciliationDiffMapper diffMapper;
+    private final TradeReconciliationProperties properties;
 
-    public TradeReconciliationService(TradeReconciliationDiffMapper diffMapper) {
+    public TradeReconciliationService(
+            TradeReconciliationDiffMapper diffMapper,
+            TradeReconciliationProperties properties
+    ) {
         this.diffMapper = diffMapper;
+        this.properties = properties;
     }
 
     public int reconcile() {
         int diffs = saveDiffs("ORDER_AMOUNT", diffMapper.selectOrderAmountDiffs());
         diffs += saveDiffs("SETTLEMENT", diffMapper.selectSettlementDiffs());
         diffs += reconcileEscrowAmount();
+        diffs += reconcileConsistency();
         if (diffs > 0) {
             log.warn("担保交易对账发现 {} 条差异，已记录待人工处理", diffs);
         }
+        return diffs;
+    }
+
+    public int reconcileConsistency() {
+        int diffs = saveDiffs("CALLBACK_WITHOUT_TASK", diffMapper.selectCallbackWithoutTask());
+        diffs += saveDiffs("TASK_STEP_INTERRUPTED", diffMapper.selectInterruptedTasks(
+                LocalDateTime.now().minusMinutes(properties.interruptedMinutes())));
+        diffs += saveDiffs("ASSET_ORDER_MISMATCH", diffMapper.selectAssetOrderMismatches());
+        diffs += saveDiffs("FUND_TRANSACTION_MISSING", diffMapper.selectFundTransactionMissing());
         return diffs;
     }
 

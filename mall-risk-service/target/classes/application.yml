@@ -14,9 +14,9 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: 100.121.74.115:8848
+        server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
       config:
-        server-addr: 100.121.74.115:8848
+        server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
 
 rocketmq:
   name-server: 100.120.228.17:9876
@@ -38,3 +38,13 @@ dubbo:
     port: 20884
   scan:
     base-packages: com.example.risk.provider
+xxl:
+  job:
+    admin:
+      addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://100.121.74.115:8090/xxl-job-admin}
+    executor:
+      appname: ${XXL_JOB_EXECUTOR_APPNAME:mall-risk-executor}
+      port: ${XXL_JOB_EXECUTOR_PORT:9998}
+      logpath: ${XXL_JOB_LOG_PATH:./logs/xxl-job/jobhandler}
+      logretentiondays: ${XXL_JOB_LOG_RETENTION_DAYS:30}
+    accessToken: ${XXL_JOB_ACCESS_TOKEN:default_token}

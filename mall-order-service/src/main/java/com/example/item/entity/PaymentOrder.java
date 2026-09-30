@@ -23,6 +23,7 @@ public class PaymentOrder {
     private BigDecimal amount;
     private String status;
     private String callbackTokenHash;
+    private Integer callbackSecretVersion;
     private LocalDateTime expireTime;
     private LocalDateTime createdTime;
     private LocalDateTime updatedTime;

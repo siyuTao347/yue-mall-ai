@@ -1,8 +1,9 @@
 package com.example.risk.job;
 
 import com.example.risk.mapper.RiskEventMapper;
+import com.xxl.job.core.context.XxlJobHelper;
+import com.xxl.job.core.handler.annotation.XxlJob;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -18,9 +19,10 @@ public class RiskMaintenanceJob {
         this.eventMapper = eventMapper;
     }
 
-    @Scheduled(fixedDelay = 60000)
+    @XxlJob("riskMaintenanceJob")
     public void invalidateExpiredPrechecks() {
         LocalDateTime now = LocalDateTime.now();
-        eventMapper.invalidateExpired(now.minusMinutes(expireMinutes), now);
+        int invalidated = eventMapper.invalidateExpired(now.minusMinutes(expireMinutes), now);
+        XxlJobHelper.log("风控预检查过期失效完成，处理数量: " + invalidated);
     }
 }

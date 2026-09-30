@@ -47,6 +47,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/UserService.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/MerchantDepositMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/EmailService.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/MerchantCreditOperation.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/provider/FundDubboServiceImpl.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/PlatformAccountMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/UserMapper.java

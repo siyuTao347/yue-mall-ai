@@ -21,6 +21,11 @@ import java.util.UUID;
 
 @Service
 public class FundService {
+    private static final String FUND_FREEZE_KEY = "FUND_FREEZE:";
+    private static final String FUND_REFUND_KEY = "FUND_REFUND:";
+    private static final String FUND_SETTLE_KEY = "FUND_SETTLE:";
+    private static final String FUND_SETTLE_AVAILABLE_KEY = "FUND_SETTLE_AVAILABLE:";
+
     private final FundTransactionMapper transactionMapper;
     private final FundFlowMapper flowMapper;
     private final UserAccountMapper accountMapper;
@@ -36,7 +41,15 @@ public class FundService {
 
     @Transactional(rollbackFor = Exception.class)
     public FundOperationResult freezeEscrow(String orderNo, Long sellerId, Long merchantId, BigDecimal amount) {
-        return execute("PAY_FREEZE", orderNo, null, sellerId, merchantId, amount, tx -> {
+        return freezeEscrow(orderNo, sellerId, merchantId, amount,
+                FUND_FREEZE_KEY + nullToEmpty(orderNo));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public FundOperationResult freezeEscrow(String orderNo, Long sellerId, Long merchantId, BigDecimal amount,
+                                            String idempotencyKey) {
+        requireIdempotencyKey(FUND_FREEZE_KEY + nullToEmpty(orderNo), idempotencyKey);
+        return execute("PAY_FREEZE", orderNo, null, sellerId, merchantId, amount, idempotencyKey, tx -> {
             ensureUserAccount(sellerId);
             requireSuccess(platformMapper.creditEscrow(amount), "平台托管账户记账失败");
             flow(tx, "PLATFORM", null, "ESCROW", "CREDIT", amount, null, "支付成功，进入托管");
@@ -46,7 +59,14 @@ public class FundService {
 
     @Transactional(rollbackFor = Exception.class)
     public FundOperationResult refundEscrow(String orderNo, Long buyerId, BigDecimal amount) {
-        return execute("REFUND", orderNo, null, buyerId, null, amount, tx -> {
+        return refundEscrow(orderNo, buyerId, amount, FUND_REFUND_KEY + nullToEmpty(orderNo));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public FundOperationResult refundEscrow(String orderNo, Long buyerId, BigDecimal amount,
+                                            String idempotencyKey) {
+        requireIdempotencyKey(FUND_REFUND_KEY + nullToEmpty(orderNo), idempotencyKey);
+        return execute("REFUND", orderNo, null, buyerId, null, amount, idempotencyKey, tx -> {
             requireSuccess(platformMapper.debitEscrow(amount), "托管资金不足");
             ensureUserAccount(buyerId);
             requireSuccess(accountMapper.creditAvailable(buyerId, amount), "买家账户记账失败");
@@ -59,7 +79,17 @@ public class FundService {
     public FundOperationResult settle(String orderNo, Long sellerId, Long merchantId,
                                       BigDecimal orderAmount, BigDecimal feeAmount, BigDecimal sellerIncome) {
         validateSettleAmount(orderAmount, feeAmount, sellerIncome);
-        return execute("SETTLE", orderNo, null, sellerId, merchantId, orderAmount, tx -> {
+        return settle(orderNo, sellerId, merchantId, orderAmount, feeAmount, sellerIncome,
+                FUND_SETTLE_KEY + nullToEmpty(orderNo));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public FundOperationResult settle(String orderNo, Long sellerId, Long merchantId,
+                                      BigDecimal orderAmount, BigDecimal feeAmount, BigDecimal sellerIncome,
+                                      String idempotencyKey) {
+        validateSettleAmount(orderAmount, feeAmount, sellerIncome);
+        requireIdempotencyKey(FUND_SETTLE_KEY + nullToEmpty(orderNo), idempotencyKey);
+        return execute("SETTLE", orderNo, null, sellerId, merchantId, orderAmount, idempotencyKey, tx -> {
             ensureUserAccount(sellerId);
             requireSuccess(platformMapper.debitEscrow(orderAmount), "托管资金不足");
             requireSuccess(platformMapper.creditRevenue(feeAmount), "平台收入记账失败");
@@ -72,7 +102,8 @@ public class FundService {
 
     @Transactional(rollbackFor = Exception.class)
     public FundOperationResult withdrawFreeze(String withdrawNo, Long userId, Long merchantId, BigDecimal amount) {
-        return execute("WITHDRAW_FREEZE", null, withdrawNo, userId, merchantId, amount, tx -> {
+        return execute("WITHDRAW_FREEZE", null, withdrawNo, userId, merchantId, amount,
+                "WITHDRAW_FREEZE:" + nullToEmpty(withdrawNo), tx -> {
             ensureUserAccount(userId);
             requireSuccess(accountMapper.freezeForWithdraw(userId, amount), "可提现余额不足");
             flow(tx, "USER", userId, "AVAILABLE", "DEBIT", amount, amount, "申请提现");
@@ -82,7 +113,8 @@ public class FundService {
 
     @Transactional(rollbackFor = Exception.class)
     public FundOperationResult withdrawPayout(String withdrawNo, Long userId, Long merchantId, BigDecimal amount) {
-        return execute("WITHDRAW_PAYOUT", null, withdrawNo, userId, merchantId, amount, tx -> {
+        return execute("WITHDRAW_PAYOUT", null, withdrawNo, userId, merchantId, amount,
+                "WITHDRAW_PAYOUT:" + nullToEmpty(withdrawNo), tx -> {
             requireSuccess(accountMapper.payoutFrozen(userId, amount), "提现冻结资金不足");
             requireSuccess(platformMapper.creditWithdrawPending(amount), "平台提现中账户记账失败");
             requireSuccess(platformMapper.debitWithdrawPending(amount), "平台提现中账户扣减失败");
@@ -95,7 +127,8 @@ public class FundService {
 
     @Transactional(rollbackFor = Exception.class)
     public FundOperationResult withdrawReject(String withdrawNo, Long userId, Long merchantId, BigDecimal amount) {
-        return execute("WITHDRAW_REJECT", null, withdrawNo, userId, merchantId, amount, tx -> {
+        return execute("WITHDRAW_REJECT", null, withdrawNo, userId, merchantId, amount,
+                "WITHDRAW_REJECT:" + nullToEmpty(withdrawNo), tx -> {
             requireSuccess(accountMapper.unfreezeForReject(userId, amount), "提现冻结资金不足");
             flow(tx, "USER", userId, "FROZEN", "DEBIT", amount, amount, "提现驳回");
             flow(tx, "USER", userId, "AVAILABLE", "CREDIT", amount, amount, "提现驳回返还");
@@ -129,7 +162,15 @@ public class FundService {
 
     @Transactional(rollbackFor = Exception.class)
     public FundOperationResult settlePendingToAvailable(String orderNo, Long userId, BigDecimal amount) {
-        return execute("SETTLE_AVAILABLE", orderNo, null, userId, null, amount, tx -> {
+        return settlePendingToAvailable(orderNo, userId, amount,
+                FUND_SETTLE_AVAILABLE_KEY + nullToEmpty(orderNo));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public FundOperationResult settlePendingToAvailable(String orderNo, Long userId, BigDecimal amount,
+                                                        String idempotencyKey) {
+        requireIdempotencyKey(FUND_SETTLE_AVAILABLE_KEY + nullToEmpty(orderNo), idempotencyKey);
+        return execute("SETTLE_AVAILABLE", orderNo, null, userId, null, amount, idempotencyKey, tx -> {
             ensureUserAccount(userId);
             requireSuccess(accountMapper.settleToAvailable(userId, amount), "待结算余额不足");
             flow(tx, "USER", userId, "PENDING_SETTLE", "DEBIT", amount, amount, "结算转可用余额");
@@ -142,7 +183,8 @@ public class FundService {
         if (depositNo == null || depositNo.isBlank()) {
             return FundOperationResult.fail("保证金缴纳单号不能为空");
         }
-        return execute("DEPOSIT_PAY", depositNo, null, userId, merchantId, amount, tx -> {
+        return execute("DEPOSIT_PAY", depositNo, null, userId, merchantId, amount,
+                "DEPOSIT_PAY:" + nullToEmpty(depositNo), tx -> {
             ensureUserAccount(userId);
             requireSuccess(platformMapper.creditDeposit(amount), "平台保证金账户记账失败");
             flow(tx, "PLATFORM", null, "DEPOSIT", "CREDIT", amount, null, "商家缴纳 Mock 保证金");
@@ -172,12 +214,12 @@ public class FundService {
     }
 
     private FundOperationResult execute(String businessType, String orderNo, String withdrawNo, Long userId,
-                                        Long merchantId, BigDecimal amount, FundAction action) {
+                                        Long merchantId, BigDecimal amount, String idempotencyKey,
+                                        FundAction action) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             return FundOperationResult.fail("金额必须大于 0");
         }
         ensurePlatformAccount();
-        String idempotencyKey = businessType + ":" + (orderNo != null ? orderNo : withdrawNo);
         FundTransaction existing = transactionMapper.selectOne(new LambdaQueryWrapper<FundTransaction>()
                 .eq(FundTransaction::getIdempotencyKey, idempotencyKey));
         if (existing != null) {
@@ -222,6 +264,16 @@ public class FundService {
                 && Objects.equals(userId, existing.getUserId())
                 && Objects.equals(merchantId, existing.getMerchantId())
                 && amount.compareTo(existing.getAmount()) == 0;
+    }
+
+    private void requireIdempotencyKey(String expectedKey, String actualKey) {
+        if (actualKey == null || actualKey.isBlank() || !expectedKey.equals(actualKey)) {
+            throw new IllegalArgumentException("资金操作幂等键不合法");
+        }
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private void ensureUserAccount(Long userId) {

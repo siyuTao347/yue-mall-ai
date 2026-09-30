@@ -52,6 +52,10 @@ public class RiskClient {
         }
     }
 
+    public RiskDecisionResult recordEventForOrchestration(RiskEvaluateRequest request) {
+        return riskService.recordEvent(request);
+    }
+
     public void confirmAfterCommit(String eventNo) {
         if (eventNo == null || eventNo.isBlank()) {
             return;
@@ -66,6 +70,13 @@ public class RiskClient {
             return;
         }
         confirm(eventNo);
+    }
+
+    public void confirmForOrchestration(String eventNo) {
+        if (eventNo == null || eventNo.isBlank()) {
+            return;
+        }
+        riskService.confirmEvent(eventNo);
     }
 
     public void confirmCommand(RiskCommandResultDTO result) {

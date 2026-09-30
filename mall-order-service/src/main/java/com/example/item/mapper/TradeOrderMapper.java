@@ -42,6 +42,77 @@ public interface TradeOrderMapper extends BaseMapper<TradeOrder> {
     int markPaid(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now,
                  @Param("deliveryTimeoutMinutes") int deliveryTimeoutMinutes);
 
+    @Update("UPDATE t_trade_order SET order_status = 'PAY_CONFIRMING', pay_status = 'SUCCESS_PENDING', " +
+            "escrow_status = 'FREEZE_PENDING', version = version + 1, updated_time = #{now} " +
+            "WHERE order_no = #{orderNo} AND order_status = 'WAIT_PAY' AND pay_status = 'INIT' " +
+            "AND pay_deadline >= #{now}")
+    int markPayConfirming(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now);
+
+    @Update("""
+            UPDATE t_trade_order
+            SET risk_status = #{riskStatus}, risk_level = #{riskLevel},
+                risk_decision_no = #{decisionNo}, risk_reason = #{reason},
+                order_status = CASE WHEN #{riskStatus} = 'REJECTED' THEN 'REJECTED' ELSE order_status END,
+                version = version + 1, updated_time = #{now}
+            WHERE order_no = #{orderNo}
+              AND order_status IN ('CREATE_PENDING', 'REJECTED')
+            """)
+    int markCreateRiskDecision(
+            @Param("orderNo") String orderNo,
+            @Param("riskStatus") String riskStatus,
+            @Param("riskLevel") String riskLevel,
+            @Param("decisionNo") String decisionNo,
+            @Param("reason") String reason,
+            @Param("now") LocalDateTime now
+    );
+
+    @Update("""
+            UPDATE t_trade_order
+            SET seller_id = #{sellerId}, merchant_id = #{merchantId},
+                item_snapshot = #{itemSnapshot}, order_amount = #{orderAmount},
+                pay_deadline = #{payDeadline}, version = version + 1, updated_time = #{now}
+            WHERE order_no = #{orderNo}
+              AND order_status IN ('CREATE_PENDING', 'WAIT_PAY')
+            """)
+    int completeCreateReservation(
+            @Param("orderNo") String orderNo,
+            @Param("sellerId") Long sellerId,
+            @Param("merchantId") Long merchantId,
+            @Param("itemSnapshot") String itemSnapshot,
+            @Param("orderAmount") BigDecimal orderAmount,
+            @Param("payDeadline") LocalDateTime payDeadline,
+            @Param("now") LocalDateTime now
+    );
+
+    @Update("""
+            UPDATE t_trade_order
+            SET order_status = 'CLOSED', version = version + 1, updated_time = #{now}
+            WHERE order_no = #{orderNo}
+              AND order_status IN ('CREATE_PENDING', 'CLOSED')
+            """)
+    int markCreateClosed(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now);
+
+    @Update("""
+            UPDATE t_trade_order
+            SET order_status = 'WAIT_PAY', payment_no = #{paymentNo},
+                version = version + 1, updated_time = #{now}
+            WHERE order_no = #{orderNo}
+              AND order_status IN ('CREATE_PENDING', 'WAIT_PAY')
+            """)
+    int markCreateReady(
+            @Param("orderNo") String orderNo,
+            @Param("paymentNo") String paymentNo,
+            @Param("now") LocalDateTime now
+    );
+
+    @Update("UPDATE t_trade_order SET order_status = 'PAID', pay_status = 'SUCCESS', " +
+            "escrow_status = 'FREEZE_PENDING', delivery_deadline = #{now} + INTERVAL " +
+            "#{deliveryTimeoutMinutes} MINUTE, version = version + 1, updated_time = #{now} " +
+            "WHERE order_no = #{orderNo} AND order_status = 'PAY_CONFIRMING' " +
+            "AND pay_status = 'SUCCESS_PENDING'")
+    int markPaidFromPayConfirming(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now,
+                                  @Param("deliveryTimeoutMinutes") int deliveryTimeoutMinutes);
+
     @Update("UPDATE t_trade_order SET escrow_status = 'FROZEN', version = version + 1, " +
             "updated_time = #{now} WHERE order_no = #{orderNo} AND order_status = 'PAID' " +
             "AND escrow_status = 'FREEZE_PENDING'")
@@ -60,6 +131,11 @@ public interface TradeOrderMapper extends BaseMapper<TradeOrder> {
     @Update("UPDATE t_trade_order SET order_status = 'CANCELLED', version = version + 1, " +
             "updated_time = #{now} WHERE order_no = #{orderNo} AND order_status = 'CANCELLING'")
     int markCancelled(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now);
+
+    @Update("UPDATE t_trade_order SET order_status = 'REFUNDING', version = version + 1, " +
+            "updated_time = #{now} WHERE order_no = #{orderNo} AND order_status IN ('PAID', 'DELIVERED') " +
+            "AND escrow_status = 'FROZEN' AND dispute_status IN ('NONE', 'ARBITRATING')")
+    int markRefunding(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now);
 
     @Update("UPDATE t_trade_order SET order_status = 'DELIVERED', delivery_status = 'DELIVERED', " +
             "delivered_time = #{now}, auto_confirm_time = #{now} + INTERVAL #{autoConfirmHours} HOUR, " +
@@ -111,7 +187,7 @@ public interface TradeOrderMapper extends BaseMapper<TradeOrder> {
 
     @Update("UPDATE t_trade_order SET order_status = 'REFUNDED', escrow_status = 'REFUNDED', " +
             "version = version + 1, updated_time = #{now} WHERE order_no = #{orderNo} " +
-            "AND order_status IN ('PAID', 'DELIVERED') AND escrow_status = 'FROZEN' " +
+            "AND order_status IN ('PAID', 'DELIVERED', 'REFUNDING') AND escrow_status = 'FROZEN' " +
             "AND dispute_status IN ('NONE', 'RESOLVED', 'ARBITRATING')")
     int markRefunded(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now);
 
@@ -124,6 +200,14 @@ public interface TradeOrderMapper extends BaseMapper<TradeOrder> {
             "WHERE id = #{id}")
     int updateFeeAndIncome(@Param("id") Long id, @Param("feeAmount") BigDecimal feeAmount,
                            @Param("sellerIncome") BigDecimal sellerIncome);
+
+    @Update("UPDATE t_trade_order SET fee_amount = #{feeAmount}, seller_income = #{sellerIncome}, " +
+            "version = version + 1, updated_time = #{now} WHERE order_no = #{orderNo} " +
+            "AND order_status IN ('SETTLING', 'SETTLED')")
+    int updateFeeAndIncomeByOrderNo(@Param("orderNo") String orderNo,
+                                    @Param("feeAmount") BigDecimal feeAmount,
+                                    @Param("sellerIncome") BigDecimal sellerIncome,
+                                    @Param("now") LocalDateTime now);
 
     @Update("UPDATE t_trade_order SET risk_status = #{riskStatus}, risk_level = #{riskLevel}, " +
             "risk_decision_no = #{decisionNo}, risk_reason = #{reason}, version = version + 1, " +

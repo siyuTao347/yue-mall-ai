@@ -18,6 +18,7 @@ public class RequestTraceGlobalFilter implements GlobalFilter, Ordered {
     public static final String REQUEST_ID_ATTRIBUTE = "gateway.requestId";
 
     private static final String REQUEST_ID_HEADER = "X-Request-Id";
+    private static final String TRACE_ID_HEADER = "X-Trace-Id";
     private static final String TRACE_PARENT_HEADER = "traceparent";
     private static final Pattern REQUEST_ID_PATTERN = Pattern.compile(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
@@ -25,17 +26,20 @@ public class RequestTraceGlobalFilter implements GlobalFilter, Ordered {
     private static final Pattern TRACE_PARENT_PATTERN = Pattern.compile(
             "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
     );
+    private static final Pattern TRACE_ID_PATTERN = Pattern.compile("^[0-9a-f]{32}$");
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String requestId = sanitizeRequestId(request.getHeaders().getFirst(REQUEST_ID_HEADER));
         String traceParent = sanitizeTraceParent(request.getHeaders().getFirst(TRACE_PARENT_HEADER));
+        String traceId = resolveTraceId(traceParent, request.getHeaders().getFirst(TRACE_ID_HEADER));
 
         ServerHttpRequest mutatedRequest = request.mutate()
                 .headers(headers -> {
                     headers.set(REQUEST_ID_HEADER, requestId);
                     headers.set(TRACE_PARENT_HEADER, traceParent);
+                    headers.set(TRACE_ID_HEADER, traceId);
                 })
                 .build();
 
@@ -59,6 +63,13 @@ public class RequestTraceGlobalFilter implements GlobalFilter, Ordered {
         return StringUtils.hasText(value) && TRACE_PARENT_PATTERN.matcher(value).matches()
                 ? value
                 : generateTraceParent();
+    }
+
+    private String resolveTraceId(String traceParent, String requestedTraceId) {
+        if (StringUtils.hasText(requestedTraceId) && TRACE_ID_PATTERN.matcher(requestedTraceId).matches()) {
+            return requestedTraceId;
+        }
+        return traceParent.split("-")[1];
     }
 
     private String generateTraceParent() {

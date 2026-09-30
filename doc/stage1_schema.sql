@@ -170,6 +170,18 @@ CREATE TABLE IF NOT EXISTS `t_merchant_credit` (
     PRIMARY KEY (`merchant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商家信用统计表';
 
+CREATE TABLE IF NOT EXISTS `t_merchant_credit_operation` (
+    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+    `operation_key` varchar(128) NOT NULL,
+    `merchant_id` bigint unsigned NOT NULL,
+    `operation_type` varchar(32) NOT NULL,
+    `score` decimal(5,2) DEFAULT NULL,
+    `created_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_operation_key` (`operation_key`),
+    KEY `idx_merchant_id` (`merchant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商家信用操作幂等表';
+
 CREATE TABLE IF NOT EXISTS db_item.`t_item_category` (
     `id` bigint unsigned NOT NULL AUTO_INCREMENT,
     `category_name` varchar(64) NOT NULL,
@@ -243,6 +255,8 @@ CREATE TABLE IF NOT EXISTS db_item.`t_asset_reservation` (
     `id` bigint unsigned NOT NULL AUTO_INCREMENT,
     `reservation_no` varchar(64) NOT NULL,
     `order_no` varchar(64) NOT NULL,
+    `idempotency_key` varchar(128) NOT NULL,
+    `snapshot_json` json DEFAULT NULL,
     `item_id` bigint unsigned NOT NULL,
     `merchant_id` bigint unsigned NOT NULL,
     `asset_type` varchar(32) NOT NULL,
@@ -254,7 +268,8 @@ CREATE TABLE IF NOT EXISTS db_item.`t_asset_reservation` (
     `updated_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_reservation_no` (`reservation_no`),
-    UNIQUE KEY `uk_order_no` (`order_no`)
+    UNIQUE KEY `uk_order_no` (`order_no`),
+    UNIQUE KEY `uk_idempotency_key` (`idempotency_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='交易资产预留表';
 
 CREATE DATABASE IF NOT EXISTS db_order DEFAULT CHARACTER SET utf8mb4;
@@ -272,7 +287,7 @@ CREATE TABLE IF NOT EXISTS `t_trade_order` (
     `order_amount` decimal(18,2) NOT NULL,
     `fee_amount` decimal(18,2) NOT NULL DEFAULT 0.00,
     `seller_income` decimal(18,2) NOT NULL DEFAULT 0.00,
-    `order_status` varchar(24) NOT NULL DEFAULT 'WAIT_PAY',
+    `order_status` varchar(24) NOT NULL DEFAULT 'CREATE_PENDING',
     `pay_status` varchar(24) NOT NULL DEFAULT 'INIT',
     `delivery_status` varchar(24) NOT NULL DEFAULT 'WAIT_DELIVERY',
     `escrow_status` varchar(24) NOT NULL DEFAULT 'NONE',
@@ -319,6 +334,7 @@ CREATE TABLE IF NOT EXISTS `t_payment_order` (
     `amount` decimal(18,2) NOT NULL,
     `status` varchar(24) NOT NULL DEFAULT 'INIT',
     `callback_token_hash` char(64) DEFAULT NULL,
+    `callback_secret_version` int NOT NULL DEFAULT 1,
     `expire_time` datetime(3) NOT NULL,
     `created_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
@@ -336,11 +352,78 @@ CREATE TABLE IF NOT EXISTS `t_payment_callback` (
     `amount` decimal(18,2) NOT NULL,
     `signature` varchar(128) NOT NULL,
     `raw_payload` text NOT NULL,
+    `timestamp_epoch_ms` bigint NOT NULL DEFAULT 0,
+    `nonce` varchar(64) NOT NULL DEFAULT '',
+    `signature_algorithm` varchar(32) NOT NULL DEFAULT 'HMAC-SHA256',
+    `secret_version` int NOT NULL DEFAULT 1,
+    `verify_status` varchar(24) NOT NULL DEFAULT 'PENDING',
+    `failure_reason` varchar(128) DEFAULT NULL,
     `received_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_callback_no` (`callback_no`),
+    UNIQUE KEY `uk_payment_nonce` (`payment_no`, `nonce`),
     KEY `idx_payment_no` (`payment_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Mock支付回调记录表';
+
+CREATE TABLE IF NOT EXISTS `t_payment_callback_nonce` (
+    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+    `nonce` varchar(64) NOT NULL,
+    `payment_no` varchar(64) DEFAULT NULL,
+    `secret_version` int NOT NULL DEFAULT 1,
+    `expire_time` datetime(3) NOT NULL,
+    `created_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_nonce` (`nonce`),
+    KEY `idx_expire_time` (`expire_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付回调防重放表';
+
+CREATE TABLE IF NOT EXISTS `t_trade_orchestration_task` (
+    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+    `task_no` varchar(64) NOT NULL,
+    `task_type` varchar(64) NOT NULL,
+    `biz_type` varchar(32) NOT NULL,
+    `biz_no` varchar(64) NOT NULL,
+    `status` varchar(24) NOT NULL DEFAULT 'INIT',
+    `context_json` json NOT NULL,
+    `idempotency_key` varchar(128) NOT NULL,
+    `retry_count` int NOT NULL DEFAULT 0,
+    `max_retry_count` int NOT NULL DEFAULT 5,
+    `next_execute_time` datetime(3) DEFAULT NULL,
+    `locked_by` varchar(64) DEFAULT NULL,
+    `locked_until` datetime(3) DEFAULT NULL,
+    `trace_id` varchar(64) DEFAULT NULL,
+    `created_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_task_no` (`task_no`),
+    UNIQUE KEY `uk_task_idempotency` (`idempotency_key`),
+    KEY `idx_status_next_time` (`status`, `next_execute_time`),
+    KEY `idx_biz` (`biz_type`, `biz_no`),
+    KEY `idx_locked_until` (`locked_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='担保交易编排任务表';
+
+CREATE TABLE IF NOT EXISTS `t_trade_orchestration_step` (
+    `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+    `task_no` varchar(64) NOT NULL,
+    `step_no` int NOT NULL,
+    `step_name` varchar(64) NOT NULL,
+    `step_type` varchar(32) NOT NULL,
+    `status` varchar(24) NOT NULL DEFAULT 'INIT',
+    `idempotency_key` varchar(128) NOT NULL,
+    `request_json` json DEFAULT NULL,
+    `response_json` json DEFAULT NULL,
+    `attempt_count` int NOT NULL DEFAULT 0,
+    `max_attempt_count` int NOT NULL DEFAULT 5,
+    `next_execute_time` datetime(3) DEFAULT NULL,
+    `last_error` varchar(512) DEFAULT NULL,
+    `created_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_time` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_task_step` (`task_no`, `step_no`),
+    UNIQUE KEY `uk_step_idempotency` (`idempotency_key`),
+    KEY `idx_task_status` (`task_no`, `status`),
+    KEY `idx_status_next_time` (`status`, `next_execute_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='担保交易编排步骤表';
 
 CREATE TABLE IF NOT EXISTS `t_delivery_record` (
     `id` bigint unsigned NOT NULL AUTO_INCREMENT,

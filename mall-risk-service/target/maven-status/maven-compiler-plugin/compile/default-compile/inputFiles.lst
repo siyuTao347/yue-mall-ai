@@ -34,6 +34,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/job/RiskMaintenanceJob.java
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/mapper/RiskCaseMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/mapper/SensitiveWordMapper.java
+/Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/config/XxlJobConfig.java
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/listener/ItemRiskCommandDlqConsumer.java
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/service/RiskIdentityService.java
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/service/RiskCommandDeadLetterService.java

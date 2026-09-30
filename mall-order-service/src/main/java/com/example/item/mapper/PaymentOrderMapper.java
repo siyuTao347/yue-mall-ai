@@ -10,8 +10,12 @@ import java.time.LocalDateTime;
 
 @Mapper
 public interface PaymentOrderMapper extends BaseMapper<PaymentOrder> {
-    @Update("UPDATE t_payment_order SET status = 'SUCCESS', updated_time = #{now} " +
+    @Update("UPDATE t_payment_order SET status = 'SUCCESS_PENDING', updated_time = #{now} " +
             "WHERE payment_no = #{paymentNo} AND status IN ('INIT', 'PAYING')")
+    int markSuccessPending(@Param("paymentNo") String paymentNo, @Param("now") LocalDateTime now);
+
+    @Update("UPDATE t_payment_order SET status = 'SUCCESS', updated_time = #{now} " +
+            "WHERE payment_no = #{paymentNo} AND status IN ('INIT', 'PAYING', 'SUCCESS_PENDING')")
     int markSuccess(@Param("paymentNo") String paymentNo, @Param("now") LocalDateTime now);
 
     @Update("UPDATE t_payment_order SET status = 'TIMEOUT', updated_time = #{now} " +

@@ -6,17 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="8275a235-79d3-4837-87f7-ed524bd10d2f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/doc/spring_cloud_gateway_design.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/spring_cloud_gateway_design.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-gateway-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-gateway-service/src/main/resources/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-item-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/src/main/resources/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-item-service/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/classes/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-order-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/src/main/resources/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-risk-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/src/main/resources/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-risk-service/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/target/classes/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/resources/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/application.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -68,38 +57,38 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Maven. [org.apache.maven.plugins:maven-archetype-plugin:RELEASE:generate].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.mall-parent [clean].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.mall-parent [install].executor&quot;: &quot;Run&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
-    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
-    &quot;RequestMappingsPanelWidth0&quot;: &quot;75&quot;,
-    &quot;RequestMappingsPanelWidth1&quot;: &quot;75&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;Spring Boot.GatewayApplication.executor&quot;: &quot;Run&quot;,
-    &quot;Spring Boot.ItemApplication.executor&quot;: &quot;Run&quot;,
-    &quot;Spring Boot.OrderApplication.executor&quot;: &quot;Run&quot;,
-    &quot;Spring Boot.RiskApplication.executor&quot;: &quot;Run&quot;,
-    &quot;Spring Boot.UserApplication.executor&quot;: &quot;Run&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/yu/IdeaProjects/mall-parent&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.2413793&quot;,
-    &quot;run.configurations.included.in.services&quot;: &quot;true&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;MavenSettings&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Maven. [org.apache.maven.plugins:maven-archetype-plugin:RELEASE:generate].executor": "Run",
+    "Maven.mall-parent [clean].executor": "Run",
+    "Maven.mall-parent [install].executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RequestMappingsPanelOrder0": "0",
+    "RequestMappingsPanelOrder1": "1",
+    "RequestMappingsPanelWidth0": "75",
+    "RequestMappingsPanelWidth1": "75",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "Spring Boot.GatewayApplication.executor": "Run",
+    "Spring Boot.ItemApplication.executor": "Run",
+    "Spring Boot.OrderApplication.executor": "Run",
+    "Spring Boot.RiskApplication.executor": "Run",
+    "Spring Boot.UserApplication.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "improve-one-and-two",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/yu/IdeaProjects/mall-parent",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2413793",
+    "run.configurations.included.in.services": "true",
+    "settings.editor.selected.configurable": "MavenSettings",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/mall-order-service/src/main/resources" />
@@ -247,7 +236,7 @@
       <workItem from="1790653364945" duration="12000" />
       <workItem from="1790654068961" duration="2451000" />
       <workItem from="1790661285017" duration="8416000" />
-      <workItem from="1790728447142" duration="767000" />
+      <workItem from="1790728447142" duration="7718000" />
     </task>
     <servers />
   </component>

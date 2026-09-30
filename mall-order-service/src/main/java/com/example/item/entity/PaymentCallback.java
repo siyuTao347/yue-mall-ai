@@ -23,5 +23,11 @@ public class PaymentCallback {
     private BigDecimal amount;
     private String signature;
     private String rawPayload;
+    private Long timestampEpochMs;
+    private String nonce;
+    private String signatureAlgorithm;
+    private Integer secretVersion;
+    private String verifyStatus;
+    private String failureReason;
     private LocalDateTime receivedTime;
 }

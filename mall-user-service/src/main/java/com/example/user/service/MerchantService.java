@@ -11,6 +11,7 @@ import com.example.user.entity.Merchant;
 import com.example.user.entity.MerchantAudit;
 import com.example.user.entity.MerchantCredit;
 import com.example.user.entity.MerchantDeposit;
+import com.example.user.entity.MerchantCreditOperation;
 import com.example.user.entity.User;
 import com.example.user.mapper.MerchantAuditMapper;
 import com.example.user.mapper.MerchantCreditMapper;
@@ -18,6 +19,7 @@ import com.example.user.mapper.MerchantDepositMapper;
 import com.example.user.mapper.MerchantMapper;
 import com.example.user.mapper.UserMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -222,28 +224,93 @@ public class MerchantService {
         return user != null && "ADMIN".equals(user.getRole());
     }
 
-    public void completeOrder(Long merchantId, BigDecimal score) {
+    @Transactional(rollbackFor = Exception.class)
+    public void completeOrder(Long merchantId, BigDecimal score, String orderNo) {
+        completeOrder(merchantId, score, orderNo, "MERCHANT_COMPLETE:" + nullToEmpty(orderNo));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void completeOrder(Long merchantId, BigDecimal score, String orderNo, String idempotencyKey) {
         requirePositiveMerchantId(merchantId);
+        requireOrderNo(orderNo);
+        requireIdempotencyKey("MERCHANT_COMPLETE:" + orderNo, idempotencyKey);
+        BigDecimal normalizedScore = normalizedScore(score);
         creditMapper.ensure(merchantId);
-        if (creditMapper.completeOrder(merchantId, normalizedScore(score)) <= 0) {
+        if (!reserveCreditOperation(merchantId, idempotencyKey, "COMPLETE", orderNo, normalizedScore)) {
+            return;
+        }
+        if (creditMapper.completeOrder(merchantId, normalizedScore) <= 0) {
             throw new IllegalStateException("商家信用更新失败");
         }
     }
 
-    public void refundOrder(Long merchantId) {
+    @Transactional(rollbackFor = Exception.class)
+    public void refundOrder(Long merchantId, String orderNo) {
+        refundOrder(merchantId, orderNo, "MERCHANT_REFUND:" + nullToEmpty(orderNo));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void refundOrder(Long merchantId, String orderNo, String idempotencyKey) {
         requirePositiveMerchantId(merchantId);
+        requireOrderNo(orderNo);
+        requireIdempotencyKey("MERCHANT_REFUND:" + orderNo, idempotencyKey);
         creditMapper.ensure(merchantId);
+        if (!reserveCreditOperation(merchantId, idempotencyKey, "REFUND", orderNo, null)) {
+            return;
+        }
         if (creditMapper.refundOrder(merchantId) <= 0) {
             throw new IllegalStateException("商家信用更新失败");
         }
     }
 
-    public void disputeOrder(Long merchantId) {
+    @Transactional(rollbackFor = Exception.class)
+    public void disputeOrder(Long merchantId, String orderNo) {
+        disputeOrder(merchantId, orderNo, "MERCHANT_DISPUTE:" + nullToEmpty(orderNo));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void disputeOrder(Long merchantId, String orderNo, String idempotencyKey) {
         requirePositiveMerchantId(merchantId);
+        requireOrderNo(orderNo);
+        requireIdempotencyKey("MERCHANT_DISPUTE:" + orderNo, idempotencyKey);
         creditMapper.ensure(merchantId);
+        if (!reserveCreditOperation(merchantId, idempotencyKey, "DISPUTE", orderNo, null)) {
+            return;
+        }
         if (creditMapper.disputeOrder(merchantId) <= 0) {
             throw new IllegalStateException("商家信用更新失败");
         }
+    }
+
+    private boolean reserveCreditOperation(Long merchantId, String operationKey, String operationType,
+                                           String orderNo, BigDecimal score) {
+        MerchantCreditOperation operation = new MerchantCreditOperation();
+        operation.setOperationKey(operationKey);
+        operation.setMerchantId(merchantId);
+        operation.setOperationType(operationType);
+        operation.setScore(score);
+        operation.setCreatedTime(LocalDateTime.now());
+        try {
+            return creditMapper.insertOperation(operation) > 0;
+        } catch (DuplicateKeyException ignored) {
+            return false;
+        }
+    }
+
+    private void requireOrderNo(String orderNo) {
+        if (orderNo == null || orderNo.isBlank()) {
+            throw new IllegalArgumentException("订单号不能为空");
+        }
+    }
+
+    private void requireIdempotencyKey(String expectedKey, String actualKey) {
+        if (actualKey == null || actualKey.isBlank() || !expectedKey.equals(actualKey)) {
+            throw new IllegalArgumentException("商家操作幂等键不合法");
+        }
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     public MerchantCredit getCredit(Long merchantId, Long userId) {
