@@ -2,7 +2,7 @@
 
 > 一个面向实习作品集的 C2C 虚拟资产交易平台，重点不是“能买买买”，而是把担保交易、资金账本、交付证据、售后仲裁、规则风控和异步补偿这些平台级问题做扎实。
 
-项目当前已落地用户、商品、担保订单、Mock 支付、资金账户、交付确认、结算提现、售后仲裁和初步风控能力；Agent 能力已有完整设计，尚未开始实现。
+项目当前已落地统一网关、用户、商品、担保订单、Mock 支付、资金账户、交付确认、结算提现、售后仲裁和初步风控能力；Agent 能力已有完整设计，尚未开始实现。
 
 ## 项目边界
 
@@ -50,15 +50,20 @@
 - 审计日志：支持同步落库与 RocketMQ 异步投递两种模式。
 - 对账任务：订单、支付、资金流水差异落表，供后续人工处理。
 - 风控闭环：事件采集、指标计算、规则命中、风险决策、案件创建、命令下发、死信补偿。
+- 统一接入层：Spring Cloud Gateway 负责路由、JWT 认证、角色粗粒度鉴权、CORS、Redis 令牌桶限流、访问日志和统一错误响应。
 
 ## 架构总览
 
 ```mermaid
 flowchart TD
-    FE[React + Vite Frontend] --> User[mall-user-service]
-    FE --> Item[mall-item-service]
-    FE --> Order[mall-order-service]
-    RiskAdmin[HTTP Client / Admin Console] --> Risk[mall-risk-service]
+    FE[React + Vite Frontend] --> GW[mall-gateway-service : 8080]
+    GW --> User[mall-user-service]
+    GW --> Item[mall-item-service]
+    GW --> Order[mall-order-service]
+    GW --> Risk[mall-risk-service]
+
+    GW --> Nacos[Nacos Service Discovery]
+    GW --> Redis[(Redis Rate Limit)]
 
     User --> UserDB[(db_user)]
     Item --> ItemDB[(db_item)]
@@ -89,6 +94,7 @@ flowchart TD
 | 应用框架 | Spring Boot 3.2.5 |
 | 微服务体系 | Spring Cloud 2023.0.1、Spring Cloud Alibaba 2023.0.1.0 |
 | RPC 与注册中心 | Dubbo 3.2.11、Nacos |
+| 统一接入层 | Spring Cloud Gateway、LoadBalancer |
 | 分布式事务 | Seata TCC |
 | 消息队列 | RocketMQ 5.3.0 |
 | 数据访问 | MyBatis Plus 3.5.6、MySQL 8 |
@@ -102,6 +108,7 @@ flowchart TD
 | 模块 | 职责 |
 |---|---|
 | [mall-api](mall-api) | 跨服务 Dubbo 接口、DTO、JWT 工具、用户上下文、风控公共模型 |
+| [mall-gateway-service](mall-gateway-service) | 统一 HTTP 入口、服务路由、JWT 认证、角色粗粒度鉴权、CORS、Redis 限流、访问日志 |
 | [mall-user-service](mall-user-service) | 注册登录、邮箱验证码、用户账户、商家审核、保证金、资金流水、提现、积分 |
 | [mall-item-service](mall-item-service) | 商品与秒杀、虚拟资产发布、商品审核、卡密库存、资产预留、敏感信息处理 |
 | [mall-order-service](mall-order-service) | 担保订单、Mock 支付、交付、确认、结算、评价、售后、仲裁、审计日志、对账 |
@@ -113,6 +120,7 @@ flowchart TD
 
 | 服务 | HTTP 端口 | Dubbo 端口 |
 |---|---:|---:|
+| mall-gateway-service | 8080 | - |
 | mall-user-service | 8081 | 20881 |
 | mall-item-service | 8082 | 20882 |
 | mall-order-service | 8083 | - |
@@ -147,7 +155,7 @@ flowchart TD
 | 阶段二：风控体系 | 初步完成 | 让交易链路具备平台级风险处理能力 | 风险事件、指标、规则引擎、决策、关系图谱、案件、命令补偿 |
 | 阶段三：Agent 能力 | 设计中 | 让 Agent 成为受控业务能力 | 仲裁助手、风控调查助手、智能客服、RAG、Tool Calling、Trace、评估 |
 
-阶段三的原则是：Agent 只读业务数据、只生成建议和草稿；资金、处罚、仲裁结论仍由业务服务和人工流程确认。后续实现主线倾向使用 Spring AI Alibaba，业务代码面向 Spring AI 标准抽象。
+阶段三的原则是：Agent 只读业务数据、只生成建议和草稿；资金、处罚、仲裁结论仍由业务服务和人工流程确认。规划主线采用 Spring AI Alibaba，业务代码面向 Spring AI 标准抽象，实现前需确认其与 Spring Boot 3.2.5 的版本兼容；AgentScope 2.0 只作为后续可选实验，不进入当前主线。
 
 ## 本地运行
 
@@ -176,6 +184,15 @@ mysql -u <username> -p < doc/stage2_schema.sql
 ### 2. 配置基础设施
 
 修改各服务的 `src/main/resources/application.yml`，将 MySQL、Redis、Nacos、RocketMQ、Seata、XXL-Job、邮箱服务地址替换为自己的本地环境。
+
+网关支持通过环境变量覆盖关键配置：
+
+| 环境变量 | 说明 |
+|---|---|
+| `NACOS_SERVER_ADDR` | Nacos 地址 |
+| `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | Redis 地址与密码 |
+| `JWT_SECRET` | JWT 密钥，必须与用户服务一致 |
+| `FRONTEND_ORIGIN` | 允许的前端来源，默认 `http://localhost:3000` |
 
 不要把真实 IP、账号、密码和模型密钥提交到公开仓库。生产化配置应通过环境变量、启动参数或配置中心注入。
 
@@ -206,13 +223,19 @@ mvn clean package -DskipTests
 
 ### 5. 启动后端服务
 
-当前模块未声明 `spring-boot-maven-plugin`，因此启动时使用完整插件坐标。先安装本地依赖：
+网关模块已声明 `spring-boot-maven-plugin`，可直接打包运行。业务服务模块暂未声明该插件，因此启动时使用完整插件坐标。先构建项目：
 
 ```bash
-mvn clean install -DskipTests
+mvn clean package -DskipTests
 ```
 
-再在不同终端依次启动：
+启动网关：
+
+```bash
+java -jar mall-gateway-service/target/mall-gateway-service-0.0.1-SNAPSHOT.jar
+```
+
+再在不同终端启动业务服务：
 
 ```bash
 cd mall-user-service
@@ -234,6 +257,8 @@ cd mall-risk-service
 mvn org.springframework.boot:spring-boot-maven-plugin:3.2.5:run
 ```
 
+生产部署时，`mall-user-service`、`mall-item-service`、`mall-order-service`、`mall-risk-service` 不应对公网暴露，外部请求统一进入网关。
+
 ### 6. 启动前端
 
 ```bash
@@ -242,7 +267,7 @@ npm install
 npm run dev
 ```
 
-访问 `http://localhost:3000`。
+访问 `http://localhost:3000`。Vite 开发服务器默认将 `/api/**` 代理到 `http://localhost:8080`，如需修改，可设置 `VITE_GATEWAY_URL`。
 
 ## 验证
 
@@ -263,6 +288,7 @@ npm run build
 ## 文档索引
 
 - [三阶段演进规划](doc/virtual_asset_market_three_phase_roadmap.md)
+- [Spring Cloud Gateway 接入层设计](doc/spring_cloud_gateway_design.md)
 - [阶段一：担保交易闭环设计](doc/stage1_virtual_asset_trading_design.md)
 - [阶段二：风控与反黑产设计](doc/stage2_risk_control_design.md)
 - [阶段三：Agent 能力设计](doc/stage3_agent_development_design.md)

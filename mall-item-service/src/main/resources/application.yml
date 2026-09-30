@@ -48,6 +48,7 @@ seata:
 dubbo:
   application:
     name: mall-item-service
+    register-mode: interface
   registry:
     address: nacos://100.121.74.115:8848/ # Nacos 注册中心地址
   protocol:

@@ -55,7 +55,7 @@ spring:
     redis:
       host: ${REDIS_HOST:100.121.74.115}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD:tsy347}
       lettuce:
         pool:
           max-active: 200

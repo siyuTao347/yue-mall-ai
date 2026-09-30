@@ -51,6 +51,7 @@ rocketmq:
 dubbo:
   application:
     name: mall-user-service
+    register-mode: interface
   registry:
     address: nacos://100.121.74.115:8848/
   protocol:

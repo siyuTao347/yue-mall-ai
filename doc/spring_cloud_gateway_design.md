@@ -904,7 +904,15 @@ git diff --check
 3. 网关模块单测覆盖 JWT 校验、认证白名单、管理员鉴权、身份 Header 清理、限流 Key、请求匹配和统一错误响应。
 4. 前端构建通过；lint 退出码为 0，但存在项目原有的 React `set-state-in-effect` 警告。
 
-### 14.6 上线前边界
+### 14.6 注册冲突排障
+
+现象：网关偶发返回 `500`，日志中出现 `R:/x.x.x.x:20881` 或 `R:/x.x.x.x:20882`，并抛出 `invalid version format: UNSUPPORTED`。
+
+原因：业务服务的 Spring Cloud HTTP 实例与 Dubbo 应用级实例使用了同一个 Nacos 服务名。`lb://mall-user-service` 等路由会在两类实例之间随机负载均衡，一旦选中 Dubbo 端口，网关就会用 HTTP 协议访问 Dubbo 协议端口。
+
+处理：业务服务统一配置 `dubbo.application.register-mode: interface`，Dubbo 只保留接口级注册，HTTP 服务名下只保留 Spring Cloud 注册的 `8081-8084` 实例。重启业务服务后，需要确认 Nacos 中对应服务不再出现 `20881/20882/20884` 实例；如旧实例仍在，等待心跳过期或在 Nacos 控制台手动下线。
+
+### 14.7 上线前边界
 
 以下事项不是本次代码变更范围，但生产上线前必须完成：
 
