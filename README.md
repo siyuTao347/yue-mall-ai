@@ -2,7 +2,7 @@
 
 > 一个 C2C 虚拟资产交易平台，重点不是“能买买买”，而是把担保交易、资金账本、交付证据、售后仲裁、规则风控和异步补偿这些平台级问题做扎实。
 
-项目当前已落地统一网关、用户、商品、担保订单、Mock 支付、资金账户、交付确认、结算提现、售后仲裁和初步风控能力；Agent 能力已有完整设计，尚未开始实现。
+项目当前已落地统一网关、用户、商品、担保订单、Mock 支付、资金账户、交付确认、结算提现、售后仲裁，以及覆盖风险事件、决策、案件处置和命令补偿的风控运营闭环；同时完成统一枚举、异常响应、traceId 贯通、内部接口防护和工程规范扫描等治理能力。Agent 能力已有完整设计，尚未开始实现。
 
 ## 项目边界
 
@@ -15,7 +15,7 @@
 | 短信验证码 | 邮箱验证码 + Redis 限流 |
 | 资金托管 | 平台内部账户 + 冻结 / 待结算 / 可用余额 |
 | KYC | 资料提交 + 后台审核状态 |
-| 风控模型 | 规则引擎、风险指标、案件闭环 |
+| 风控模型 | 规则引擎、风险指标、案件处置、证据聚合、命令追踪与人工兜底 |
 | Agent | 阶段三设计，默认 Mock 模型，可选 OpenAI 兼容接口 |
 
 外部服务可以是假的，但状态机、幂等、一致性、审计和权限必须按真实平台标准实现。
@@ -47,10 +47,14 @@
 - 交付证据：卡密、交付记录、查看记录、确认记录可追溯。
 - 主动与被动关单：XXL-Job 定时扫描支付超时，支付动作前也会二次校验过期时间。
 - 自动确认与超时退款：避免买家不确认导致订单永久悬挂。
+- 支付回调安全：HMAC-SHA256 签名、时间窗口校验、nonce 防重放和回调来源限制。
+- 跨服务一致性：操作意图落库、事务提交后编排、失败重试、恢复任务和差异对账。
 - 审计日志：支持同步落库与 RocketMQ 异步投递两种模式。
 - 对账任务：订单、支付、资金流水差异落表，供后续人工处理。
-- 风控闭环：事件采集、指标计算、规则命中、风险决策、案件创建、命令下发、死信补偿。
+- 风控闭环：事件采集、指标计算、规则命中、风险决策、案件创建、运营处置、命令下发、失败重发和死信补偿。
+- 运营工作台：支持案件筛选、详情查看、证据展示、认领、处置、关闭、重开和命令状态追踪。
 - 统一接入层：Spring Cloud Gateway 负责路由、JWT 认证、角色粗粒度鉴权、CORS、Redis 令牌桶限流、访问日志和统一错误响应。
+- 工程治理：共享状态枚举、稳定错误码、统一响应体、全链路 traceId、内部接口默认拒绝和规范扫描脚本。
 
 ## 架构总览
 
@@ -107,14 +111,14 @@ flowchart TD
 
 | 模块 | 职责 |
 |---|---|
-| [mall-api](mall-api) | 跨服务 Dubbo 接口、DTO、JWT 工具、用户上下文、风控公共模型 |
-| [mall-gateway-service](mall-gateway-service) | 统一 HTTP 入口、服务路由、JWT 认证、角色粗粒度鉴权、CORS、Redis 限流、访问日志 |
+| [mall-api](mall-api) | 跨服务 Dubbo 接口、DTO、共享枚举、异常与响应契约、JWT 工具、用户与 trace 上下文、风控公共模型 |
+| [mall-gateway-service](mall-gateway-service) | 统一 HTTP 入口、服务路由、JWT 认证、角色粗粒度鉴权、CORS、Redis 限流、访问日志、traceId 透传 |
 | [mall-user-service](mall-user-service) | 注册登录、邮箱验证码、用户账户、商家审核、保证金、资金流水、提现、积分 |
 | [mall-item-service](mall-item-service) | 商品与秒杀、虚拟资产发布、商品审核、卡密库存、资产预留、敏感信息处理 |
-| [mall-order-service](mall-order-service) | 担保订单、Mock 支付、交付、确认、结算、评价、售后、仲裁、审计日志、对账 |
-| [mall-risk-service](mall-risk-service) | 风险事件、指标、规则引擎、风险决策、关系图谱、风控案件、命令下发与死信 |
-| [mall-frontend](mall-frontend) | 首页、秒杀、商品目录、登录注册、担保交易工作台、资金提现、运营审核 |
-| [doc](doc) | 业务架构、数据库设计、状态机设计、三阶段路线与实施方案 |
+| [mall-order-service](mall-order-service) | 担保订单、Mock 支付、支付回调安全、交付、确认、结算、评价、售后、仲裁、审计日志、事务恢复与对账 |
+| [mall-risk-service](mall-risk-service) | 风险事件、指标、规则引擎、风险决策、关系图谱、风控案件、运营处置、命令下发与死信处理 |
+| [mall-frontend](mall-frontend) | 首页、秒杀、商品目录、登录注册、担保交易工作台、资金提现、运营审核、风控案件工作台 |
+| [doc](doc) | 业务架构、数据库脚本、状态机设计、阶段优化方案、三阶段路线与实施方案 |
 
 ## 服务与端口
 
@@ -146,13 +150,15 @@ flowchart TD
 | 仲裁售后 | `POST /api/trade/admin/disputes/{disputeNo}/arbitrate` |
 | 申请提现 | `POST /api/withdraw/apply` |
 | 风控案件列表 | `GET /api/admin/risk/cases` |
+| 风控案件详情 | `GET /api/admin/risk/cases/{caseNo}` |
+| 风控案件处置 | `POST /api/admin/risk/cases/{caseNo}/resolve` |
 
 ## 三阶段路线
 
 | 阶段 | 状态 | 目标 | 主要交付 |
 |---|---|---|---|
 | 阶段一：业务闭环 | 已完成 | 跑通可信担保交易主链路 | 商家、商品、订单、Mock 支付、资金托管、交付、结算、提现、售后仲裁 |
-| 阶段二：风控体系 | 初步完成 | 让交易链路具备平台级风险处理能力 | 风险事件、指标、规则引擎、决策、关系图谱、案件、命令补偿 |
+| 阶段二：风控体系 | 主体完成 | 让交易链路具备平台级风险处理与运营处置能力 | 支付回调安全、一致性恢复、查询性能、风险事件、指标、规则引擎、决策、关系图谱、案件工作台、命令补偿与工程规范 |
 | 阶段三：Agent 能力 | 设计中 | 让 Agent 成为受控业务能力 | 仲裁助手、风控调查助手、智能客服、RAG、Tool Calling、Trace、评估 |
 
 阶段三的原则是：Agent 只读业务数据、只生成建议和草稿；资金、处罚、仲裁结论仍由业务服务和人工流程确认。规划主线采用 Spring AI Alibaba，业务代码面向 Spring AI 标准抽象，实现前需确认其与 Spring Boot 3.2.5 的版本兼容；AgentScope 2.0 只作为后续可选实验，不进入当前主线。
@@ -177,8 +183,12 @@ flowchart TD
 
 ```bash
 mysql -u <username> -p < db.sql
-mysql -u <username> -p < doc/stage1_schema.sql
-mysql -u <username> -p < doc/stage2_schema.sql
+mysql -u <username> -p < doc/sql/stage1_schema.sql
+mysql -u <username> -p < doc/sql/stage1_payment_callback_security_migration.sql
+mysql -u <username> -p < doc/sql/stage1_trade_consistency_migration.sql
+mysql -u <username> -p < doc/sql/stage2_schema.sql
+mysql -u <username> -p < doc/sql/stage2_batch2_query_performance_migration.sql
+mysql -u <username> -p < doc/sql/stage2_batch3_operation_closure_migration.sql
 ```
 
 ### 2. 配置基础设施
@@ -193,6 +203,10 @@ mysql -u <username> -p < doc/stage2_schema.sql
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | Redis 地址与密码 |
 | `JWT_SECRET` | JWT 密钥，必须与用户服务一致 |
 | `FRONTEND_ORIGIN` | 允许的前端来源，默认 `http://localhost:3000` |
+| `PAYMENT_CALLBACK_SECRET` | 支付回调 HMAC 密钥，必须通过环境变量注入 |
+| `PAYMENT_MOCK_ENABLED` | Mock 支付开关，仅建议在本地或测试环境开启 |
+
+支付回调还支持 `PAYMENT_CALLBACK_SECRET_VERSION`、`PAYMENT_CALLBACK_CLOCK_SKEW_SECONDS`、`PAYMENT_CALLBACK_NONCE_TTL_SECONDS` 和 `PAYMENT_CALLBACK_SOURCE_CONTROL_ENABLED` 等配置项，用于密钥轮换、时间窗口、nonce 保留和来源控制。真实密钥不得写入仓库。
 
 不要把真实 IP、账号、密码和模型密钥提交到公开仓库。生产化配置应通过环境变量、启动参数或配置中心注入。
 
@@ -202,10 +216,11 @@ mysql -u <username> -p < doc/stage2_schema.sql
 - `order-paid-topic`
 - `audit-log-topic`
 - `risk-command-topic`
+- `trade-orchestration-task-topic`
 
 ### 3. 配置 XXL-Job
 
-在 XXL-Job Admin 中注册执行器 `mall-order-executor`，并创建以下任务：
+在 XXL-Job Admin 中注册执行器 `mall-order-executor` 和 `mall-risk-executor`，并按需创建以下任务：
 
 | JobHandler | 说明 |
 |---|---|
@@ -214,6 +229,11 @@ mysql -u <username> -p < doc/stage2_schema.sql
 | `tradeAutoConfirmJob` | 自动确认已交付订单 |
 | `tradeSettlementJob` | 结算冷却期结束订单 |
 | `tradeFundReconciliationJob` | 订单与资金流水对账 |
+| `tradeConsistencyReconciliationJob` | 担保交易跨服务一致性对账 |
+| `tradeOrchestrationRecoverJob` | 恢复未完成的跨服务编排任务 |
+| `paymentCallbackNonceCleanupJob` | 清理过期支付回调 nonce |
+| `riskIndicatorRefreshJob` | 刷新物化风险指标 |
+| `riskMaintenanceJob` | 失效过期风控预检查 |
 
 ### 4. 构建后端
 
@@ -285,6 +305,14 @@ npm run lint
 npm run build
 ```
 
+工程规范扫描：
+
+```bash
+bash scripts/ci/engineering-standards-scan.sh
+```
+
+迁移期默认只输出告警；存量问题清理完成后可使用 `--strict` 作为 CI 强制门禁。
+
 ## 文档索引
 
 - [三阶段演进规划](doc/virtual_asset_market_three_phase_roadmap.md)
@@ -295,6 +323,12 @@ npm run build
 - [企业级认证与用户上下文设计](doc/enterprise_auth_and_user_context_design.md)
 - [React 前端工程化设计](doc/react_frontend_architecture_design.md)
 - [秒杀与积分系统设计](doc/seckill_mall_points_system_design.md)
+- [阶段一与阶段二优化总评审](doc/stage1_and_stage2_improve/stage1_stage2_optimization_review.md)
+- [第一批：安全与一致性](doc/stage1_and_stage2_improve/stage1_stage2_batch1_security_consistency_dev_design.md)
+- [第二批：查询与性能](doc/stage1_and_stage2_improve/stage1_stage2_batch2_query_performance_dev_design.md)
+- [第三批：运营闭环](doc/stage1_and_stage2_improve/stage1_stage2_batch3_operation_closure_dev_design.md)
+- [第四批：工程规范](doc/stage1_and_stage2_improve/stage1_stage2_batch4_engineering_standards_dev_design.md)
+- [工程规范检查清单](doc/stage1_and_stage2_improve/engineering_standards_checklist.md)
 
 ## 免责声明
 
