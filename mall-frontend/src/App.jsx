@@ -14,8 +14,10 @@ import { SeckillModal } from './components/modal/SeckillModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { ToastViewport } from './components/ui/UiFeedback';
 import { TradeWorkbench } from './components/trade/TradeWorkbench';
+import { AdminConsole } from './components/admin/AdminConsole';
 
-const MainContent = () => {
+/** 普通用户商城：首页、秒杀、商品目录与担保交易工作台。 */
+const UserStorefront = () => {
   const { overview, setOverview } = useApp();
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -96,16 +98,22 @@ const MainContent = () => {
 
       <PointsDrawer />
       <SeckillModal />
-      <AuthModal />
-      <ToastViewport />
     </div>
   );
+};
+
+/** 按身份切换页面壳层：管理员进入管理后台，不再加载用户商城与秒杀数据。 */
+const MainContent = () => {
+  const { user } = useApp();
+  return user?.role === 'ADMIN' ? <AdminConsole /> : <UserStorefront />;
 };
 
 export default function App() {
   return (
     <AppProvider>
       <MainContent />
+      <AuthModal />
+      <ToastViewport />
     </AppProvider>
   );
 }

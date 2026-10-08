@@ -386,3 +386,14 @@
     min-width: 68px;
   }
 }
+
+.nav-button {
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-hidden {
+  display: none !important;
+}

@@ -3,15 +3,12 @@ import { useApp } from '../../context/AppContext';
 import { tradeApi } from '../../api/tradeApi';
 import { showToast } from '../../utils/feedback';
 import { Pagination } from '../ui/Pagination';
-import { RiskCaseWorkbench } from '../risk/RiskCaseWorkbench';
 import './TradeWorkbench.css';
 
 const TABS = [
   { key: 'orders', label: '担保订单' },
   { key: 'seller', label: '卖家中心' },
-  { key: 'account', label: '资金提现' },
-  { key: 'admin', label: '运营审核', adminOnly: true },
-  { key: 'risk', label: '风控案件', adminOnly: true }
+  { key: 'account', label: '资金提现' }
 ];
 
 const statusText = {
@@ -57,11 +54,6 @@ const pageRecords = result => (result?.records ? result.records : result || []);
 
 export const TradeWorkbench = ({ items = [] }) => {
   const { user, requireAuth } = useApp();
-  const isAdmin = user?.role === 'ADMIN';
-  const visibleTabs = useMemo(
-    () => TABS.filter(tab => !tab.adminOnly || isAdmin),
-    [isAdmin]
-  );
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const [ordersPage, setOrdersPage] = useState(1);
@@ -78,11 +70,6 @@ export const TradeWorkbench = ({ items = [] }) => {
   const [withdrawals, setWithdrawals] = useState([]);
   const [withdrawalsPage, setWithdrawalsPage] = useState(1);
   const [withdrawalsPageInfo, setWithdrawalsPageInfo] = useState(null);
-  const [merchants, setMerchants] = useState([]);
-  const [pendingItems, setPendingItems] = useState([]);
-  const [pendingDisputes, setPendingDisputes] = useState([]);
-  const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
-  const [selectedDispute, setSelectedDispute] = useState(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [newItem, setNewItem] = useState({
@@ -169,33 +156,12 @@ export const TradeWorkbench = ({ items = [] }) => {
     setWithdrawalsPage(withdrawalList?.page || pageToLoad);
   }, [user]);
 
-  const refreshAdmin = useCallback(async () => {
-    if (!user || user.role !== 'ADMIN') {
-      setMerchants([]);
-      setPendingItems([]);
-      setPendingDisputes([]);
-      setPendingWithdrawals([]);
-      return;
-    }
-    const [merchantList, itemList, disputeList, withdrawalList] = await Promise.all([
-      tradeApi.merchant.list().catch(() => []),
-      tradeApi.item.pendingAudit().catch(() => []),
-      tradeApi.dispute.pending().catch(() => []),
-      tradeApi.withdraw.pending().catch(() => [])
-    ]);
-    setMerchants(pageRecords(merchantList));
-    setPendingItems(pageRecords(itemList));
-    setPendingDisputes(pageRecords(disputeList));
-    setPendingWithdrawals(pageRecords(withdrawalList));
-  }, [user]);
-
   const loadTradeData = useCallback(() => {
     if (!user) return;
     refreshOrders().catch(() => setOrders([]));
     refreshSeller().catch(() => {});
     refreshAccount().catch(() => {});
-    refreshAdmin().catch(() => {});
-  }, [user, refreshOrders, refreshSeller, refreshAccount, refreshAdmin]);
+  }, [user, refreshOrders, refreshSeller, refreshAccount]);
 
   const changeOrdersPage = page => {
     setOrdersPage(page);
@@ -281,7 +247,6 @@ export const TradeWorkbench = ({ items = [] }) => {
     await runAction(`dispute-${order.orderNo}`, () => tradeApi.dispute.open(order.orderNo,
       'NOT_AS_DESCRIBED', '买家发起售后，申请平台介入', order.orderAmount), '售后已提交');
     await refreshOrders();
-    await refreshAdmin();
   });
 
   const applyMerchant = () => requireUser(async () => {
@@ -291,7 +256,6 @@ export const TradeWorkbench = ({ items = [] }) => {
     }), '商家申请已提交');
     if (created) {
       setMerchant(created);
-      await refreshAdmin();
     }
   });
 
@@ -323,7 +287,6 @@ export const TradeWorkbench = ({ items = [] }) => {
   const submitItem = item => requireUser(async () => {
     await runAction(`submit-item-${item.id}`, () => tradeApi.item.submit(item.id), '商品已提交审核');
     setMyItems(await tradeApi.item.listMine().catch(() => []));
-    await refreshAdmin();
   });
 
   const importCards = item => requireUser(async () => {
@@ -344,42 +307,6 @@ export const TradeWorkbench = ({ items = [] }) => {
     withdrawTokenRef.current = createClientToken();
     setWithdrawAmount('');
     await refreshAccount();
-    await refreshAdmin();
-  });
-
-  const auditMerchant = (id, action) => requireUser(async () => {
-    await runAction(`merchant-audit-${id}`, () => tradeApi.merchant.audit(id, action), '商家审核完成');
-    await refreshAdmin();
-  });
-
-  const auditItem = (id, action) => requireUser(async () => {
-    await runAction(`item-audit-${id}`, () => tradeApi.item.audit(id, action), '商品审核完成');
-    await refreshAdmin();
-  });
-
-  const auditWithdraw = (withdrawNo, approved) => requireUser(async () => {
-    await runAction(`withdraw-audit-${withdrawNo}`, () => tradeApi.withdraw.audit(
-      withdrawNo, approved), '提现审核完成');
-    await refreshAccount();
-    await refreshAdmin();
-  });
-
-  const viewDispute = dispute => requireUser(async () => {
-    const detail = await runAction(`dispute-view-${dispute.disputeNo}`,
-      () => tradeApi.dispute.evidence(dispute.disputeNo));
-    if (detail) {
-      setSelectedDispute(detail);
-    }
-  });
-
-  const arbitrate = result => requireUser(async () => {
-    if (!selectedDispute?.dispute) return;
-    const disputeNo = selectedDispute.dispute.disputeNo;
-    await runAction(`arbitrate-${disputeNo}`, () => tradeApi.dispute.arbitrate(
-      disputeNo, result, '管理员根据平台证据完成仲裁'), '仲裁完成');
-    setSelectedDispute(null);
-    await refreshOrders();
-    await refreshAdmin();
   });
 
   const renderOrderActions = order => {
@@ -733,104 +660,6 @@ export const TradeWorkbench = ({ items = [] }) => {
     </div>
   );
 
-  const renderAdmin = () => (
-    <div className="trade-grid">
-      <section className="trade-panel">
-        <h3 className="trade-panel-title">商家与商品审核</h3>
-        <p className="trade-panel-desc">管理员准入商家，商品审核通过后进入买家列表</p>
-        <div className="trade-list">
-          {merchants.filter(item => item.status === 'SUBMITTED').map(item => (
-            <div className="trade-row" key={`m-${item.id}`}>
-              <div className="trade-row-main">
-                <span className="trade-row-title">{item.merchantName}</span>
-                <span className="trade-status pending">待审核</span>
-              </div>
-              <div className="trade-actions">
-                <button type="button" className="trade-action primary"
-                  disabled={busy === `merchant-audit-${item.id}`} onClick={() => auditMerchant(item.id, 'APPROVE')}>
-                  通过
-                </button>
-                <button type="button" className="trade-action"
-                  disabled={busy === `merchant-audit-${item.id}`} onClick={() => auditMerchant(item.id, 'REJECT')}>
-                  拒绝
-                </button>
-              </div>
-            </div>
-          ))}
-          {pendingItems.map(item => (
-            <div className="trade-row" key={`i-${item.id}`}>
-              <div className="trade-row-main">
-                <span className="trade-row-title">{item.itemName}</span>
-                <span className="trade-status pending">待审核</span>
-              </div>
-              <div className="trade-actions">
-                <button type="button" className="trade-action primary"
-                  disabled={busy === `item-audit-${item.id}`} onClick={() => auditItem(item.id, 'APPROVE')}>
-                  上架
-                </button>
-                <button type="button" className="trade-action"
-                  disabled={busy === `item-audit-${item.id}`} onClick={() => auditItem(item.id, 'REJECT')}>
-                  驳回
-                </button>
-              </div>
-            </div>
-          ))}
-          {merchants.every(item => item.status !== 'SUBMITTED') && pendingItems.length === 0 ? (
-            <div className="trade-empty">暂无待审核申请</div>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="trade-panel">
-        <h3 className="trade-panel-title">售后与提现处理</h3>
-        <p className="trade-panel-desc">阶段一仲裁支持全额退款或全额放款</p>
-        <div className="trade-list">
-          {pendingDisputes.map(dispute => (
-            <div className="trade-row" key={`d-${dispute.disputeNo}`}>
-              <div className="trade-row-main">
-                <span className="trade-row-title">{dispute.disputeNo}</span>
-                <span className="trade-status pending">仲裁中</span>
-              </div>
-              <div className="trade-row-meta">
-                订单 {dispute.orderNo} · 申请退款 {money(dispute.proposedRefundAmount)}
-              </div>
-              <div className="trade-actions">
-                <button type="button" className="trade-action"
-                  disabled={busy === `dispute-view-${dispute.disputeNo}`}
-                  onClick={() => viewDispute(dispute)}>查看证据</button>
-                <button type="button" className="trade-action danger"
-                  disabled={busy === `arbitrate-${dispute.disputeNo}`}
-                  onClick={() => arbitrate('REFUND_ALL')}>全额退款</button>
-                <button type="button" className="trade-action primary"
-                  disabled={busy === `arbitrate-${dispute.disputeNo}`}
-                  onClick={() => arbitrate('RELEASE_ALL')}>全额放款</button>
-              </div>
-            </div>
-          ))}
-          {pendingWithdrawals.map(item => (
-            <div className="trade-row" key={`w-${item.withdrawNo || item.id}`}>
-              <div className="trade-row-main">
-                <span className="trade-row-title">{item.withdrawNo}</span>
-                <span className="trade-status pending">待审核</span>
-              </div>
-              <div className="trade-actions">
-                <button type="button" className="trade-action primary"
-                  disabled={busy === `withdraw-audit-${item.withdrawNo}`}
-                  onClick={() => auditWithdraw(item.withdrawNo, true)}>通过打款</button>
-                <button type="button" className="trade-action"
-                  disabled={busy === `withdraw-audit-${item.withdrawNo}`}
-                  onClick={() => auditWithdraw(item.withdrawNo, false)}>拒绝</button>
-              </div>
-            </div>
-          ))}
-          {pendingDisputes.length === 0 && pendingWithdrawals.length === 0 ? (
-            <div className="trade-empty">暂无待处理事项</div>
-          ) : null}
-        </div>
-      </section>
-    </div>
-  );
-
   return (
     <section className="trade-workbench layout-container page-section" id="tradeSection">
       <div className="section-header">
@@ -840,7 +669,7 @@ export const TradeWorkbench = ({ items = [] }) => {
         </div>
       </div>
       <div className="trade-tabs" role="tablist">
-        {visibleTabs.map(tab => (
+        {TABS.map(tab => (
           <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key}
             className={`trade-tab ${activeTab === tab.key ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.key)}>{tab.label}</button>
@@ -850,8 +679,6 @@ export const TradeWorkbench = ({ items = [] }) => {
       {activeTab === 'orders' ? renderOrders() : null}
       {activeTab === 'seller' ? renderSeller() : null}
       {activeTab === 'account' ? renderAccount() : null}
-      {activeTab === 'admin' ? renderAdmin() : null}
-      {activeTab === 'risk' && isAdmin ? <RiskCaseWorkbench /> : null}
     </section>
   );
 };

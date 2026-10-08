@@ -15,6 +15,7 @@
         <module>mall-item-service</module>
         <module>mall-order-service</module>
         <module>mall-risk-service</module>
+        <module>mall-agent-service</module>
     </modules>
 
     <packaging>pom</packaging>

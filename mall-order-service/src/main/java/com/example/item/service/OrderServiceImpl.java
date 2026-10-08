@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 @Service
 public class OrderServiceImpl {
-    @DubboReference(timeout = 5000, retries = 0)
+    @DubboReference(timeout = 5000, retries = 0, check = false)
     private ItemDubboService itemDubboService;
 
     @Autowired

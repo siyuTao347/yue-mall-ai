@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.agent.mapper.KnowledgeChunkMapper">
+
+    <!-- 批量写入分片；MySQL 支持 foreach + useGeneratedKeys 回填主键 -->
+    <insert id="insertBatch" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_knowledge_chunk
+        (document_id, doc_no, doc_version, chunk_level, parent_chunk_id, chunk_no, chunk_index,
+         chunk_hash, title_path, chunk_content, char_count, char_start, char_end, keywords_json,
+         embedding_status, split_forced, token_count, status)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.documentId}, #{item.docNo}, #{item.docVersion}, #{item.chunkLevel},
+             #{item.parentChunkId}, #{item.chunkNo}, #{item.chunkIndex}, #{item.chunkHash},
+             #{item.titlePath}, #{item.chunkContent}, #{item.charCount}, #{item.charStart},
+             #{item.charEnd}, #{item.keywordsJson}, #{item.embeddingStatus}, #{item.splitForced},
+             #{item.tokenCount}, #{item.status})
+        </foreach>
+    </insert>
+
+</mapper>

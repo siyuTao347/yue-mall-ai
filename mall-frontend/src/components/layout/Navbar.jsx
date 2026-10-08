@@ -3,8 +3,21 @@ import { useApp } from '../../context/AppContext';
 import { showToast } from '../../utils/feedback';
 import './Navbar.css';
 
-export const Navbar = ({ searchKeyword = '', onSearch = () => {} }) => {
+const ADMIN_NAV_ITEMS = [
+  { key: 'operations', label: '运营审核' },
+  { key: 'risk', label: '风控案件' },
+  { key: 'rag', label: '知识库管理' }
+];
+
+export const Navbar = ({
+  searchKeyword = '',
+  onSearch = () => {},
+  mode = 'store',
+  activeKey = '',
+  onNavigate = () => {}
+}) => {
   const { user, userPoints, openDrawer, openAuthModal, logout } = useApp();
+  const isAdminMode = mode === 'admin';
   const [showDropdown, setShowDropdown] = useState(false);
   const [keywordInput, setKeywordInput] = useState(searchKeyword);
   const menuRef = useRef(null);
@@ -37,17 +50,17 @@ export const Navbar = ({ searchKeyword = '', onSearch = () => {} }) => {
   }, [showDropdown]);
 
   return (
-    <header className="navbar">
+    <header className={`navbar ${isAdminMode ? 'admin-mode' : ''}`}>
       <div className="nav-container">
-        <a className="brand" href="#top" aria-label="悦购商城首页">
+        <a className="brand" href="#top" aria-label={isAdminMode ? '悦购运营管理后台' : '悦购商城首页'}>
           <span className="brand-logo">悦</span>
           <span className="brand-title">
             <span className="brand-name">悦购商城</span>
-            <span className="brand-subtitle">虚拟饰品精选</span>
+            <span className="brand-subtitle">{isAdminMode ? '运营管理后台' : '虚拟饰品精选'}</span>
           </span>
         </a>
 
-        <form className="search-box" onSubmit={submitSearch} role="search">
+        <form className={isAdminMode ? 'search-box admin-hidden' : 'search-box'} onSubmit={submitSearch} role="search" hidden={isAdminMode}>
           <input
             type="search"
             value={keywordInput}
@@ -76,17 +89,29 @@ export const Navbar = ({ searchKeyword = '', onSearch = () => {} }) => {
           </button>
         </form>
 
-        <nav className="nav-links" aria-label="页面导航">
-          <a href="#tradeSection" className="nav-link active">担保交易</a>
-          <a href="#seckillSection" className="nav-link">限时秒杀</a>
-          <a href="#catalogSection" className="nav-link">饰品商城</a>
+        <nav className="nav-links" aria-label={isAdminMode ? '管理后台导航' : '页面导航'}>
+          {isAdminMode ? ADMIN_NAV_ITEMS.map(item => (
+            <button key={item.key} type="button"
+              className={`nav-link nav-button ${activeKey === item.key ? 'active' : ''}`}
+              onClick={() => onNavigate(item.key)}>
+              {item.label}
+            </button>
+          )) : (
+            <>
+              <a href="#tradeSection" className="nav-link active">担保交易</a>
+              <a href="#seckillSection" className="nav-link">限时秒杀</a>
+              <a href="#catalogSection" className="nav-link">饰品商城</a>
+            </>
+          )}
         </nav>
 
         <div className="nav-actions">
-          <button type="button" className="points-entry" onClick={openDrawer}>
-            <span className="points-label">我的积分</span>
-            <span className="points-value">{userPoints.toLocaleString()}</span>
-          </button>
+          {!isAdminMode ? (
+            <button type="button" className="points-entry" onClick={openDrawer}>
+              <span className="points-label">我的积分</span>
+              <span className="points-value">{userPoints.toLocaleString()}</span>
+            </button>
+          ) : null}
 
           {user ? (
             <div className="user-menu" ref={menuRef}>
@@ -109,18 +134,20 @@ export const Navbar = ({ searchKeyword = '', onSearch = () => {} }) => {
                   <div className="dropdown-profile">
                     <div className="dropdown-name">{user.nickname || user.username}</div>
                     <div className="dropdown-mail">{user.email || user.username}</div>
-                    <div className="dropdown-id">会员号：{user.id}</div>
+                    <div className="dropdown-id">{isAdminMode ? `管理员账号：${user.id}` : `会员号：${user.id}`}</div>
                   </div>
-                  <button
-                    type="button"
-                    className="dropdown-action"
-                    onClick={() => {
-                      setShowDropdown(false);
-                      openDrawer();
-                    }}
-                  >
-                    积分明细
-                  </button>
+                  {!isAdminMode ? (
+                    <button
+                      type="button"
+                      className="dropdown-action"
+                      onClick={() => {
+                        setShowDropdown(false);
+                        openDrawer();
+                      }}
+                    >
+                      积分明细
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="dropdown-action danger"

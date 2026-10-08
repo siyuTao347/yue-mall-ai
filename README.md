@@ -117,7 +117,7 @@ flowchart TD
 | [mall-item-service](mall-item-service) | 商品与秒杀、虚拟资产发布、商品审核、卡密库存、资产预留、敏感信息处理 |
 | [mall-order-service](mall-order-service) | 担保订单、Mock 支付、支付回调安全、交付、确认、结算、评价、售后、仲裁、审计日志、事务恢复与对账 |
 | [mall-risk-service](mall-risk-service) | 风险事件、指标、规则引擎、风险决策、关系图谱、风控案件、运营处置、命令下发与死信处理 |
-| [mall-frontend](mall-frontend) | 首页、秒杀、商品目录、登录注册、担保交易工作台、资金提现、运营审核、风控案件工作台 |
+| [mall-frontend](mall-frontend) | 用户商城（首页、秒杀、商品目录、担保交易、资金提现）与管理员专属控制台（运营审核、风控案件、RAG 知识库） |
 | [doc](doc) | 业务架构、数据库脚本、状态机设计、阶段优化方案、三阶段路线与实施方案 |
 
 ## 服务与端口

@@ -139,8 +139,12 @@ export const AppProvider = ({ children }) => {
         } else {
           handleLogout();
         }
-      }).catch(() => {
-        refreshPoints();
+      }).catch(error => {
+        if (error?.status === 401) {
+          handleLogout();
+        } else {
+          refreshPoints();
+        }
       });
     } else {
       refreshPoints(1);

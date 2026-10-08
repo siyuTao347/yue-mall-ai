@@ -1,0 +1,86 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: mall-agent-service
+  # 主数据源：MySQL db_agent（RAG 元数据权威源，MyBatis-Plus 使用）
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://100.121.74.115:3306/db_agent?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 3000
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+rag:
+  # 向量数据源：PostgreSQL + pgvector（派生数据，不参与 MySQL 事务）
+  pgvector:
+    datasource:
+      driver-class-name: org.postgresql.Driver
+      jdbc-url: jdbc:postgresql://100.121.74.115:5432/postgres?ApplicationName=mall-agent-rag&connectTimeout=3&socketTimeout=10
+      username: root
+      password: ${PGVECTOR_PASSWORD:root}
+      maximum-pool-size: 8
+      minimum-idle: 2
+      connection-timeout: 10000
+      validation-timeout: 10000
+      pool-name: rag-vector-pool
+    embedding-dim: 1536
+    index:
+      hnsw-m: 16
+      hnsw-ef-construction: 64
+      search-ef: 100
+  embedding:
+    provider: ${RAG_EMBEDDING_PROVIDER:OPENAI_COMPATIBLE}     # MOCK | OPENAI_COMPATIBLE
+    model: ${RAG_EMBEDDING_MODEL:qwen3.7-text-embedding}
+    dim: ${RAG_EMBEDDING_DIM:1536}
+    batch-size: 32
+    timeout-ms: 8000
+    max-text-chars: 8000
+    base-url: ${RAG_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
+    api-key: ${RAG_EMBEDDING_API_KEY:}
+  chunk:
+    splitter-version: v1
+    keyword-limit: 32
+    parent:
+      target-chars: 1000
+      max-chars: 1600
+      min-chars: 400
+      embed-enabled: false
+    child:
+      target-chars: 320
+      max-chars: 450
+      min-chars: 80
+      overlap-chars: 60
+      max-per-parent: 8
+  retrieval:
+    default-mode: VECTOR
+    fallback-enabled: true
+    child-top-k: 20
+    parent-top-n: 5
+    rrf-k: 60
+    max-context-chars: 6000
+  admin:
+    sensitive-action: REJECT
+
+pagination:
+  default-page-size: 20
+  max-page-size: 100
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus

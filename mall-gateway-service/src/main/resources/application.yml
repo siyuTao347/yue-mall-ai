@@ -16,7 +16,7 @@ spring:
           enabled: false
       httpclient:
         connect-timeout: 2000
-        response-timeout: 5s
+        response-timeout: 20s
       routes:
         - id: mall-user-route
           uri: lb://mall-user-service
@@ -34,6 +34,14 @@ spring:
           uri: lb://mall-risk-service
           predicates:
             - Path=/api/admin/risk/**
+        - id: mall-agent-route
+          uri: lb://mall-agent-service
+          predicates:
+            - Path=/api/agent/**,/api/admin/agent/**
+          # 管理端知识库存在远程序列化/向量写入，按路由放宽响应超时（默认 20s 会 504）
+          metadata:
+            connect-timeout: 3000
+            response-timeout: 30000
       globalcors:
         cors-configurations:
           '[/**]':
@@ -49,6 +57,7 @@ spring:
               - Authorization
               - Content-Type
               - X-Requested-With
+              - X-Request-Id
             allowCredentials: true
             maxAge: 3600
   data:
@@ -87,6 +96,7 @@ mall:
         - "ANY:/api/trade/admin/**"
         - "ANY:/api/audit/**"
         - "ANY:/api/admin/risk/**"
+        - "ANY:/api/admin/agent/**"
         - "POST:/api/seckill/preheat"
         - "POST:/api/user/point/mockReward"
     network:
@@ -158,6 +168,11 @@ mall:
           burst-capacity: 120
         - id: admin-risk
           path-pattern: /api/admin/risk/**
+          key-type: USER_OR_IP
+          replenish-rate: 2
+          burst-capacity: 120
+        - id: admin-agent
+          path-pattern: /api/admin/agent/**
           key-type: USER_OR_IP
           replenish-rate: 2
           burst-capacity: 120

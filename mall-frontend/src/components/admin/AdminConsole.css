@@ -1,0 +1,248 @@
+.admin-shell {
+  min-height: 100vh;
+  background: var(--bg-page);
+}
+
+.admin-console {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-console-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-console-title {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.admin-console-desc {
+  margin: 6px 0 0;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.admin-role-badge {
+  padding: 4px 10px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-family: var(--font-number);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-tab {
+  min-height: 36px;
+  padding: 0 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-white);
+  color: var(--text-sub);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.admin-tab:hover {
+  color: var(--text-main);
+  border-color: var(--border-strong);
+}
+
+.admin-tab.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.admin-denied {
+  margin: 40px auto;
+  padding: 32px;
+  text-align: center;
+  color: var(--text-sub);
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.admin-operations {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-panel-count {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.admin-button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-white);
+  color: var(--text-main);
+  font-size: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.admin-button:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.admin-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-inline-error {
+  padding: 10px 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 13px;
+}
+
+.admin-loading {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--bg-white);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+.admin-evidence-panel {
+  margin-top: 4px;
+}
+
+.admin-evidence-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.admin-evidence {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+}
+
+.admin-evidence header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.admin-evidence p {
+  margin: 8px 0 0;
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 管理后台顶部导航：与用户商城视觉隔离，不提供搜索、积分与购物入口。 */
+.navbar.admin-mode {
+  background: #182131;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.navbar.admin-mode .nav-container {
+  grid-template-columns: auto 1fr auto;
+}
+
+.navbar.admin-mode .brand-name,
+.navbar.admin-mode .nav-link {
+  color: var(--text-inverse);
+}
+
+.navbar.admin-mode .brand-subtitle {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.navbar.admin-mode .nav-links {
+  margin-left: 0;
+}
+
+.navbar.admin-mode .nav-link {
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.navbar.admin-mode .nav-link:hover,
+.navbar.admin-mode .nav-link.active {
+  color: var(--text-inverse);
+  border-bottom-color: transparent;
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-sm);
+}
+
+.navbar.admin-mode .user-button {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--text-inverse);
+}
+
+.navbar.admin-mode .user-name,
+.navbar.admin-mode .user-caret {
+  color: var(--text-inverse);
+}
+
+.navbar.admin-mode .user-dropdown {
+  background: var(--bg-white);
+}
+
+.navbar.admin-mode .dropdown-name {
+  color: var(--text-main);
+}
+
+@media (max-width: 900px) {
+  .navbar.admin-mode .nav-container {
+    grid-template-columns: auto auto;
+    grid-template-areas:
+      "brand actions"
+      "links links";
+  }
+
+  .navbar.admin-mode .nav-links {
+    grid-area: links;
+  }
+}

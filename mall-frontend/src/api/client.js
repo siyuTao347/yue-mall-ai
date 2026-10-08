@@ -4,7 +4,8 @@ export const API_BASE = {
   ITEM: gatewayBaseUrl,
   ORDER: gatewayBaseUrl,
   USER: gatewayBaseUrl,
-  RISK: gatewayBaseUrl
+  RISK: gatewayBaseUrl,
+  AGENT: gatewayBaseUrl
 };
 
 const DEFAULT_TIMEOUT = 10000;
