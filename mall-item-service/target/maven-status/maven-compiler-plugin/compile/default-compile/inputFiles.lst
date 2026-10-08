@@ -6,6 +6,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/provider/SeckillServiceImpl.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/listener/ItemRiskCommandConsumer.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/ItemMapper.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/dto/PendingItemListQuery.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/SeckillSessionMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/controller/AssetListingController.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/AssetReservation.java
@@ -18,6 +19,8 @@
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/TccActionLogMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/SeckillItem.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/ItemAudit.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/dto/ItemSummaryDTO.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/config/SlowSqlInterceptor.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/vo/HomeOverviewVO.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/vo/SeckillItemVO.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/service/AssetService.java
@@ -30,6 +33,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/vo/SeckillSessionVO.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/SeckillItemMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/config/UserContextInterceptor.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/dto/ItemListQuery.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/controller/HomeController.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/service/ProductCatalogService.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/service/CryptoService.java

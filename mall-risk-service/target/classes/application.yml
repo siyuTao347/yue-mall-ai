@@ -26,11 +26,16 @@ rocketmq:
 risk:
   identity-salt: change-me-in-production
   precheck-expire-minutes: 10
+  indicator:
+    materialized-enabled: ${RISK_INDICATOR_MATERIALIZED_ENABLED:false}
+    query-budget: ${RISK_INDICATOR_QUERY_BUDGET:3}
+    refresh-batch-size: ${RISK_INDICATOR_REFRESH_BATCH_SIZE:100}
 
 dubbo:
   application:
     name: mall-risk-service
     register-mode: interface
+    qos-port: 22224
   registry:
     address: nacos://100.121.74.115:8848/
   protocol:
@@ -48,3 +53,22 @@ xxl:
       logpath: ${XXL_JOB_LOG_PATH:./logs/xxl-job/jobhandler}
       logretentiondays: ${XXL_JOB_LOG_RETENTION_DAYS:30}
     accessToken: ${XXL_JOB_ACCESS_TOKEN:default_token}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        database.sql.duration.seconds: true
+        risk.evaluate.duration.seconds: true
+        risk.indicator.refresh.duration.seconds: true
+
+pagination:
+  default-page-size: 20
+  max-page-size: 100
+
+performance:
+  slow-sql-threshold-ms: ${SLOW_SQL_THRESHOLD_MS:500}

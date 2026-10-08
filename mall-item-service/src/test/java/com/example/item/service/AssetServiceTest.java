@@ -41,17 +41,15 @@ class AssetServiceTest {
     void reserveMovesItemStockToFrozenWhenCardsAreAvailable() {
         Item item = approvedItem();
         when(itemMapper.selectById(1L)).thenReturn(item);
-        when(cardSecretMapper.selectList(any())).thenReturn(List.of(card(10L), card(11L)));
+        when(cardSecretMapper.lockAvailableCards(1L, 2)).thenReturn(List.of(card(10L), card(11L)));
         when(cardSecretMapper.reserveStock(1L, 2)).thenReturn(1);
-        when(cardSecretMapper.lockById(eq(10L), eq("TR1"), any(), any())).thenReturn(1);
-        when(cardSecretMapper.lockById(eq(11L), eq("TR1"), any(), any())).thenReturn(1);
+        when(cardSecretMapper.lockByIds(any(), eq("TR1"), any(), any())).thenReturn(2);
 
         AssetReservationResult result = service.reserve(1L, 2, "TR1", 15);
 
         Assertions.assertTrue(result.isSuccess());
         verify(cardSecretMapper).reserveStock(1L, 2);
-        verify(cardSecretMapper).lockById(eq(10L), eq("TR1"), any(), any());
-        verify(cardSecretMapper).lockById(eq(11L), eq("TR1"), any(), any());
+        verify(cardSecretMapper).lockByIds(eq(List.of(10L, 11L)), eq("TR1"), any(), any());
         verify(reservationMapper).insert(any(AssetReservation.class));
     }
 
@@ -66,7 +64,7 @@ class AssetServiceTest {
 
         Assertions.assertTrue(result.isSuccess());
         verify(itemMapper).reserveStock(1L, 2);
-        verify(cardSecretMapper, never()).selectList(any());
+        verify(cardSecretMapper, never()).lockAvailableCards(any(), any());
         verify(reservationMapper).insert(any(AssetReservation.class));
     }
 
@@ -80,7 +78,7 @@ class AssetServiceTest {
 
         Assertions.assertFalse(result.isSuccess());
         verify(itemMapper, never()).reserveStock(any(), any());
-        verify(cardSecretMapper, never()).selectList(any());
+        verify(cardSecretMapper, never()).lockAvailableCards(any(), any());
         verify(reservationMapper, never()).insert(any(AssetReservation.class));
     }
 
@@ -102,13 +100,13 @@ class AssetServiceTest {
     void releaseRestoresItemStockWhenReservationExpires() {
         AssetReservation reservation = reservation("RELEASE");
         when(reservationMapper.selectOne(any())).thenReturn(reservation);
-        when(cardSecretMapper.releaseByReservation(any(), any())).thenReturn(2);
+        when(cardSecretMapper.releaseByOrderAndReservation(eq("TR1"), any(), any())).thenReturn(2);
         when(cardSecretMapper.releaseStock(1L, 2)).thenReturn(1);
 
         boolean released = service.release("TR1");
 
         Assertions.assertTrue(released);
-        verify(cardSecretMapper).releaseByReservation(any(), any());
+        verify(cardSecretMapper).releaseByOrderAndReservation(eq("TR1"), any(), any());
         verify(cardSecretMapper).releaseStock(1L, 2);
     }
 

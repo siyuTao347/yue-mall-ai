@@ -21,6 +21,7 @@ api/risk/SubjectRiskDTO.class
 api/trade/ItemSnapshotDTO$ItemSnapshotDTOBuilder.class
 api/risk/RiskCommandResultDTO$RiskCommandResultDTOBuilder.class
 api/trade/FundOperationResult.class
+api/common/PageQuery.class
 api/risk/RiskRuleHitDTO.class
 api/ItemDubboService.class
 api/trade/AssetReservationResult$AssetReservationResultBuilder.class
@@ -33,9 +34,11 @@ api/risk/RiskDubboService.class
 api/trade/ItemSnapshotDTO.class
 api/risk/RiskCommandResultDTO.class
 api/risk/RiskCommandDTO.class
+api/common/TimeRangeQuery.class
 api/trade/FundDubboService.class
 api/risk/RelationGraphDTO.class
 api/risk/SensitiveWordHitDTO.class
 api/risk/RelationGraphDTO$RelationGraphDTOBuilder.class
 api/risk/RiskCommandDTO$RiskCommandDTOBuilder.class
+api/common/PageResult.class
 api/risk/SensitiveWordHitDTO$SensitiveWordHitDTOBuilder.class

@@ -1,9 +1,16 @@
 package com.example.risk.controller;
 
+import api.common.PageQuery;
+import api.common.PageResult;
+import api.common.TimeRangeQuery;
 import api.util.JwtUtil;
+import com.example.risk.dto.RiskCaseListQuery;
 import com.example.risk.entity.RiskCase;
 import com.example.risk.service.RiskCommandService;
 import com.fasterxml.jackson.databind.JsonNode;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,27 +21,60 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/risk")
 public class RiskCaseAdminController {
     private final RiskCommandService riskCommandService;
+    private final MeterRegistry meterRegistry;
 
-    public RiskCaseAdminController(RiskCommandService riskCommandService) {
+    public RiskCaseAdminController(RiskCommandService riskCommandService, MeterRegistry meterRegistry) {
         this.riskCommandService = riskCommandService;
+        this.meterRegistry = meterRegistry;
     }
 
     @GetMapping("/cases")
     public Map<String, Object> listCases(@RequestHeader(value = "Authorization", required = false) String token,
                                          @RequestParam(required = false) String status,
-                                         @RequestParam(defaultValue = "1") int page,
-                                         @RequestParam(defaultValue = "20") int size) {
+                                         @RequestParam(required = false) String scene,
+                                         @RequestParam(required = false) String riskLevel,
+                                         @RequestParam(required = false) String commandStatus,
+                                         @RequestParam(required = false) String subjectType,
+                                         @RequestParam(required = false) Long subjectId,
+                                         @RequestParam(required = false) String bizNo,
+                                         @RequestParam(required = false) Integer page,
+                                         @RequestParam(required = false) Integer pageSize,
+                                         @RequestParam(required = false)
+                                         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromTime,
+                                         @RequestParam(required = false)
+                                         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toTime) {
         Operator operator = requireAdmin(token);
         if (operator == null) {
             return response(403, "无管理员权限", null);
         }
-        return response(200, "success", riskCommandService.listCases(status, page, size));
+        try {
+            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
+            timeRange.validate(92);
+            requireOption("status", status, STATUSES);
+            requireOption("scene", scene, SCENES);
+            requireOption("riskLevel", riskLevel, RISK_LEVELS);
+            requireOption("commandStatus", commandStatus, COMMAND_STATUSES);
+            requireOption("subjectType", subjectType, SUBJECT_TYPES);
+            if (bizNo != null && bizNo.length() > 64) {
+                throw new IllegalArgumentException("bizNo 最长 64 个字符");
+            }
+            RiskCaseListQuery query = new RiskCaseListQuery(status, scene, riskLevel, commandStatus,
+                    subjectType, subjectId, bizNo, timeRange);
+            PageResult<?> result = Timer.builder("risk_case_list_duration_seconds")
+                    .register(meterRegistry)
+                    .record(() -> riskCommandService.listCases(query, pagination.page(), pagination.pageSize()));
+            return response(200, "success", result);
+        } catch (IllegalArgumentException e) {
+            return response(400, e.getMessage(), null);
+        }
     }
 
     @GetMapping("/cases/{caseNo}")
@@ -164,6 +204,24 @@ public class RiskCaseAdminController {
         result.put("data", data);
         return result;
     }
+
+    private void requireOption(String name, String value, java.util.Set<String> allowed) {
+        if (value != null && !allowed.contains(value)) {
+            throw new IllegalArgumentException(name + " 不合法");
+        }
+    }
+
+    private static final java.util.Set<String> STATUSES =
+            java.util.Set.of("OPEN", "PROCESSING", "RESOLVED", "CLOSED");
+    private static final java.util.Set<String> SCENES = java.util.Set.of(
+            "ORDER", "PAYMENT", "DELIVERY", "CONFIRM", "DISPUTE", "LISTING", "REGISTER", "LOGIN",
+            "WITHDRAW", "MERCHANT");
+    private static final java.util.Set<String> RISK_LEVELS =
+            java.util.Set.of("LOW", "MEDIUM", "HIGH", "CRITICAL");
+    private static final java.util.Set<String> COMMAND_STATUSES = java.util.Set.of(
+            "NONE", "PENDING_SEND", "SENT", "SUCCESS", "FAILED", "COMMAND_FAILED");
+    private static final java.util.Set<String> SUBJECT_TYPES =
+            java.util.Set.of("USER", "MERCHANT", "ITEM", "WITHDRAW");
 
     private record Operator(Long id, String name) {
     }

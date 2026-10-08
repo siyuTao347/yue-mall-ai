@@ -69,20 +69,16 @@ public class AssetService {
         LocalDateTime now = LocalDateTime.now();
         List<CardSecret> cards = List.of();
         if ("AUTO_CARD".equals(item.getDeliveryMode())) {
-            cards = cardSecretMapper.selectList(new LambdaQueryWrapper<CardSecret>()
-                    .eq(CardSecret::getItemId, itemId)
-                    .eq(CardSecret::getStatus, "AVAILABLE")
-                    .last("LIMIT " + quantity + " FOR UPDATE"));
+            cards = cardSecretMapper.lockAvailableCards(itemId, quantity);
             if (cards.size() < quantity) {
                 return AssetReservationResult.fail("卡密库存不足");
             }
             if (cardSecretMapper.reserveStock(itemId, quantity) <= 0) {
                 return AssetReservationResult.fail("商品库存不足");
             }
-            for (CardSecret card : cards) {
-                if (cardSecretMapper.lockById(card.getId(), orderNo, reservationNo, now) <= 0) {
-                    throw new IllegalStateException("卡密被并发占用");
-                }
+            if (cardSecretMapper.lockByIds(cards.stream().map(CardSecret::getId).toList(),
+                    orderNo, reservationNo, now) != quantity) {
+                throw new IllegalStateException("卡密被并发占用");
             }
         } else if ("MANUAL_DELIVERY".equals(item.getDeliveryMode())) {
             if (itemMapper.reserveStock(itemId, quantity) <= 0) {
@@ -133,7 +129,8 @@ public class AssetService {
         }
         boolean cardReservation = hasCardSecrets(reservation);
         if (cardReservation) {
-            cardSecretMapper.releaseByReservation(reservation.getReservationNo(), LocalDateTime.now());
+            cardSecretMapper.releaseByOrderAndReservation(orderNo, reservation.getReservationNo(),
+                    LocalDateTime.now());
         }
         int released = cardReservation
                 ? cardSecretMapper.releaseStock(reservation.getItemId(), reservation.getQuantity())

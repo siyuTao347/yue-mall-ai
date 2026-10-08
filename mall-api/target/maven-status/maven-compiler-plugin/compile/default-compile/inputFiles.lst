@@ -1,6 +1,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/trade/MerchantDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/SensitiveWordScanner.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/trade/AssetReservationResult.java
+/Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/common/PageResult.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/RiskSupport.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/RelationGraphDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/SensitiveWordDTO.java
@@ -13,6 +14,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/ItemDubboService.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/util/JwtUtil.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/RiskCommandDTO.java
+/Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/common/TimeRangeQuery.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/SensitiveWordHitDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/trade/FundOperationResult.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/audit/DeliveryMode.java
@@ -24,4 +26,5 @@
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/trade/MerchantDubboService.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/audit/BusinessType.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/RiskEvaluateRequest.java
+/Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/common/PageQuery.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/RiskCommandResultDTO.java

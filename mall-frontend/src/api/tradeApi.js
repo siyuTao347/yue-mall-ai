@@ -13,6 +13,19 @@ const post = async (url, body = {}) => unwrap(await request(url, {
   body: JSON.stringify(body)
 }));
 
+const query = (params = {}) => {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      search.append(key, value);
+    }
+  });
+  const text = search.toString();
+  return text ? `?${text}` : '';
+};
+
+const getPaged = async (url, params = {}) => get(`${url}${query(params)}`);
+
 export const tradeApi = {
   merchant: {
     me: () => get(`${API_BASE.USER}/api/merchant/me`),
@@ -22,7 +35,7 @@ export const tradeApi = {
       depositNo,
       amount
     }),
-    list: (status = '') => get(`${API_BASE.USER}/api/merchant/admin/list?status=${encodeURIComponent(status)}`),
+    list: (params = {}) => getPaged(`${API_BASE.USER}/api/merchant/admin/list`, params),
     audit: (merchantId, action, reason = '') => post(
       `${API_BASE.USER}/api/merchant/admin/${merchantId}/audit`,
       { action, reason }
@@ -30,11 +43,11 @@ export const tradeApi = {
   },
 
   item: {
-    listMine: () => get(`${API_BASE.ITEM}/api/asset/item/list`),
+    listMine: (params = {}) => getPaged(`${API_BASE.ITEM}/api/asset/item/list`, params),
     create: (payload) => post(`${API_BASE.ITEM}/api/asset/item`, payload),
     submit: (itemId) => post(`${API_BASE.ITEM}/api/asset/item/${itemId}/submit`, {}),
     importCards: (itemId, secrets) => post(`${API_BASE.ITEM}/api/asset/item/${itemId}/cards`, { secrets }),
-    pendingAudit: () => get(`${API_BASE.ITEM}/api/asset/admin/item/pending`),
+    pendingAudit: (params = {}) => getPaged(`${API_BASE.ITEM}/api/asset/admin/item/pending`, params),
     audit: (itemId, action, reason = '') => post(
       `${API_BASE.ITEM}/api/asset/admin/item/${itemId}/audit`,
       { action, reason }
@@ -42,7 +55,7 @@ export const tradeApi = {
   },
 
   order: {
-    list: () => get(`${API_BASE.ORDER}/api/trade/orders`),
+    list: (params = {}) => getPaged(`${API_BASE.ORDER}/api/trade/orders`, params),
     create: (itemId, quantity = 1) => post(`${API_BASE.ORDER}/api/trade/orders`, { itemId, quantity }),
     cancel: (orderNo) => post(`${API_BASE.ORDER}/api/trade/orders/${orderNo}/cancel`, {}),
     deliver: (orderNo, content) => post(`${API_BASE.ORDER}/api/trade/orders/${orderNo}/deliver`, { content }),
@@ -66,7 +79,7 @@ export const tradeApi = {
 
   account: {
     me: () => get(`${API_BASE.USER}/api/account/me`),
-    flows: () => get(`${API_BASE.USER}/api/account/flows`)
+    flows: (params = {}) => getPaged(`${API_BASE.USER}/api/account/flows`, params)
   },
 
   withdraw: {
@@ -75,8 +88,8 @@ export const tradeApi = {
       mockAccount,
       clientToken
     }),
-    list: () => get(`${API_BASE.USER}/api/withdraw/list`),
-    pending: () => get(`${API_BASE.USER}/api/withdraw/admin/pending`),
+    list: (params = {}) => getPaged(`${API_BASE.USER}/api/withdraw/list`, params),
+    pending: (params = {}) => getPaged(`${API_BASE.USER}/api/withdraw/admin/pending`, params),
     audit: (withdrawNo, approved, reason = '') => post(`${API_BASE.USER}/api/withdraw/admin/audit`, {
       withdrawNo,
       approved,
@@ -91,7 +104,7 @@ export const tradeApi = {
       reason,
       refundAmount
     }),
-    pending: () => get(`${API_BASE.ORDER}/api/trade/admin/disputes/pending`),
+    pending: (params = {}) => getPaged(`${API_BASE.ORDER}/api/trade/admin/disputes/pending`, params),
     evidence: (disputeNo) => get(`${API_BASE.ORDER}/api/trade/admin/disputes/${disputeNo}/evidence`),
     arbitrate: (disputeNo, result, reason) => post(
       `${API_BASE.ORDER}/api/trade/admin/disputes/${disputeNo}/arbitrate`,

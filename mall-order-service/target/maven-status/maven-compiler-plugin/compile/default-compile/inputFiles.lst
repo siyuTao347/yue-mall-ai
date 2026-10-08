@@ -5,9 +5,11 @@
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/mapper/TradeOrderMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/PaymentCallbackService.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/dto/PaymentOrderResponse.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/dto/TradeOrderSummaryDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/web/PaymentCallbackControllerAdvice.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/entity/OrderSettlement.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/mapper/PaymentCallbackNonceMapper.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/dto/OrderListQuery.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/TradeOrchestrationService.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/listener/OrderRiskCommandConsumer.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/component/ReconciliationJobHandler.java
@@ -23,7 +25,9 @@
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/mapper/OrderSettlementMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/mapper/PaymentOrderMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/TradeOrchestrationCommandService.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/config/SlowSqlInterceptor.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/mapper/DeliveryRecordMapper.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/dto/DisputeSummaryDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/OrderRiskCommandHandler.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/PaymentCallbackVerifier.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/OrderServiceImpl.java
@@ -63,6 +67,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/entity/TradeOrchestrationStep.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/TradeReconciliationService.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/audit/AuditLogDispatcher.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/dto/DisputeListQuery.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/config/UserContextInterceptor.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/mapper/DeliveryEvidenceMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/audit/AuditLogDeliveryStrategy.java

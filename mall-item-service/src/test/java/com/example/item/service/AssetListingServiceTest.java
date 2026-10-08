@@ -12,12 +12,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.dao.DuplicateKeyException;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.never;
@@ -44,30 +44,50 @@ class AssetListingServiceTest {
     }
 
     @Test
-    void importCardsDeduplicatesInputBeforeIncreasingStock() {
+    void importCardsDeduplicatesInputAndInsertsOneBatch() {
         when(itemMapper.selectById(1L)).thenReturn(draftItem());
+        when(cardSecretMapper.selectExistingHashes(eq(1L), any())).thenReturn(List.of());
+        when(cardSecretMapper.batchInsert(any())).thenReturn(2);
         when(itemMapper.increaseDraftStock(1L, 2)).thenReturn(1);
 
         int count = service.importCards(1L, 10L, List.of(" ABC-001 ", "ABC-001", "DEF-002"));
 
         Assertions.assertEquals(2, count);
-        ArgumentCaptor<CardSecret> captor = ArgumentCaptor.forClass(CardSecret.class);
-        verify(cardSecretMapper, times(2)).insert(captor.capture());
-        Assertions.assertEquals("ABC-001", cryptoService.decrypt(new String(captor.getAllValues().get(0).getSecretCipher())));
-        Assertions.assertEquals("DEF-002", cryptoService.decrypt(new String(captor.getAllValues().get(1).getSecretCipher())));
+        ArgumentCaptor<List<CardSecret>> captor = ArgumentCaptor.forClass(List.class);
+        verify(cardSecretMapper).batchInsert(captor.capture());
+        Assertions.assertEquals(2, captor.getValue().size());
+        Assertions.assertEquals("ABC-001", cryptoService.decrypt(new String(captor.getValue().get(0).getSecretCipher())));
+        Assertions.assertEquals("DEF-002", cryptoService.decrypt(new String(captor.getValue().get(1).getSecretCipher())));
+        verify(cardSecretMapper, never()).insert(any(CardSecret.class));
         verify(itemMapper).increaseDraftStock(1L, 2);
     }
 
     @Test
     void importCardsDoesNotIncreaseStockWhenHashConflicts() {
         when(itemMapper.selectById(1L)).thenReturn(draftItem());
-        when(cardSecretMapper.insert(any(CardSecret.class)))
-                .thenReturn(1)
-                .thenThrow(new DuplicateKeyException("duplicate card"));
+        when(cardSecretMapper.selectExistingHashes(eq(1L), any())).thenReturn(List.of("hash"));
 
-        Assertions.assertThrows(DuplicateKeyException.class,
+        Assertions.assertThrows(IllegalArgumentException.class,
                 () -> service.importCards(1L, 10L, List.of("ABC-001", "ABC-002")));
+        verify(cardSecretMapper, never()).batchInsert(any());
         verify(itemMapper, never()).increaseDraftStock(any(), any());
+    }
+
+    @Test
+    void importCardsSplitsLargeInputIntoBatches() {
+        when(itemMapper.selectById(1L)).thenReturn(draftItem());
+        when(cardSecretMapper.selectExistingHashes(eq(1L), any())).thenReturn(List.of());
+        when(cardSecretMapper.batchInsert(any())).thenReturn(200).thenReturn(1);
+        when(itemMapper.increaseDraftStock(eq(1L), eq(201))).thenReturn(1);
+
+        List<String> secrets = new java.util.ArrayList<>();
+        for (int index = 0; index < 201; index++) {
+            secrets.add("CARD-" + index);
+        }
+        int count = service.importCards(1L, 10L, secrets);
+
+        Assertions.assertEquals(201, count);
+        verify(cardSecretMapper, times(2)).batchInsert(any());
     }
 
     @Test

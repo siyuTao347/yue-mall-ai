@@ -1,1 +1,3 @@
+com/example/risk/service/RiskMetricServiceTest.class
 com/example/risk/service/RiskCommandServiceTest.class
+com/example/risk/service/RiskIdentityServiceTest.class

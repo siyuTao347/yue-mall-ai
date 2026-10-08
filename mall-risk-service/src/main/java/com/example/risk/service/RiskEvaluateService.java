@@ -40,13 +40,15 @@ public class RiskEvaluateService {
     private final RiskActionPolicy actionPolicy;
     private final RiskIdentityService identityService;
     private final RiskCaseService caseService;
+    private final RiskIndicatorService indicatorService;
     private final ObjectMapper objectMapper;
 
     public RiskEvaluateService(RiskEventMapper eventMapper, RiskDecisionMapper decisionMapper,
                                RiskSubjectMapper subjectMapper, RiskRuleCache ruleCache,
                                RiskExpressionService expressionService, RiskMetricService metricService,
                                RiskActionPolicy actionPolicy, RiskIdentityService identityService,
-                               RiskCaseService caseService, ObjectMapper objectMapper) {
+                               RiskCaseService caseService, RiskIndicatorService indicatorService,
+                               ObjectMapper objectMapper) {
         this.eventMapper = eventMapper;
         this.decisionMapper = decisionMapper;
         this.subjectMapper = subjectMapper;
@@ -56,6 +58,7 @@ public class RiskEvaluateService {
         this.actionPolicy = actionPolicy;
         this.identityService = identityService;
         this.caseService = caseService;
+        this.indicatorService = indicatorService;
         this.objectMapper = objectMapper;
     }
 
@@ -81,6 +84,7 @@ public class RiskEvaluateService {
         RiskEvent event = findEvent(eventNo);
         if (event != null) {
             identityService.applyConfirmedEvent(event);
+            indicatorService.enqueueEvent(event);
         }
     }
 
@@ -115,6 +119,7 @@ public class RiskEvaluateService {
         }
         if (confirmed) {
             identityService.applyConfirmedEvent(event);
+            indicatorService.enqueueEvent(event);
         }
         return decide(event);
     }

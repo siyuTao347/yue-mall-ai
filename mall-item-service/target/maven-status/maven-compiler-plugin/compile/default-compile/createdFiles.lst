@@ -8,13 +8,16 @@ com/example/item/listener/ItemRiskCommandConsumer.class
 com/example/item/mapper/CardSecretMapper.class
 com/example/item/provider/AssetDubboServiceImpl.class
 com/example/item/listener/SeckillTransactionListener.class
+com/example/item/dto/ItemListQuery.class
 com/example/item/vo/HomeOverviewVO.class
 com/example/item/vo/HomeOverviewVO$HomeOverviewVOBuilder.class
+com/example/item/config/SlowSqlInterceptor.class
 com/example/item/service/ItemRiskCommandHandler.class
 com/example/item/provider/ItemDubboServiceImpl.class
 com/example/item/vo/SeckillSessionVO.class
 com/example/item/config/WebMvcConfig.class
 com/example/item/mapper/TccActionLogMapper.class
+com/example/item/dto/ItemSummaryDTO.class
 com/example/item/mapper/SeckillSessionMapper.class
 com/example/item/service/CryptoService.class
 com/example/item/entity/AssetReservation.class
@@ -31,6 +34,7 @@ com/example/item/vo/SeckillItemVO.class
 com/example/item/config/UserContextInterceptor.class
 com/example/item/service/AssetService.class
 com/example/item/mapper/ItemMapper.class
+com/example/item/dto/PendingItemListQuery.class
 com/example/item/entity/SeckillItem.class
 com/example/item/entity/SeckillSession.class
 com/example/item/provider/SeckillServiceImpl.class

@@ -1,6 +1,8 @@
 package com.example.item.service;
 
+import api.common.PageResult;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import api.risk.RiskDecisionResult;
 import api.risk.RiskEvaluateRequest;
 import api.risk.RiskSupport;
@@ -10,14 +12,19 @@ import api.trade.MerchantDTO;
 import com.example.item.entity.CardSecret;
 import com.example.item.entity.Item;
 import com.example.item.entity.ItemAudit;
+import com.example.item.dto.ItemListQuery;
+import com.example.item.dto.ItemSummaryDTO;
+import com.example.item.dto.PendingItemListQuery;
 import com.example.item.mapper.CardSecretMapper;
 import com.example.item.mapper.ItemAuditMapper;
 import com.example.item.mapper.ItemMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +32,11 @@ import java.util.Set;
 
 @Service
 public class AssetListingService {
+    @Value("${asset.card-import.max-count:1000}")
+    private int maxImportCount = 1000;
+    @Value("${asset.card-import.batch-size:200}")
+    private int importBatchSize = 200;
+
     private final ItemMapper itemMapper;
     private final ItemAuditMapper auditMapper;
     private final CardSecretMapper cardSecretMapper;
@@ -172,6 +184,11 @@ public class AssetListingService {
 
     @Transactional(rollbackFor = Exception.class)
     public int importCards(Long itemId, Long merchantId, List<String> secrets) {
+        return importCards(itemId, merchantId, null, secrets);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public int importCards(Long itemId, Long merchantId, Long operatorId, List<String> secrets) {
         Item item = getOwnedItem(itemId, merchantId);
         if ("APPROVED".equals(item.getAuditStatus())) {
             throw new IllegalArgumentException("商品已上架，不能直接追加卡密");
@@ -191,7 +208,19 @@ public class AssetListingService {
         if (plains.isEmpty()) {
             throw new IllegalArgumentException("卡密不能为空");
         }
+        if (plains.size() > maxImportCount) {
+            throw new IllegalArgumentException("单次最多导入 " + maxImportCount + " 张卡密");
+        }
+        Set<String> hashes = new LinkedHashSet<>();
+        for (String plain : plains) {
+            hashes.add(cryptoService.sha256(plain));
+        }
+        List<String> existingHashes = cardSecretMapper.selectExistingHashes(itemId, hashes);
+        if (!existingHashes.isEmpty()) {
+            throw new IllegalArgumentException("存在 " + existingHashes.size() + " 张已导入卡密");
+        }
         LocalDateTime now = LocalDateTime.now();
+        List<CardSecret> cards = new ArrayList<>(plains.size());
         for (String plain : plains) {
             CardSecret card = new CardSecret();
             card.setItemId(itemId);
@@ -202,24 +231,69 @@ public class AssetListingService {
             card.setStatus("AVAILABLE");
             card.setCreatedTime(now);
             card.setUpdatedTime(now);
-            cardSecretMapper.insert(card);
+            cards.add(card);
+        }
+        int batchSize = Math.max(1, importBatchSize);
+        int inserted = 0;
+        for (int from = 0; from < cards.size(); from += batchSize) {
+            inserted += cardSecretMapper.batchInsert(cards.subList(from, Math.min(from + batchSize, cards.size())));
+        }
+        if (inserted != plains.size()) {
+            throw new IllegalStateException("卡密批量插入数量不完整");
         }
         if (itemMapper.increaseDraftStock(itemId, plains.size()) <= 0) {
             throw new IllegalStateException("商品不是草稿状态，卡密库存更新失败");
         }
+        insertAudit(itemId, "IMPORT_CARD", operatorId, "导入卡密数量: " + plains.size());
         return plains.size();
     }
 
-    public List<Item> listBySeller(Long sellerId) {
-        return itemMapper.selectList(new LambdaQueryWrapper<Item>()
+    public PageResult<ItemSummaryDTO> listBySeller(Long sellerId, ItemListQuery query,
+                                                   int page, int pageSize) {
+        if (sellerId == null) {
+            throw new IllegalArgumentException("卖家不能为空");
+        }
+        LambdaQueryWrapper<Item> wrapper = new LambdaQueryWrapper<Item>()
                 .eq(Item::getSellerId, sellerId)
-                .orderByDesc(Item::getId));
+                .eq(query != null && query.auditStatus() != null, Item::getAuditStatus,
+                        query == null ? null : query.auditStatus())
+                .eq(query != null && query.assetType() != null, Item::getAssetType,
+                        query == null ? null : query.assetType())
+                .likeRight(query != null && query.keyword() != null, Item::getItemName,
+                        query == null ? null : query.keyword())
+                .orderByDesc(Item::getUpdatedTime)
+                .orderByDesc(Item::getId);
+        Page<Item> result = itemMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        return PageResult.of(result.getRecords().stream().map(this::itemSummary).toList(),
+                result.getTotal(), page, pageSize);
     }
 
-    public List<Item> listPending() {
-        return itemMapper.selectList(new LambdaQueryWrapper<Item>()
+    public PageResult<ItemSummaryDTO> listPending(PendingItemListQuery query, int page, int pageSize) {
+        LambdaQueryWrapper<Item> wrapper = new LambdaQueryWrapper<Item>()
                 .eq(Item::getAuditStatus, "PENDING")
-                .orderByAsc(Item::getId));
+                .eq(query != null && query.merchantId() != null, Item::getMerchantId,
+                        query == null ? null : query.merchantId())
+                .eq(query != null && query.assetType() != null, Item::getAssetType,
+                        query == null ? null : query.assetType())
+                .ge(query != null && query.timeRange() != null && query.timeRange().fromTime() != null,
+                        Item::getUpdatedTime, query == null || query.timeRange() == null
+                                ? null : query.timeRange().fromTime())
+                .le(query != null && query.timeRange() != null && query.timeRange().toTime() != null,
+                        Item::getUpdatedTime, query == null || query.timeRange() == null
+                                ? null : query.timeRange().toTime())
+                .orderByDesc(Item::getUpdatedTime)
+                .orderByDesc(Item::getId);
+        Page<Item> result = itemMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        return PageResult.of(result.getRecords().stream().map(this::itemSummary).toList(),
+                result.getTotal(), page, pageSize);
+    }
+
+    private ItemSummaryDTO itemSummary(Item item) {
+        return new ItemSummaryDTO(item.getId(), item.getItemName(), item.getPrice(), item.getStock(),
+                item.getFrozenStock(), item.getSubTitle(), item.getImageUrl(), item.getStatus(),
+                item.getMerchantId(), item.getSellerId(), item.getAssetType(), item.getDeliveryMode(),
+                item.getAuditStatus(), item.getAuditRemark(), item.getRiskStatus(), item.getRiskLevel(),
+                item.getUpdatedTime());
     }
 
     private Item getOwnedItem(Long itemId, Long merchantId) {

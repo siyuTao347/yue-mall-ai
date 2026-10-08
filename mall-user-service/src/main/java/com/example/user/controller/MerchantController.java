@@ -1,23 +1,29 @@
 package com.example.user.controller;
 
+import api.common.PageQuery;
+import api.common.PageResult;
 import api.context.UserContext;
+import com.example.user.dto.MerchantListQuery;
 import com.example.user.entity.Merchant;
 import com.example.user.entity.MerchantDeposit;
 import com.example.user.service.MerchantService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/merchant")
 public class MerchantController {
     private final MerchantService merchantService;
+    private final MeterRegistry meterRegistry;
 
-    public MerchantController(MerchantService merchantService) {
+    public MerchantController(MerchantService merchantService, MeterRegistry meterRegistry) {
         this.merchantService = merchantService;
+        this.meterRegistry = meterRegistry;
     }
 
     @PostMapping("/apply")
@@ -105,13 +111,32 @@ public class MerchantController {
     }
 
     @GetMapping("/admin/list")
-    public Map<String, Object> list(@RequestParam(required = false) String status) {
+    public Map<String, Object> list(@RequestParam(required = false) Integer page,
+                                    @RequestParam(required = false) Integer pageSize,
+                                    @RequestParam(required = false) String status,
+                                    @RequestParam(required = false) Long userId,
+                                    @RequestParam(required = false) String keyword) {
         Long adminId = UserContext.getUserId();
         if (adminId == null || !merchantService.isAdmin(adminId)) {
             return response(403, "无管理员权限", null);
         }
-        List<Merchant> merchants = merchantService.listByStatus(status);
-        return response(200, "success", merchants);
+        try {
+            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            if (status != null && !STATUSES.contains(status)) {
+                throw new IllegalArgumentException("status 不合法");
+            }
+            if (keyword != null && keyword.length() > 64) {
+                throw new IllegalArgumentException("keyword 最长 64 个字符");
+            }
+            MerchantListQuery query = new MerchantListQuery(status, userId,
+                    keyword == null || keyword.isBlank() ? null : keyword.trim());
+            PageResult<?> result = Timer.builder("merchant_list_duration_seconds")
+                    .register(meterRegistry)
+                    .record(() -> merchantService.listMerchants(query, pagination.page(), pagination.pageSize()));
+            return response(200, "success", result);
+        } catch (IllegalArgumentException e) {
+            return response(400, e.getMessage(), null);
+        }
     }
 
     private Map<String, Object> response(int code, String message, Object data) {
@@ -121,4 +146,7 @@ public class MerchantController {
         result.put("data", data);
         return result;
     }
+
+    private static final java.util.Set<String> STATUSES =
+            java.util.Set.of("SUBMITTED", "APPROVED", "REJECTED", "FROZEN");
 }

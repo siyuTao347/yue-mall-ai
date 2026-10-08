@@ -1,7 +1,12 @@
 package com.example.item.controller;
 
 import api.context.UserContext;
+import api.common.PageQuery;
+import api.common.PageResult;
+import api.common.TimeRangeQuery;
 import api.trade.MerchantDubboService;
+import com.example.item.dto.DisputeListQuery;
+import com.example.item.dto.OrderListQuery;
 import com.example.item.entity.Arbitration;
 import com.example.item.entity.DeliveryEvidence;
 import com.example.item.entity.Dispute;
@@ -12,8 +17,12 @@ import com.example.item.entity.TradeOrder;
 import com.example.item.entity.TradeOrderStatusLog;
 import com.example.item.service.TradeOrderService;
 import org.apache.dubbo.config.annotation.DubboReference;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
@@ -23,11 +32,13 @@ import java.util.Map;
 @RequestMapping("/api/trade")
 public class TradeOrderController {
     private final TradeOrderService tradeOrderService;
+    private final MeterRegistry meterRegistry;
     @DubboReference(timeout = 5000, retries = 0, check = false)
     private MerchantDubboService merchantService;
 
-    public TradeOrderController(TradeOrderService tradeOrderService) {
+    public TradeOrderController(TradeOrderService tradeOrderService, MeterRegistry meterRegistry) {
         this.tradeOrderService = tradeOrderService;
+        this.meterRegistry = meterRegistry;
     }
 
     @PostMapping("/orders")
@@ -47,12 +58,37 @@ public class TradeOrderController {
     }
 
     @GetMapping("/orders")
-    public Map<String, Object> list() {
-        Long userId = UserContext.getUserId();
-        if (userId == null) {
+    public Map<String, Object> list(@RequestParam(required = false) Integer page,
+                                    @RequestParam(required = false) Integer pageSize,
+                                    @RequestParam(required = false) String status,
+                                    @RequestParam(required = false) String disputeStatus,
+                                    @RequestParam(required = false) Long userId,
+                                    @RequestParam(required = false) Long merchantId,
+                                    @RequestParam(required = false)
+                                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromTime,
+                                    @RequestParam(required = false)
+                                    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toTime) {
+        Long currentUserId = UserContext.getUserId();
+        if (currentUserId == null) {
             return response(401, "请先登录", null);
         }
-        return response(200, "success", tradeOrderService.listByUser(userId));
+        try {
+            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
+            timeRange.validate(92);
+            requireOption("status", status, ORDER_STATUSES);
+            requireOption("disputeStatus", disputeStatus, DISPUTE_STATUSES);
+            boolean admin = merchantService.isAdmin(currentUserId);
+            OrderListQuery query = new OrderListQuery(status, disputeStatus,
+                    admin ? userId : null, admin ? merchantId : null, timeRange);
+            PageResult<?> result = Timer.builder("trade_order_list_duration_seconds")
+                    .register(meterRegistry)
+                    .record(() -> tradeOrderService.listOrders(query, admin, currentUserId,
+                            pagination.page(), pagination.pageSize()));
+            return response(200, "success", result);
+        } catch (IllegalArgumentException e) {
+            return response(400, e.getMessage(), null);
+        }
     }
 
     @GetMapping("/orders/{orderNo}")
@@ -241,12 +277,32 @@ public class TradeOrderController {
     }
 
     @GetMapping("/admin/disputes/pending")
-    public Map<String, Object> pendingDisputes() {
+    public Map<String, Object> pendingDisputes(@RequestParam(required = false) Integer page,
+                                               @RequestParam(required = false) Integer pageSize,
+                                               @RequestParam(required = false) String status,
+                                               @RequestParam(required = false) String orderNo,
+                                               @RequestParam(required = false)
+                                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromTime,
+                                               @RequestParam(required = false)
+                                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toTime) {
         Long adminId = UserContext.getUserId();
         if (adminId == null || !merchantService.isAdmin(adminId)) {
             return response(403, "无管理员权限", null);
         }
-        return response(200, "success", tradeOrderService.listPendingDisputes());
+        try {
+            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
+            timeRange.validate(92);
+            requireOption("status", status, DISPUTE_STATUSES);
+            requireText("orderNo", orderNo, 64);
+            DisputeListQuery query = new DisputeListQuery(status, orderNo, timeRange);
+            PageResult<?> result = Timer.builder("trade_dispute_list_duration_seconds")
+                    .register(meterRegistry)
+                    .record(() -> tradeOrderService.listDisputes(query, pagination.page(), pagination.pageSize()));
+            return response(200, "success", result);
+        } catch (IllegalArgumentException e) {
+            return response(400, e.getMessage(), null);
+        }
     }
 
     @GetMapping("/admin/disputes/{disputeNo}/evidence")
@@ -288,4 +344,22 @@ public class TradeOrderController {
         result.put("data", data);
         return result;
     }
+
+    private void requireOption(String name, String value, java.util.Set<String> allowed) {
+        if (value != null && !allowed.contains(value)) {
+            throw new IllegalArgumentException(name + " 不合法");
+        }
+    }
+
+    private void requireText(String name, String value, int maxLength) {
+        if (value != null && value.length() > maxLength) {
+            throw new IllegalArgumentException(name + " 最长 " + maxLength + " 个字符");
+        }
+    }
+
+    private static final java.util.Set<String> ORDER_STATUSES = java.util.Set.of(
+            "CREATE_PENDING", "WAIT_PAY", "PAY_CONFIRMING", "PAID", "DELIVERED", "CONFIRMED",
+            "SETTLING", "SETTLED", "REFUNDING", "REFUNDED", "CANCELLING", "CANCELLED", "CLOSED", "REJECTED");
+    private static final java.util.Set<String> DISPUTE_STATUSES = java.util.Set.of(
+            "NONE", "OPEN", "NEGOTIATING", "ARBITRATING", "RESOLVED", "APPEALED");
 }

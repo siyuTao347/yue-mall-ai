@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../../context/AppContext';
 import { tradeApi } from '../../api/tradeApi';
 import { showToast } from '../../utils/feedback';
+import { Pagination } from '../ui/Pagination';
 import './TradeWorkbench.css';
 
 const TABS = [
@@ -50,6 +51,8 @@ const orderSnapshot = order => {
   }
 };
 
+const pageRecords = result => (result?.records ? result.records : result || []);
+
 export const TradeWorkbench = ({ items = [] }) => {
   const { user, requireAuth } = useApp();
   const isAdmin = user?.role === 'ADMIN';
@@ -59,14 +62,20 @@ export const TradeWorkbench = ({ items = [] }) => {
   );
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersPageInfo, setOrdersPageInfo] = useState(null);
   const [secrets, setSecrets] = useState({});
   const [deliveries, setDeliveries] = useState({});
   const [deliveryInput, setDeliveryInput] = useState({});
   const [merchant, setMerchant] = useState(null);
   const [myItems, setMyItems] = useState([]);
+  const [myItemsPage, setMyItemsPage] = useState(1);
+  const [myItemsPageInfo, setMyItemsPageInfo] = useState(null);
   const [deposit, setDeposit] = useState(null);
   const [account, setAccount] = useState(null);
   const [withdrawals, setWithdrawals] = useState([]);
+  const [withdrawalsPage, setWithdrawalsPage] = useState(1);
+  const [withdrawalsPageInfo, setWithdrawalsPageInfo] = useState(null);
   const [merchants, setMerchants] = useState([]);
   const [pendingItems, setPendingItems] = useState([]);
   const [pendingDisputes, setPendingDisputes] = useState([]);
@@ -118,12 +127,14 @@ export const TradeWorkbench = ({ items = [] }) => {
     }
   }, []);
 
-  const refreshOrders = useCallback(async () => {
-    const data = await tradeApi.order.list();
-    setOrders(data || []);
+  const refreshOrders = useCallback(async (pageToLoad = 1) => {
+    const data = await tradeApi.order.list({ page: pageToLoad });
+    setOrders(pageRecords(data));
+    setOrdersPageInfo(data);
+    setOrdersPage(data?.page || pageToLoad);
   }, []);
 
-  const refreshSeller = useCallback(async () => {
+  const refreshSeller = useCallback(async (pageToLoad = 1) => {
     if (!user) {
       setMerchant(null);
       setMyItems([]);
@@ -133,22 +144,27 @@ export const TradeWorkbench = ({ items = [] }) => {
     setMerchant(currentMerchant);
     if (currentMerchant?.status === 'APPROVED') {
       const [items, deposit] = await Promise.all([
-        tradeApi.item.listMine().catch(() => []),
+        tradeApi.item.listMine({ page: pageToLoad }).catch(() => null),
         tradeApi.merchant.deposit(currentMerchant.id).catch(() => null)
       ]);
-      setMyItems(items);
+      setMyItems(pageRecords(items));
+      setMyItemsPageInfo(items);
+      setMyItemsPage(items?.page || pageToLoad);
       setDeposit(deposit);
     }
   }, [user]);
 
-  const refreshAccount = useCallback(async () => {
+  const refreshAccount = useCallback(async (pageToLoad = 1) => {
     if (!user) {
       setAccount(null);
       setWithdrawals([]);
       return;
     }
     setAccount(await tradeApi.account.me().catch(() => null));
-    setWithdrawals(await tradeApi.withdraw.list().catch(() => []));
+    const withdrawalList = await tradeApi.withdraw.list({ page: pageToLoad }).catch(() => null);
+    setWithdrawals(pageRecords(withdrawalList));
+    setWithdrawalsPageInfo(withdrawalList);
+    setWithdrawalsPage(withdrawalList?.page || pageToLoad);
   }, [user]);
 
   const refreshAdmin = useCallback(async () => {
@@ -165,10 +181,10 @@ export const TradeWorkbench = ({ items = [] }) => {
       tradeApi.dispute.pending().catch(() => []),
       tradeApi.withdraw.pending().catch(() => [])
     ]);
-    setMerchants(merchantList || []);
-    setPendingItems(itemList || []);
-    setPendingDisputes(disputeList || []);
-    setPendingWithdrawals(withdrawalList || []);
+    setMerchants(pageRecords(merchantList));
+    setPendingItems(pageRecords(itemList));
+    setPendingDisputes(pageRecords(disputeList));
+    setPendingWithdrawals(pageRecords(withdrawalList));
   }, [user]);
 
   const loadTradeData = useCallback(() => {
@@ -178,6 +194,21 @@ export const TradeWorkbench = ({ items = [] }) => {
     refreshAccount().catch(() => {});
     refreshAdmin().catch(() => {});
   }, [user, refreshOrders, refreshSeller, refreshAccount, refreshAdmin]);
+
+  const changeOrdersPage = page => {
+    setOrdersPage(page);
+    refreshOrders(page).catch(() => setOrders([]));
+  };
+
+  const changeMyItemsPage = page => {
+    setMyItemsPage(page);
+    refreshSeller(page).catch(() => {});
+  };
+
+  const changeWithdrawalsPage = page => {
+    setWithdrawalsPage(page);
+    refreshAccount(page).catch(() => {});
+  };
 
   useEffect(() => {
     loadTradeData();
@@ -427,6 +458,9 @@ export const TradeWorkbench = ({ items = [] }) => {
             </div>
           ))}
         </div>
+        <Pagination page={ordersPage} pageSize={ordersPageInfo?.pageSize}
+          total={ordersPageInfo?.total} hasMore={ordersPageInfo?.hasMore}
+          onPageChange={changeOrdersPage} />
       </section>
 
       <section className="trade-panel">
@@ -603,6 +637,9 @@ export const TradeWorkbench = ({ items = [] }) => {
                 </div>
               ))}
             </div>
+            <Pagination page={myItemsPage} pageSize={myItemsPageInfo?.pageSize}
+              total={myItemsPageInfo?.total} hasMore={myItemsPageInfo?.hasMore}
+              onPageChange={changeMyItemsPage} />
             <div className="trade-form">
               <div className="trade-field">
                 <label className="trade-label" htmlFor="cardInput">批量导入卡密</label>
@@ -687,6 +724,9 @@ export const TradeWorkbench = ({ items = [] }) => {
             </div>
           ))}
         </div>
+        <Pagination page={withdrawalsPage} pageSize={withdrawalsPageInfo?.pageSize}
+          total={withdrawalsPageInfo?.total} hasMore={withdrawalsPageInfo?.hasMore}
+          onPageChange={changeWithdrawalsPage} />
       </section>
     </div>
   );

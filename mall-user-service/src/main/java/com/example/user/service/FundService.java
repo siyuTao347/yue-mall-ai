@@ -1,7 +1,11 @@
 package com.example.user.service;
 
+import api.common.PageResult;
 import api.trade.FundOperationResult;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.user.dto.FundFlowListQuery;
+import com.example.user.dto.FundFlowSummaryDTO;
 import com.example.user.entity.FundFlow;
 import com.example.user.entity.FundTransaction;
 import com.example.user.entity.PlatformAccount;
@@ -152,12 +156,32 @@ public class FundService {
         return account == null ? BigDecimal.ZERO : account.getEscrowAmount();
     }
 
-    public List<FundFlow> getFlows(Long userId) {
-        return flowMapper.selectList(new LambdaQueryWrapper<FundFlow>()
+    public PageResult<FundFlowSummaryDTO> listFlows(FundFlowListQuery query, Long userId,
+                                                    int page, int pageSize) {
+        if (userId == null) {
+            throw new IllegalArgumentException("用户不能为空");
+        }
+        LambdaQueryWrapper<FundFlow> wrapper = new LambdaQueryWrapper<FundFlow>()
                 .eq(FundFlow::getOwnerType, "USER")
                 .eq(FundFlow::getOwnerId, userId)
-                .orderByDesc(FundFlow::getId)
-                .last("LIMIT 100"));
+                .eq(query != null && query.accountType() != null, FundFlow::getAccountType,
+                        query == null ? null : query.accountType())
+                .ge(query != null && query.timeRange() != null && query.timeRange().fromTime() != null,
+                        FundFlow::getCreatedTime, query == null || query.timeRange() == null
+                                ? null : query.timeRange().fromTime())
+                .le(query != null && query.timeRange() != null && query.timeRange().toTime() != null,
+                        FundFlow::getCreatedTime, query == null || query.timeRange() == null
+                                ? null : query.timeRange().toTime())
+                .orderByDesc(FundFlow::getId);
+        Page<FundFlow> result = flowMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        List<FundFlowSummaryDTO> records = result.getRecords().stream().map(this::flowSummary).toList();
+        return PageResult.of(records, result.getTotal(), page, pageSize);
+    }
+
+    private FundFlowSummaryDTO flowSummary(FundFlow flow) {
+        return new FundFlowSummaryDTO(flow.getId(), flow.getTransactionNo(), flow.getOwnerType(),
+                flow.getOwnerId(), flow.getAccountType(), flow.getDirection(), flow.getAmount(),
+                flow.getBalanceAfter(), flow.getCreatedTime());
     }
 
     @Transactional(rollbackFor = Exception.class)

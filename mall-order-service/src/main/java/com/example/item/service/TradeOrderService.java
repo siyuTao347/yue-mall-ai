@@ -9,6 +9,8 @@ import api.risk.RiskSupport;
 import api.risk.SensitiveWordHitDTO;
 import api.risk.SensitiveWordScanner;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import api.common.PageResult;
 import com.example.item.entity.Arbitration;
 import com.example.item.entity.DeliveryEvidence;
 import com.example.item.entity.DeliveryRecord;
@@ -19,6 +21,10 @@ import com.example.item.entity.OrderSettlement;
 import com.example.item.entity.PaymentOrder;
 import com.example.item.entity.TradeOrder;
 import com.example.item.entity.TradeOrderStatusLog;
+import com.example.item.dto.DisputeListQuery;
+import com.example.item.dto.DisputeSummaryDTO;
+import com.example.item.dto.OrderListQuery;
+import com.example.item.dto.TradeOrderSummaryDTO;
 import com.example.item.dto.PaymentCallbackRequest;
 import com.example.item.mapper.ArbitrationMapper;
 import com.example.item.mapper.DeliveryEvidenceMapper;
@@ -526,11 +532,29 @@ public class TradeOrderService {
         return review;
     }
 
-    public List<TradeOrder> listByUser(Long userId) {
-        return orderMapper.selectList(new LambdaQueryWrapper<TradeOrder>()
-                .and(wrapper -> wrapper.eq(TradeOrder::getBuyerId, userId).or().eq(TradeOrder::getSellerId, userId))
-                .orderByDesc(TradeOrder::getId)
-                .last("LIMIT 100"));
+    public PageResult<TradeOrderSummaryDTO> listOrders(OrderListQuery query, boolean admin, Long currentUserId,
+                                                       int page, int pageSize) {
+        if (query == null || (!admin && currentUserId == null)) {
+            throw new IllegalArgumentException("订单查询条件不合法");
+        }
+        LambdaQueryWrapper<TradeOrder> wrapper = new LambdaQueryWrapper<TradeOrder>()
+                .eq(query.status() != null, TradeOrder::getOrderStatus, query.status())
+                .eq(query.disputeStatus() != null, TradeOrder::getDisputeStatus, query.disputeStatus())
+                .ge(query.timeRange() != null && query.timeRange().fromTime() != null,
+                        TradeOrder::getCreatedTime, query.timeRange().fromTime())
+                .le(query.timeRange() != null && query.timeRange().toTime() != null,
+                        TradeOrder::getCreatedTime, query.timeRange().toTime());
+        if (admin) {
+            wrapper.eq(query.userId() != null, TradeOrder::getBuyerId, query.userId())
+                    .eq(query.merchantId() != null, TradeOrder::getMerchantId, query.merchantId());
+        } else {
+            wrapper.and(wrapperInner -> wrapperInner.eq(TradeOrder::getBuyerId, currentUserId)
+                    .or().eq(TradeOrder::getSellerId, currentUserId));
+        }
+        wrapper.orderByDesc(TradeOrder::getCreatedTime).orderByDesc(TradeOrder::getId);
+        Page<TradeOrder> result = orderMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        List<TradeOrderSummaryDTO> records = result.getRecords().stream().map(this::orderSummary).toList();
+        return PageResult.of(records, result.getTotal(), page, pageSize);
     }
 
     public TradeOrder getVisibleOrder(Long userId, String orderNo) {
@@ -550,11 +574,38 @@ public class TradeOrderService {
         return getEvidenceByOrderNo(orderNo);
     }
 
-    public List<Dispute> listPendingDisputes() {
-        return disputeMapper.selectList(new LambdaQueryWrapper<Dispute>()
-                .eq(Dispute::getStatus, "ARBITRATING")
+    public PageResult<DisputeSummaryDTO> listDisputes(DisputeListQuery query, int page, int pageSize) {
+        LambdaQueryWrapper<Dispute> wrapper = new LambdaQueryWrapper<Dispute>()
+                .eq(query != null && query.status() != null, Dispute::getStatus, query == null ? null : query.status())
+                .eq(query != null && query.orderNo() != null, Dispute::getOrderNo, query == null ? null : query.orderNo())
+                .ge(query != null && query.timeRange() != null && query.timeRange().fromTime() != null,
+                        Dispute::getCreatedTime, query == null || query.timeRange() == null
+                                ? null : query.timeRange().fromTime())
+                .le(query != null && query.timeRange() != null && query.timeRange().toTime() != null,
+                        Dispute::getCreatedTime, query == null || query.timeRange() == null
+                                ? null : query.timeRange().toTime())
                 .orderByAsc(Dispute::getDeadlineTime)
-                .last("LIMIT 100"));
+                .orderByAsc(Dispute::getId);
+        Page<Dispute> result = disputeMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        List<DisputeSummaryDTO> records = result.getRecords().stream().map(this::disputeSummary).toList();
+        return PageResult.of(records, result.getTotal(), page, pageSize);
+    }
+
+    private TradeOrderSummaryDTO orderSummary(TradeOrder order) {
+        return new TradeOrderSummaryDTO(order.getId(), order.getOrderNo(), order.getBuyerId(), order.getSellerId(),
+                order.getMerchantId(), order.getItemId(), order.getQuantity(), order.getOrderAmount(),
+                order.getFeeAmount(), order.getSellerIncome(), order.getOrderStatus(), order.getPayStatus(),
+                order.getDeliveryStatus(), order.getEscrowStatus(), order.getDisputeStatus(), order.getPaymentNo(),
+                order.getPayDeadline(), order.getDeliveryDeadline(), order.getDeliveredTime(), order.getConfirmedTime(),
+                order.getAutoConfirmTime(), order.getSettleAvailableTime(), order.getSettledTime(),
+                order.getItemSnapshot(), order.getCreatedTime(), order.getUpdatedTime());
+    }
+
+    private DisputeSummaryDTO disputeSummary(Dispute dispute) {
+        return new DisputeSummaryDTO(dispute.getId(), dispute.getDisputeNo(), dispute.getOrderNo(),
+                dispute.getBuyerId(), dispute.getSellerId(), dispute.getDisputeType(), dispute.getReason(),
+                dispute.getProposedRefundAmount(), dispute.getStatus(), dispute.getDeadlineTime(),
+                dispute.getCreatedTime(), dispute.getUpdatedTime());
     }
 
     public List<DeliveryEvidence> getEvidenceForAdmin(String orderNo) {

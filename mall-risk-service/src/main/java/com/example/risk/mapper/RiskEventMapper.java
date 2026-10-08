@@ -1,6 +1,8 @@
 package com.example.risk.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.example.risk.dto.MerchantMetricAggregate;
+import com.example.risk.dto.UserMetricAggregate;
 import com.example.risk.entity.RiskEvent;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -12,6 +14,41 @@ import java.time.LocalDateTime;
 
 @Mapper
 public interface RiskEventMapper extends BaseMapper<RiskEvent> {
+    @Select("""
+            SELECT
+              COALESCE(SUM(CASE WHEN scene = 'ORDER' AND occurred_time >= #{tenMinutesFrom} THEN 1 ELSE 0 END), 0) AS orderCount10m,
+              COALESCE(SUM(CASE WHEN scene = 'ORDER' AND occurred_time >= #{twentyFourHoursFrom} THEN 1 ELSE 0 END), 0) AS orderCount24h,
+              COALESCE(SUM(CASE WHEN scene = 'CONFIRM' AND event_type = 'CONFIRM' THEN 1 ELSE 0 END), 0) AS completedCount,
+              COALESCE(SUM(CASE WHEN scene = 'DISPUTE' AND event_type = 'OPEN' AND occurred_time >= #{sevenDaysFrom} THEN 1 ELSE 0 END), 0) AS disputeCount7d,
+              COALESCE(SUM(CASE WHEN scene = 'LOGIN' AND event_type = 'LOGIN_FAIL' AND occurred_time >= #{tenMinutesFrom} THEN 1 ELSE 0 END), 0) AS loginFailCount10m
+            FROM t_risk_event
+            WHERE event_phase = 'CONFIRMED' AND user_id = #{userId}
+              AND ((scene = 'ORDER' AND occurred_time >= #{tenMinutesFrom})
+                OR (scene = 'CONFIRM' AND event_type = 'CONFIRM')
+                OR (scene = 'DISPUTE' AND event_type = 'OPEN' AND occurred_time >= #{sevenDaysFrom})
+                OR (scene = 'LOGIN' AND event_type = 'LOGIN_FAIL' AND occurred_time >= #{tenMinutesFrom}))
+            """)
+    UserMetricAggregate aggregateUserMetrics(@Param("userId") Long userId,
+                                             @Param("tenMinutesFrom") LocalDateTime tenMinutesFrom,
+                                             @Param("twentyFourHoursFrom") LocalDateTime twentyFourHoursFrom,
+                                             @Param("sevenDaysFrom") LocalDateTime sevenDaysFrom);
+
+    @Select("""
+            SELECT
+              COALESCE(SUM(CASE WHEN scene = 'CONFIRM' AND event_type = 'CONFIRM' THEN 1 ELSE 0 END), 0) AS completedCount,
+              COALESCE(SUM(CASE WHEN scene = 'DISPUTE' AND event_type = 'REFUND' AND occurred_time >= #{thirtyDaysFrom} THEN 1 ELSE 0 END), 0) AS refundCount30d,
+              COALESCE(SUM(CASE WHEN scene = 'DISPUTE' AND event_type = 'OPEN' AND occurred_time >= #{thirtyDaysFrom} THEN 1 ELSE 0 END), 0) AS disputeCount30d,
+              COALESCE(SUM(CASE WHEN scene = 'WITHDRAW' THEN amount ELSE 0 END), 0) AS withdrawAmount24h
+            FROM t_risk_event
+            WHERE event_phase = 'CONFIRMED' AND merchant_id = #{merchantId}
+              AND ((scene = 'CONFIRM' AND event_type = 'CONFIRM')
+                OR (scene = 'DISPUTE' AND event_type IN ('REFUND', 'OPEN') AND occurred_time >= #{thirtyDaysFrom})
+                OR (scene = 'WITHDRAW' AND occurred_time >= #{twentyFourHoursFrom}))
+            """)
+    MerchantMetricAggregate aggregateMerchantMetrics(@Param("merchantId") Long merchantId,
+                                                     @Param("thirtyDaysFrom") LocalDateTime thirtyDaysFrom,
+                                                     @Param("twentyFourHoursFrom") LocalDateTime twentyFourHoursFrom);
+
     @Update("UPDATE t_risk_event SET event_phase = 'CONFIRMED', confirmed_time = #{now}, " +
             "updated_time = #{now} WHERE event_no = #{eventNo} AND event_phase = 'PRECHECK'")
     int confirmEvent(@Param("eventNo") String eventNo, @Param("now") LocalDateTime now);

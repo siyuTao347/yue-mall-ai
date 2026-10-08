@@ -1,41 +1,50 @@
 package com.example.risk.service;
 
-import api.risk.RiskEvaluateRequest;
 import api.risk.RelationGraphDTO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import api.risk.RiskEvaluateRequest;
 import com.example.risk.entity.RelationEdge;
 import com.example.risk.entity.RiskEvent;
-import com.example.risk.entity.UserDevice;
-import com.example.risk.entity.UserIp;
 import com.example.risk.mapper.RelationEdgeMapper;
+import com.example.risk.mapper.RiskIdentityMapper;
 import com.example.risk.mapper.UserDeviceMapper;
 import com.example.risk.mapper.UserIpMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 @Service
 public class RiskIdentityService {
+    private static final int MAX_NODES = 100;
+    private static final int MAX_EDGES = 300;
+    private static final int QUERY_LIMIT = 600;
+
     private final UserDeviceMapper deviceMapper;
     private final UserIpMapper ipMapper;
     private final RelationEdgeMapper relationMapper;
+    private final RiskIdentityMapper identityMapper;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
 
     public RiskIdentityService(UserDeviceMapper deviceMapper, UserIpMapper ipMapper,
-                               RelationEdgeMapper relationMapper, ObjectMapper objectMapper) {
+                               RelationEdgeMapper relationMapper, RiskIdentityMapper identityMapper,
+                               ObjectMapper objectMapper, MeterRegistry meterRegistry) {
         this.deviceMapper = deviceMapper;
         this.ipMapper = ipMapper;
         this.relationMapper = relationMapper;
+        this.identityMapper = identityMapper;
         this.objectMapper = objectMapper;
+        this.meterRegistry = meterRegistry;
     }
 
     public void applyConfirmedEvent(RiskEvent event) {
@@ -61,78 +70,96 @@ public class RiskIdentityService {
     }
 
     public String buyerSellerRelation(Long buyerId, Long sellerId, String deviceHash, String ipHash) {
+        return buyerSellerRelation(buyerId, sellerId, deviceHash, ipHash, new RiskQueryTracker());
+    }
+
+    public String buyerSellerRelation(Long buyerId, Long sellerId, String deviceHash, String ipHash,
+                                      RiskQueryTracker tracker) {
         if (buyerId == null || sellerId == null) {
             return "NONE";
         }
         if (buyerId.equals(sellerId)) {
             return "SAME_USER";
         }
-        if (deviceHash != null && sharesDeviceHash(deviceMapper.selectList(new LambdaQueryWrapper<UserDevice>()
-                .eq(UserDevice::getDeviceHash, deviceHash)
-                .ge(UserDevice::getLastSeenTime, LocalDateTime.now().minusDays(30))), sellerId)) {
-            return "SAME_DEVICE";
+        if (deviceHash != null || ipHash != null) {
+            String relation = identityMapper.sameDeviceOrIp(sellerId, deviceHash, ipHash,
+                    LocalDateTime.now().minusDays(30));
+            tracker.increment();
+            if (!"NONE".equals(relation)) {
+                return relation;
+            }
         }
-        if (ipHash != null && sharesIpHash(ipMapper.selectList(new LambdaQueryWrapper<UserIp>()
-                .eq(UserIp::getIpHash, ipHash)
-                .ge(UserIp::getLastSeenTime, LocalDateTime.now().minusDays(30))), sellerId)) {
-            return "SAME_IP";
+        if (identityMapper.existsEdge(Math.min(buyerId, sellerId), Math.max(buyerId, sellerId))) {
+            tracker.increment();
+            return "TRADED";
         }
+        tracker.increment();
         return "NONE";
     }
 
     public String buyerSellerRelation(RiskEvaluateRequest request) {
+        return buyerSellerRelation(request, new RiskQueryTracker());
+    }
+
+    public String buyerSellerRelation(RiskEvaluateRequest request, RiskQueryTracker tracker) {
         Map<String, Object> payload = request.getPayload() == null ? Map.of() : request.getPayload();
         Long sellerId = asLong(payload.get("sellerId"));
         return buyerSellerRelation(request.getUserId(), sellerId,
-                request.getDeviceHash(), request.getIpHash());
+                request.getDeviceHash(), request.getIpHash(), tracker);
     }
 
     public RelationGraphDTO getRelations(Long userId, int depth) {
+        return Timer.builder("relation_graph_duration_seconds")
+                .register(meterRegistry)
+                .record(() -> relations(userId, depth));
+    }
+
+    private RelationGraphDTO relations(Long userId, int depth) {
+        if (userId == null) {
+            return RelationGraphDTO.builder()
+                    .depth(1)
+                    .truncated(false)
+                    .nodes(List.of())
+                    .edges(List.of())
+                    .build();
+        }
         int safeDepth = Math.min(Math.max(depth, 1), 2);
-        Set<Long> nodes = new HashSet<>();
+        Set<Long> nodes = new LinkedHashSet<>();
         nodes.add(userId);
         List<Map<String, Object>> edges = new ArrayList<>();
-        Set<Long> edgeIds = new HashSet<>();
+        Set<Long> edgeIds = new LinkedHashSet<>();
         Set<Long> frontier = Set.of(userId);
+        boolean truncated = false;
         for (int level = 0; level < safeDepth; level++) {
-            Set<Long> next = new HashSet<>();
-            for (Long current : frontier) {
-                for (RelationEdge edge : relationMapper.selectList(new LambdaQueryWrapper<RelationEdge>()
-                        .and(wrapper -> wrapper.eq(RelationEdge::getSourceUserId, current)
-                                .or().eq(RelationEdge::getTargetUserId, current)))) {
-                    Long other = edge.getSourceUserId().equals(current)
-                            ? edge.getTargetUserId() : edge.getSourceUserId();
-                    if (nodes.add(other)) {
-                        next.add(other);
+            List<RelationEdge> levelEdges = relationMapper.selectByUserIds(frontier, QUERY_LIMIT);
+            Set<Long> next = new LinkedHashSet<>();
+            boolean limitHit = levelEdges.size() >= QUERY_LIMIT;
+            for (RelationEdge edge : levelEdges) {
+                if (nodes.size() < MAX_NODES) {
+                    if (nodes.add(edge.getSourceUserId())) {
+                        next.add(edge.getSourceUserId());
                     }
-                    if (edgeIds.add(edge.getId()) && edges.size() < 300) {
-                        edges.add(edgeMap(edge));
+                    if (nodes.size() < MAX_NODES && nodes.add(edge.getTargetUserId())) {
+                        next.add(edge.getTargetUserId());
                     }
                 }
+                if (edgeIds.add(edge.getId()) && edges.size() < MAX_EDGES) {
+                    edges.add(edgeMap(edge));
+                }
             }
-            if (nodes.size() >= 100) {
+            truncated = truncated || limitHit || nodes.size() >= MAX_NODES || edges.size() >= MAX_EDGES;
+            if (truncated || next.isEmpty()) {
                 break;
             }
             frontier = next;
         }
-        List<Map<String, Object>> nodeList = nodes.stream().limit(100)
-                .map(id -> Map.<String, Object>of("userId", id))
-                .toList();
         return RelationGraphDTO.builder()
                 .rootUserId(userId)
                 .depth(safeDepth)
-                .truncated(nodes.size() > 100 || edges.size() >= 300)
-                .nodes(nodeList)
+                .truncated(truncated)
+                .nodes(nodes.stream().map(id -> Map.<String, Object>of("userId", id)).toList())
                 .edges(edges)
                 .build();
-    }
-
-    private boolean sharesDeviceHash(List<UserDevice> rows, Long userId) {
-        return rows.stream().anyMatch(row -> userId.equals(row.getUserId()));
-    }
-
-    private boolean sharesIpHash(List<UserIp> rows, Long userId) {
-        return rows.stream().anyMatch(row -> userId.equals(row.getUserId()));
     }
 
     private void upsertEdge(Long buyerId, Long sellerId, String relation, String eventNo, LocalDateTime now) {
@@ -160,7 +187,6 @@ public class RiskIdentityService {
         result.put("relationType", edge.getRelationType());
         result.put("weight", edge.getWeight());
         result.put("hitCount", edge.getHitCount());
-        result.put("evidence", edge.getEvidenceJson());
         return result;
     }
 
@@ -191,7 +217,7 @@ public class RiskIdentityService {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (Exception e) {
-            throw new IllegalStateException("风控证据序列化失败", e);
+            throw new IllegalStateException("关系证据序列化失败", e);
         }
     }
 }

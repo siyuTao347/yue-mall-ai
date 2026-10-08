@@ -49,6 +49,7 @@ dubbo:
   application:
     name: mall-item-service
     register-mode: interface
+    qos-port: 22222
   registry:
     address: nacos://100.121.74.115:8848/ # Nacos 注册中心地址
   protocol:
@@ -56,3 +57,25 @@ dubbo:
     port: 20882 # Dubbo 服务暴露端口
   scan:
     base-packages: com.example.item.provider # Dubbo 服务实现类所在的包
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        database.sql.duration.seconds: true
+
+pagination:
+  default-page-size: 20
+  max-page-size: 100
+
+asset:
+  card-import:
+    max-count: ${ASSET_CARD_IMPORT_MAX_COUNT:1000}
+    batch-size: ${ASSET_CARD_IMPORT_BATCH_SIZE:200}
+
+performance:
+  slow-sql-threshold-ms: ${SLOW_SQL_THRESHOLD_MS:500}

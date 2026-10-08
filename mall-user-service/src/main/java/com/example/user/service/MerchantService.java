@@ -1,6 +1,10 @@
 package com.example.user.service;
 
+import api.common.PageResult;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.user.dto.MerchantListQuery;
+import com.example.user.dto.MerchantSummaryDTO;
 import api.trade.FundOperationResult;
 import api.risk.RiskDecisionResult;
 import api.risk.RiskEvaluateRequest;
@@ -213,10 +217,25 @@ public class MerchantService {
         return merchant;
     }
 
-    public List<Merchant> listByStatus(String status) {
-        return merchantMapper.selectList(new LambdaQueryWrapper<Merchant>()
-                .eq(status != null && !status.isBlank(), Merchant::getStatus, status)
-                .orderByDesc(Merchant::getId));
+    public PageResult<MerchantSummaryDTO> listMerchants(MerchantListQuery query, int page, int pageSize) {
+        LambdaQueryWrapper<Merchant> wrapper = new LambdaQueryWrapper<Merchant>()
+                .eq(query != null && query.status() != null, Merchant::getStatus,
+                        query == null ? null : query.status())
+                .eq(query != null && query.userId() != null, Merchant::getUserId,
+                        query == null ? null : query.userId())
+                .likeRight(query != null && query.keyword() != null, Merchant::getMerchantName,
+                        query == null ? null : query.keyword())
+                .orderByDesc(Merchant::getUpdatedTime)
+                .orderByDesc(Merchant::getId);
+        Page<Merchant> result = merchantMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        List<MerchantSummaryDTO> records = result.getRecords().stream().map(this::merchantSummary).toList();
+        return PageResult.of(records, result.getTotal(), page, pageSize);
+    }
+
+    private MerchantSummaryDTO merchantSummary(Merchant merchant) {
+        return new MerchantSummaryDTO(merchant.getId(), merchant.getUserId(), merchant.getMerchantName(),
+                merchant.getStatus(), merchant.getLevel(), merchant.getRiskStatus(), merchant.getRiskLevel(),
+                merchant.getCreatedTime(), merchant.getUpdatedTime());
     }
 
     public boolean isAdmin(Long userId) {

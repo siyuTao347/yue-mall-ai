@@ -1,6 +1,6 @@
 -- 支付回调安全阶段一数据库变更。
 -- 当前项目未接入 Flyway/Liquibase，请在发布前按环境手工执行一次。
-
+USE db_order;
 ALTER TABLE `t_payment_order`
     ADD COLUMN `callback_secret_version` int NOT NULL DEFAULT 1 COMMENT '创建支付单时回调密钥版本' AFTER `callback_token_hash`;
 

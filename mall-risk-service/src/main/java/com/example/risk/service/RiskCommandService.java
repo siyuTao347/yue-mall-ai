@@ -1,8 +1,12 @@
 package com.example.risk.service;
 
+import api.common.PageResult;
 import api.risk.RiskCommandDTO;
 import api.risk.RiskCommandResultDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.risk.dto.RiskCaseListQuery;
+import com.example.risk.dto.RiskCaseSummaryDTO;
 import com.example.risk.entity.RiskCase;
 import com.example.risk.entity.RiskCaseNote;
 import com.example.risk.mapper.RiskCaseMapper;
@@ -40,13 +44,43 @@ public class RiskCommandService {
         this.objectMapper = objectMapper;
     }
 
-    public List<RiskCase> listCases(String status, int page, int size) {
-        int safePage = Math.max(1, page);
-        int safeSize = Math.min(Math.max(1, size), 100);
-        return caseMapper.selectList(new LambdaQueryWrapper<RiskCase>()
-                .eq(status != null && !status.isBlank(), RiskCase::getStatus, status)
+    public PageResult<RiskCaseSummaryDTO> listCases(RiskCaseListQuery query, int page, int pageSize) {
+        LambdaQueryWrapper<RiskCase> wrapper = new LambdaQueryWrapper<RiskCase>()
+                .eq(query != null && query.status() != null, RiskCase::getStatus,
+                        query == null ? null : query.status())
+                .eq(query != null && query.scene() != null, RiskCase::getScene,
+                        query == null ? null : query.scene())
+                .eq(query != null && query.riskLevel() != null, RiskCase::getRiskLevel,
+                        query == null ? null : query.riskLevel())
+                .eq(query != null && query.commandStatus() != null, RiskCase::getCommandStatus,
+                        query == null ? null : query.commandStatus())
+                .eq(query != null && query.subjectType() != null, RiskCase::getSubjectType,
+                        query == null ? null : query.subjectType())
+                .eq(query != null && query.subjectId() != null, RiskCase::getSubjectId,
+                        query == null ? null : query.subjectId())
+                .eq(query != null && query.bizNo() != null, RiskCase::getBizNo,
+                        query == null ? null : query.bizNo())
+                .ge(query != null && query.timeRange() != null && query.timeRange().fromTime() != null,
+                        RiskCase::getCreatedTime, query == null || query.timeRange() == null
+                                ? null : query.timeRange().fromTime())
+                .le(query != null && query.timeRange() != null && query.timeRange().toTime() != null,
+                        RiskCase::getCreatedTime, query == null || query.timeRange() == null
+                                ? null : query.timeRange().toTime())
                 .orderByDesc(RiskCase::getUpdatedTime)
-                .last("LIMIT " + ((safePage - 1) * safeSize) + ", " + safeSize));
+                .orderByDesc(RiskCase::getId);
+        Page<RiskCase> result = caseMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        List<RiskCaseSummaryDTO> records = result.getRecords().stream().map(this::caseSummary).toList();
+        return PageResult.of(records, result.getTotal(), page, pageSize);
+    }
+
+    private RiskCaseSummaryDTO caseSummary(RiskCase riskCase) {
+        return new RiskCaseSummaryDTO(riskCase.getId(), riskCase.getCaseNo(), riskCase.getDecisionNo(),
+                riskCase.getScene(), riskCase.getBizType(), riskCase.getBizNo(), riskCase.getSubjectType(),
+                riskCase.getSubjectId(), riskCase.getRiskLevel(), riskCase.getRiskScore(), riskCase.getStatus(),
+                riskCase.getAssignedTo(), riskCase.getResolvedAction(), riskCase.getResolveReason(),
+                riskCase.getResolvedTime(), riskCase.getLastCommandNo(), riskCase.getCommandStatus(),
+                riskCase.getCommandRetryCount(), riskCase.getReopenCount(), riskCase.getCreatedTime(),
+                riskCase.getUpdatedTime());
     }
 
     public CaseDetail detail(String caseNo) {

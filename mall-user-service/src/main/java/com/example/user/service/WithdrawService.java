@@ -1,11 +1,15 @@
 package com.example.user.service;
 
+import api.common.PageResult;
 import api.trade.FundOperationResult;
 import api.risk.RiskCommandDTO;
 import api.risk.RiskDecisionResult;
 import api.risk.RiskEvaluateRequest;
 import api.risk.RiskSupport;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.user.dto.WithdrawListQuery;
+import com.example.user.dto.WithdrawSummaryDTO;
 import com.example.user.entity.Merchant;
 import com.example.user.entity.WithdrawRequest;
 import com.example.user.mapper.WithdrawRequestMapper;
@@ -147,16 +151,62 @@ public class WithdrawService {
         return request;
     }
 
-    public List<WithdrawRequest> listByUser(Long userId) {
-        return withdrawMapper.selectList(new LambdaQueryWrapper<WithdrawRequest>()
+    public PageResult<WithdrawSummaryDTO> listByUser(Long userId, WithdrawListQuery query,
+                                                     int page, int pageSize) {
+        if (userId == null) {
+            throw new IllegalArgumentException("用户不能为空");
+        }
+        LambdaQueryWrapper<WithdrawRequest> wrapper = baseWithdrawWrapper(query)
                 .eq(WithdrawRequest::getUserId, userId)
-                .orderByDesc(WithdrawRequest::getId));
+                .orderByDesc(WithdrawRequest::getCreatedTime)
+                .orderByDesc(WithdrawRequest::getId);
+        return withdrawPage(wrapper, page, pageSize);
     }
 
-    public List<WithdrawRequest> listPending() {
-        return withdrawMapper.selectList(new LambdaQueryWrapper<WithdrawRequest>()
-                .eq(WithdrawRequest::getStatus, "SUBMITTED")
-                .orderByAsc(WithdrawRequest::getId));
+    public PageResult<WithdrawSummaryDTO> listPending(WithdrawListQuery query, int page, int pageSize) {
+        LambdaQueryWrapper<WithdrawRequest> wrapper = baseWithdrawWrapper(query)
+                .eq(WithdrawRequest::getStatus, query != null && query.status() != null
+                        ? query.status() : "SUBMITTED")
+                .orderByAsc(WithdrawRequest::getCreatedTime)
+                .orderByAsc(WithdrawRequest::getId);
+        return withdrawPage(wrapper, page, pageSize);
+    }
+
+    private LambdaQueryWrapper<WithdrawRequest> baseWithdrawWrapper(WithdrawListQuery query) {
+        return new LambdaQueryWrapper<WithdrawRequest>()
+                .eq(query != null && query.merchantId() != null, WithdrawRequest::getMerchantId,
+                        query == null ? null : query.merchantId())
+                .eq(query != null && query.userId() != null, WithdrawRequest::getUserId,
+                        query == null ? null : query.userId())
+                .ge(query != null && query.timeRange() != null && query.timeRange().fromTime() != null,
+                        WithdrawRequest::getCreatedTime, query == null || query.timeRange() == null
+                                ? null : query.timeRange().fromTime())
+                .le(query != null && query.timeRange() != null && query.timeRange().toTime() != null,
+                        WithdrawRequest::getCreatedTime, query == null || query.timeRange() == null
+                                ? null : query.timeRange().toTime());
+    }
+
+    private PageResult<WithdrawSummaryDTO> withdrawPage(LambdaQueryWrapper<WithdrawRequest> wrapper,
+                                                        int page, int pageSize) {
+        Page<WithdrawRequest> result = withdrawMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        List<WithdrawSummaryDTO> records = result.getRecords().stream().map(this::withdrawSummary).toList();
+        return PageResult.of(records, result.getTotal(), page, pageSize);
+    }
+
+    private WithdrawSummaryDTO withdrawSummary(WithdrawRequest request) {
+        return new WithdrawSummaryDTO(request.getId(), request.getWithdrawNo(), request.getMerchantId(),
+                request.getUserId(), request.getAmount(), maskAccount(request.getMockAccount()),
+                request.getStatus(), request.getCreatedTime(), request.getUpdatedTime());
+    }
+
+    private String maskAccount(String account) {
+        if (account == null || account.isBlank()) {
+            return null;
+        }
+        if (account.length() <= 4) {
+            return "****";
+        }
+        return account.substring(0, 2) + "****" + account.substring(account.length() - 2);
     }
 
     @Transactional(rollbackFor = Exception.class)

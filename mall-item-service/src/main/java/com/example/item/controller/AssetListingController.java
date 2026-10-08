@@ -1,13 +1,22 @@
 package com.example.item.controller;
 
+import api.common.PageQuery;
+import api.common.PageResult;
+import api.common.TimeRangeQuery;
 import api.context.UserContext;
 import api.trade.MerchantDTO;
 import api.trade.MerchantDubboService;
+import com.example.item.dto.ItemListQuery;
+import com.example.item.dto.PendingItemListQuery;
 import com.example.item.entity.Item;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import com.example.item.service.AssetListingService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,11 +26,13 @@ import java.util.Map;
 @RequestMapping("/api/asset")
 public class AssetListingController {
     private final AssetListingService listingService;
+    private final MeterRegistry meterRegistry;
     @DubboReference(timeout = 5000, retries = 0, check = false)
     private MerchantDubboService merchantService;
 
-    public AssetListingController(AssetListingService listingService) {
+    public AssetListingController(AssetListingService listingService, MeterRegistry meterRegistry) {
         this.listingService = listingService;
+        this.meterRegistry = meterRegistry;
     }
 
     @PostMapping("/item")
@@ -40,12 +51,32 @@ public class AssetListingController {
     }
 
     @GetMapping("/item/list")
-    public Map<String, Object> list() {
+    public Map<String, Object> list(@RequestParam(required = false) Integer page,
+                                    @RequestParam(required = false) Integer pageSize,
+                                    @RequestParam(required = false) String auditStatus,
+                                    @RequestParam(required = false) String assetType,
+                                    @RequestParam(required = false) String keyword) {
         Long userId = UserContext.getUserId();
         if (userId == null) {
             return response(401, "请先登录", null);
         }
-        return response(200, "success", listingService.listBySeller(userId));
+        try {
+            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            requireAuditStatus(auditStatus);
+            requireAssetType(assetType);
+            if (keyword != null && keyword.length() > 64) {
+                throw new IllegalArgumentException("keyword 最长 64 个字符");
+            }
+            ItemListQuery query = new ItemListQuery(auditStatus, assetType,
+                    keyword == null || keyword.isBlank() ? null : keyword.trim());
+            PageResult<?> result = Timer.builder("item_list_duration_seconds")
+                    .register(meterRegistry)
+                    .record(() -> listingService.listBySeller(userId, query,
+                            pagination.page(), pagination.pageSize()));
+            return response(200, "success", result);
+        } catch (IllegalArgumentException e) {
+            return response(400, e.getMessage(), null);
+        }
     }
 
     @PostMapping("/item/{id}/submit")
@@ -73,7 +104,9 @@ public class AssetListingController {
             MerchantDTO merchant = requireApprovedMerchant(userId);
             @SuppressWarnings("unchecked")
             List<String> secrets = (List<String>) body.get("secrets");
-            int count = listingService.importCards(id, merchant.getId(), secrets);
+            int count = Timer.builder("card_import_duration_seconds")
+                    .register(meterRegistry)
+                    .record(() -> listingService.importCards(id, merchant.getId(), userId, secrets));
             return response(200, "卡密已加密入库", count);
         } catch (Exception e) {
             return response(400, e.getMessage(), null);
@@ -95,12 +128,32 @@ public class AssetListingController {
     }
 
     @GetMapping("/admin/item/pending")
-    public Map<String, Object> pending() {
+    public Map<String, Object> pending(@RequestParam(required = false) Integer page,
+                                       @RequestParam(required = false) Integer pageSize,
+                                       @RequestParam(required = false) Long merchantId,
+                                       @RequestParam(required = false) String assetType,
+                                       @RequestParam(required = false)
+                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromTime,
+                                       @RequestParam(required = false)
+                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toTime) {
         Long adminId = UserContext.getUserId();
         if (adminId == null || !merchantService.isAdmin(adminId)) {
             return response(403, "无管理员权限", null);
         }
-        return response(200, "success", listingService.listPending());
+        try {
+            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
+            timeRange.validate(92);
+            requireAssetType(assetType);
+            PendingItemListQuery query = new PendingItemListQuery(merchantId, assetType, timeRange);
+            PageResult<?> result = Timer.builder("item_pending_list_duration_seconds")
+                    .register(meterRegistry)
+                    .record(() -> listingService.listPending(query,
+                            pagination.page(), pagination.pageSize()));
+            return response(200, "success", result);
+        } catch (IllegalArgumentException e) {
+            return response(400, e.getMessage(), null);
+        }
     }
 
     private MerchantDTO requireApprovedMerchant(Long userId) {
@@ -126,5 +179,17 @@ public class AssetListingController {
         result.put("msg", message);
         result.put("data", data);
         return result;
+    }
+
+    private void requireAuditStatus(String status) {
+        if (status != null && !java.util.Set.of("DRAFT", "PENDING", "APPROVED", "REJECTED").contains(status)) {
+            throw new IllegalArgumentException("auditStatus 不合法");
+        }
+    }
+
+    private void requireAssetType(String assetType) {
+        if (assetType != null && !java.util.Set.of("CARD", "VIRTUAL_SKIN", "GAME_ITEM").contains(assetType)) {
+            throw new IllegalArgumentException("assetType 不合法");
+        }
     }
 }
