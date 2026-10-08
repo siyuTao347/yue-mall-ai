@@ -19,6 +19,7 @@ import com.example.item.service.TradeOrderService;
 import org.apache.dubbo.config.annotation.DubboReference;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,6 +34,10 @@ import java.util.Map;
 public class TradeOrderController {
     private final TradeOrderService tradeOrderService;
     private final MeterRegistry meterRegistry;
+    @Value("${pagination.default-page-size:20}")
+    private int defaultPageSize;
+    @Value("${pagination.max-page-size:100}")
+    private int maxPageSize;
     @DubboReference(timeout = 5000, retries = 0, check = false)
     private MerchantDubboService merchantService;
 
@@ -73,7 +78,7 @@ public class TradeOrderController {
             return response(401, "请先登录", null);
         }
         try {
-            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            PageQuery pagination = PageQuery.of(page, pageSize, defaultPageSize, maxPageSize);
             TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
             timeRange.validate(92);
             requireOption("status", status, ORDER_STATUSES);
@@ -290,7 +295,7 @@ public class TradeOrderController {
             return response(403, "无管理员权限", null);
         }
         try {
-            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            PageQuery pagination = PageQuery.of(page, pageSize, defaultPageSize, maxPageSize);
             TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
             timeRange.validate(92);
             requireOption("status", status, DISPUTE_STATUSES);

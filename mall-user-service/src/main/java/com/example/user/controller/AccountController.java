@@ -8,6 +8,7 @@ import com.example.user.dto.FundFlowListQuery;
 import com.example.user.service.FundService;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,10 @@ import java.util.Map;
 public class AccountController {
     private final FundService fundService;
     private final MeterRegistry meterRegistry;
+    @Value("${pagination.default-page-size:20}")
+    private int defaultPageSize;
+    @Value("${pagination.max-page-size:100}")
+    private int maxPageSize;
 
     public AccountController(FundService fundService, MeterRegistry meterRegistry) {
         this.fundService = fundService;
@@ -48,7 +53,7 @@ public class AccountController {
             return response(401, "请先登录", null);
         }
         try {
-            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            PageQuery pagination = PageQuery.of(page, pageSize, defaultPageSize, maxPageSize);
             TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
             timeRange.validate(92);
             if (accountType != null && !ACCOUNT_TYPES.contains(accountType)) {

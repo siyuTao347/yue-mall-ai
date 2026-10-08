@@ -8,6 +8,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/ItemMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/dto/PendingItemListQuery.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/SeckillSessionMapper.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/config/MybatisPlusConfig.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/controller/AssetListingController.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/AssetReservation.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/BannerMapper.java

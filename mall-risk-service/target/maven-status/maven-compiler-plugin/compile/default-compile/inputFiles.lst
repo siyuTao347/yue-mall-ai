@@ -32,6 +32,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/mapper/RiskSubjectMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/mapper/RiskRuleChangeLogMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/job/RiskIndicatorRefreshJob.java
+/Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/config/MybatisPlusConfig.java
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/listener/OrderRiskCommandDlqConsumer.java
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/service/RiskMetricCodes.java
 /Users/yu/IdeaProjects/mall-parent/mall-risk-service/src/main/java/com/example/risk/dto/UserMetricAggregate.java

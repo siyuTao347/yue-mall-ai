@@ -12,6 +12,7 @@ import com.example.item.entity.Item;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import com.example.item.service.AssetListingService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,10 @@ import java.util.Map;
 public class AssetListingController {
     private final AssetListingService listingService;
     private final MeterRegistry meterRegistry;
+    @Value("${pagination.default-page-size:20}")
+    private int defaultPageSize;
+    @Value("${pagination.max-page-size:100}")
+    private int maxPageSize;
     @DubboReference(timeout = 5000, retries = 0, check = false)
     private MerchantDubboService merchantService;
 
@@ -61,7 +66,7 @@ public class AssetListingController {
             return response(401, "请先登录", null);
         }
         try {
-            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            PageQuery pagination = PageQuery.of(page, pageSize, defaultPageSize, maxPageSize);
             requireAuditStatus(auditStatus);
             requireAssetType(assetType);
             if (keyword != null && keyword.length() > 64) {
@@ -141,7 +146,7 @@ public class AssetListingController {
             return response(403, "无管理员权限", null);
         }
         try {
-            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            PageQuery pagination = PageQuery.of(page, pageSize, defaultPageSize, maxPageSize);
             TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
             timeRange.validate(92);
             requireAssetType(assetType);

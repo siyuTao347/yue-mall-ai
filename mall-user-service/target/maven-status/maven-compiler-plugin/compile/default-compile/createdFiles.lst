@@ -2,6 +2,7 @@ com/example/user/mapper/FundFlowMapper.class
 com/example/user/entity/Merchant.class
 com/example/user/controller/AccountController.class
 com/example/user/dto/MissingFundFlowDTO.class
+com/example/user/config/MybatisPlusConfig.class
 com/example/user/mapper/MerchantDepositMapper.class
 com/example/user/provider/FundDubboServiceImpl.class
 com/example/user/vo/AuthVO.class

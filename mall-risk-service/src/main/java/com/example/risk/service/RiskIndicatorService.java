@@ -227,11 +227,27 @@ public class RiskIndicatorService {
         }
         Map<String, Object> values = valuesOf(indicators);
         Set<String> missing = missing(expectedMetrics, values);
-        boolean stale = indicators.stream().anyMatch(indicator -> isStale(indicator, LocalDateTime.now()));
+        LocalDateTime now = LocalDateTime.now();
+        recordRefreshLag(indicators, now);
+        boolean stale = indicators.stream().anyMatch(indicator -> isStale(indicator, now));
         if (stale || !missing.isEmpty()) {
             enqueueRefresh(subjectType, subjectId, expectedMetrics);
         }
         return new IndicatorSnapshot(values, missing, !stale);
+    }
+
+    private void recordRefreshLag(List<RiskIndicator> indicators, LocalDateTime now) {
+        Duration maxLag = Duration.ZERO;
+        for (RiskIndicator indicator : indicators) {
+            if (indicator.getUpdatedTime() == null) {
+                continue;
+            }
+            Duration lag = Duration.between(indicator.getUpdatedTime(), now);
+            if (lag.compareTo(maxLag) > 0) {
+                maxLag = lag;
+            }
+        }
+        meterRegistry.timer("risk_indicator_refresh_lag_seconds").record(maxLag);
     }
 
     private RiskIndicator indicator(String metricCode, String subjectType, Long subjectId,

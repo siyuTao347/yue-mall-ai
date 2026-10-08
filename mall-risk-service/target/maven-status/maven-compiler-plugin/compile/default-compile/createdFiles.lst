@@ -41,6 +41,7 @@ com/example/risk/config/SlowSqlInterceptor.class
 com/example/risk/RiskApplication.class
 com/example/risk/mapper/RelationEdgeMapper.class
 com/example/risk/dto/RiskCaseListQuery.class
+com/example/risk/config/MybatisPlusConfig.class
 com/example/risk/service/RiskEvaluateService$1.class
 com/example/risk/entity/UserIp.class
 com/example/risk/provider/RiskDubboServiceImpl.class

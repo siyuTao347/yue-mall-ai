@@ -9,6 +9,7 @@ import com.example.user.entity.MerchantDeposit;
 import com.example.user.service.MerchantService;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -20,6 +21,10 @@ import java.util.Map;
 public class MerchantController {
     private final MerchantService merchantService;
     private final MeterRegistry meterRegistry;
+    @Value("${pagination.default-page-size:20}")
+    private int defaultPageSize;
+    @Value("${pagination.max-page-size:100}")
+    private int maxPageSize;
 
     public MerchantController(MerchantService merchantService, MeterRegistry meterRegistry) {
         this.merchantService = merchantService;
@@ -121,7 +126,7 @@ public class MerchantController {
             return response(403, "无管理员权限", null);
         }
         try {
-            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            PageQuery pagination = PageQuery.of(page, pageSize, defaultPageSize, maxPageSize);
             if (status != null && !STATUSES.contains(status)) {
                 throw new IllegalArgumentException("status 不合法");
             }

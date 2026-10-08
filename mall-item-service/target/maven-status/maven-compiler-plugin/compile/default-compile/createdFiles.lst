@@ -35,6 +35,7 @@ com/example/item/config/UserContextInterceptor.class
 com/example/item/service/AssetService.class
 com/example/item/mapper/ItemMapper.class
 com/example/item/dto/PendingItemListQuery.class
+com/example/item/config/MybatisPlusConfig.class
 com/example/item/entity/SeckillItem.class
 com/example/item/entity/SeckillSession.class
 com/example/item/provider/SeckillServiceImpl.class

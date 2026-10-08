@@ -8,6 +8,7 @@ import com.example.user.dto.WithdrawListQuery;
 import com.example.user.entity.WithdrawRequest;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import com.example.user.service.MerchantService;
 import com.example.user.service.WithdrawService;
@@ -24,6 +25,10 @@ public class WithdrawController {
     private final WithdrawService withdrawService;
     private final MerchantService merchantService;
     private final MeterRegistry meterRegistry;
+    @Value("${pagination.default-page-size:20}")
+    private int defaultPageSize;
+    @Value("${pagination.max-page-size:100}")
+    private int maxPageSize;
 
     public WithdrawController(WithdrawService withdrawService, MerchantService merchantService,
                               MeterRegistry meterRegistry) {
@@ -65,7 +70,7 @@ public class WithdrawController {
             return response(401, "请先登录", null);
         }
         try {
-            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            PageQuery pagination = PageQuery.of(page, pageSize, defaultPageSize, maxPageSize);
             TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
             timeRange.validate(92);
             requireStatus(status);
@@ -94,7 +99,7 @@ public class WithdrawController {
             return response(403, "无管理员权限", null);
         }
         try {
-            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            PageQuery pagination = PageQuery.of(page, pageSize, defaultPageSize, maxPageSize);
             TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
             timeRange.validate(92);
             WithdrawListQuery query = new WithdrawListQuery("SUBMITTED", merchantId, userId, timeRange);

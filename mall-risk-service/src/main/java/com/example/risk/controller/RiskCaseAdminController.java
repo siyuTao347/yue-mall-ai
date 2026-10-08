@@ -10,6 +10,7 @@ import com.example.risk.service.RiskCommandService;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +30,10 @@ import java.util.Map;
 public class RiskCaseAdminController {
     private final RiskCommandService riskCommandService;
     private final MeterRegistry meterRegistry;
+    @Value("${pagination.default-page-size:20}")
+    private int defaultPageSize;
+    @Value("${pagination.max-page-size:100}")
+    private int maxPageSize;
 
     public RiskCaseAdminController(RiskCommandService riskCommandService, MeterRegistry meterRegistry) {
         this.riskCommandService = riskCommandService;
@@ -55,7 +60,7 @@ public class RiskCaseAdminController {
             return response(403, "无管理员权限", null);
         }
         try {
-            PageQuery pagination = PageQuery.of(page, pageSize, 20, 100);
+            PageQuery pagination = PageQuery.of(page, pageSize, defaultPageSize, maxPageSize);
             TimeRangeQuery timeRange = new TimeRangeQuery(fromTime, toTime);
             timeRange.validate(92);
             requireOption("status", status, STATUSES);

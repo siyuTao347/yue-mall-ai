@@ -65,6 +65,7 @@ management:
         database.sql.duration.seconds: true
         risk.evaluate.duration.seconds: true
         risk.indicator.refresh.duration.seconds: true
+        risk.indicator.refresh.lag.seconds: true
 
 pagination:
   default-page-size: 20

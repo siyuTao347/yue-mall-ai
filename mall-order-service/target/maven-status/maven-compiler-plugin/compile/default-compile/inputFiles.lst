@@ -48,6 +48,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/job/TradeOrderJobHandler.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/controller/TradeOrderController.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/entity/Dispute.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/config/MybatisPlusConfig.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/entity/PaymentCallback.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/mapper/OrderMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/listener/AuditLogConsumer.java

@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.example.item.audit.AuditLogTest
 -------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.08 s -- in com.example.item.audit.AuditLogTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.04 s -- in com.example.item.audit.AuditLogTest
