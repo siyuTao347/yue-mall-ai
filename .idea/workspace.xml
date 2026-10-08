@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8275a235-79d3-4837-87f7-ed524bd10d2f" name="Changes" comment="" />
+    <list default="true" id="8275a235-79d3-4837-87f7-ed524bd10d2f" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/stage3_agent_development_design.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/agent/stage3_agent_development_design.md" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -92,10 +96,11 @@
       <recent name="$PROJECT_DIR$/mall-order-service/src/main/resources" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/doc/data/MySQL" />
+      <recent name="$PROJECT_DIR$/doc/agent" />
       <recent name="$PROJECT_DIR$/doc/sql" />
       <recent name="$PROJECT_DIR$/doc/stage1_and_stage2_improve" />
       <recent name="$PROJECT_DIR$" />
-      <recent name="$PROJECT_DIR$/src" />
     </key>
   </component>
   <component name="RunDashboard">
@@ -237,7 +242,7 @@
       <workItem from="1790654068961" duration="2451000" />
       <workItem from="1790661285017" duration="8416000" />
       <workItem from="1790728447142" duration="8430000" />
-      <workItem from="1791422468053" duration="6546000" />
+      <workItem from="1791422468053" duration="9937000" />
     </task>
     <servers />
   </component>
