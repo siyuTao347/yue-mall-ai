@@ -26,6 +26,12 @@ rocketmq:
 risk:
   identity-salt: change-me-in-production
   precheck-expire-minutes: 10
+  workbench:
+    command-poll-interval-seconds: ${RISK_COMMAND_POLL_INTERVAL_SECONDS:5}
+    command-poll-max-duration-seconds: ${RISK_COMMAND_POLL_MAX_DURATION_SECONDS:300}
+    relation-max-depth: ${RISK_CASE_RELATION_MAX_DEPTH:1}
+    relation-max-nodes: ${RISK_CASE_RELATION_MAX_NODES:20}
+    manual-complete-enabled: ${RISK_COMMAND_MANUAL_COMPLETE_ENABLED:true}
   indicator:
     materialized-enabled: ${RISK_INDICATOR_MATERIALIZED_ENABLED:false}
     query-budget: ${RISK_INDICATOR_QUERY_BUDGET:3}

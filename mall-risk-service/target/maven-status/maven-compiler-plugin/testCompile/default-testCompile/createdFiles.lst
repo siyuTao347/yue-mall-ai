@@ -1,3 +1,5 @@
 com/example/risk/service/RiskMetricServiceTest.class
 com/example/risk/service/RiskCommandServiceTest.class
 com/example/risk/service/RiskIdentityServiceTest.class
+com/example/risk/controller/RiskCaseAdminControllerTest.class
+com/example/risk/service/RiskCaseQueryServiceTest.class

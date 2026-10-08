@@ -69,6 +69,7 @@ public class RiskCaseService {
         riskCase.setStatus("OPEN");
         riskCase.setCommandStatus("NONE");
         riskCase.setCommandRetryCount(0);
+        riskCase.setOperationVersion(0L);
         riskCase.setReopenCount(0);
         riskCase.setCreatedTime(now);
         riskCase.setUpdatedTime(now);

@@ -30,7 +30,11 @@ public class RiskCase {
     private String lastCommandNo;
     private String lastCommandJson;
     private String commandStatus;
+    private String commandLastError;
+    private LocalDateTime commandSentTime;
+    private LocalDateTime commandFinishedTime;
     private Integer commandRetryCount;
+    private Long operationVersion;
     private Integer reopenCount;
     private LocalDateTime createdTime;
     private LocalDateTime updatedTime;

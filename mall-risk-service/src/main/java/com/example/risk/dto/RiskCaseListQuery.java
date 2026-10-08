@@ -10,6 +10,8 @@ public record RiskCaseListQuery(
         String subjectType,
         Long subjectId,
         String bizNo,
+        Long assignedTo,
+        String keyword,
         TimeRangeQuery timeRange
 ) {
 }

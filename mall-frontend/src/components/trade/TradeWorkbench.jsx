@@ -3,13 +3,15 @@ import { useApp } from '../../context/AppContext';
 import { tradeApi } from '../../api/tradeApi';
 import { showToast } from '../../utils/feedback';
 import { Pagination } from '../ui/Pagination';
+import { RiskCaseWorkbench } from '../risk/RiskCaseWorkbench';
 import './TradeWorkbench.css';
 
 const TABS = [
   { key: 'orders', label: '担保订单' },
   { key: 'seller', label: '卖家中心' },
   { key: 'account', label: '资金提现' },
-  { key: 'admin', label: '运营审核' }
+  { key: 'admin', label: '运营审核', adminOnly: true },
+  { key: 'risk', label: '风控案件', adminOnly: true }
 ];
 
 const statusText = {
@@ -57,7 +59,7 @@ export const TradeWorkbench = ({ items = [] }) => {
   const { user, requireAuth } = useApp();
   const isAdmin = user?.role === 'ADMIN';
   const visibleTabs = useMemo(
-    () => TABS.filter(tab => tab.key !== 'admin' || isAdmin),
+    () => TABS.filter(tab => !tab.adminOnly || isAdmin),
     [isAdmin]
   );
   const [activeTab, setActiveTab] = useState('orders');
@@ -849,6 +851,7 @@ export const TradeWorkbench = ({ items = [] }) => {
       {activeTab === 'seller' ? renderSeller() : null}
       {activeTab === 'account' ? renderAccount() : null}
       {activeTab === 'admin' ? renderAdmin() : null}
+      {activeTab === 'risk' && isAdmin ? <RiskCaseWorkbench /> : null}
     </section>
   );
 };
