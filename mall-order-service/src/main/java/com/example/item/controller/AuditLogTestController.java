@@ -4,7 +4,7 @@ import api.audit.AuditLog;
 import api.audit.BusinessType;
 import api.audit.DeliveryMode;
 import com.example.item.service.AuditLogService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -12,16 +12,22 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 审计日志演示与性能量化对比控制器
+ * 审计日志演示与同步/异步写库对比控制器（仅本地与测试环境可用）。
  *
- * 提供异步 MQ 投递、同步写库、异常捕获、性能 Benchmark 对比等接口
+ * <p>生产环境 Bean 不创建；路径统一迁移到 /api/internal/dev/audit/**，网关无对应路由，
+ * 服务内 InternalAccessFilter 默认拒绝 /api/internal/**；性能压测改由测试代码的
+ * {@code AuditLogBenchmarkTest} 承担，不再通过 HTTP 触发。</p>
  */
 @RestController
-@RequestMapping("/api/audit")
+@RequestMapping("/api/internal/dev/audit")
+@Profile({"local", "dev", "test", "default"})
 public class AuditLogTestController {
 
-    @Autowired
-    private AuditLogService auditLogService;
+    private final AuditLogService auditLogService;
+
+    public AuditLogTestController(AuditLogService auditLogService) {
+        this.auditLogService = auditLogService;
+    }
 
     /**
      * 1. 异步审计日志测试 (RocketMQ 投递)
@@ -109,45 +115,6 @@ public class AuditLogTestController {
     @GetMapping("/recent-logs")
     public List<com.example.item.entity.AuditLog> getRecentLogs(@RequestParam(value = "limit", defaultValue = "10") int limit) {
         return auditLogService.listRecentLogs(limit);
-    }
-
-    /**
-     * 5. 性能量化基准测试 (用于简历量化数据支撑)
-     * 分别调用多次同步与异步落库逻辑，计算平均延迟
-     * 请求示例: http://localhost:8083/api/audit/benchmark?rounds=20
-     */
-    @GetMapping("/benchmark")
-    public Map<String, Object> benchmark(@RequestParam(value = "rounds", defaultValue = "20") int rounds) {
-        int testRounds = Math.max(5, Math.min(rounds, 100));
-
-        // 1. 同步落库耗时统计
-        long syncTotalTime = 0;
-        for (int i = 0; i < testRounds; i++) {
-            long t1 = System.currentTimeMillis();
-            testSyncAudit(1000L + i, "BENCH_SYNC_" + i, "pwd");
-            syncTotalTime += (System.currentTimeMillis() - t1);
-        }
-        double syncAvg = (double) syncTotalTime / testRounds;
-
-        // 2. 异步 MQ 耗时统计
-        long asyncTotalTime = 0;
-        for (int i = 0; i < testRounds; i++) {
-            long t1 = System.currentTimeMillis();
-            testAsyncAudit(2000L + i, "BENCH_ASYNC_" + i, "pwd");
-            asyncTotalTime += (System.currentTimeMillis() - t1);
-        }
-        double asyncAvg = (double) asyncTotalTime / testRounds;
-
-        // 3. 计算延迟降低幅度
-        double latencyDropPercent = syncAvg > 0 ? ((syncAvg - asyncAvg) / syncAvg) * 100.0 : 0;
-
-        Map<String, Object> report = new HashMap<>();
-        report.put("testRounds", testRounds);
-        report.put("syncAvgResponseTimeMs", String.format("%.2f ms", syncAvg));
-        report.put("asyncAvgResponseTimeMs", String.format("%.2f ms", asyncAvg));
-        report.put("latencyDropPercent", String.format("%.2f %%", latencyDropPercent));
-        report.put("conclusion", "RocketMQ 异步投递消除核心线程的数据库网络与磁盘 I/O 阻塞，显著平抑响应延迟毛刺！");
-        return report;
     }
 
     private void mockBusinessWork(long ms) {

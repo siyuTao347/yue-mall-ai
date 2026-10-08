@@ -1,8 +1,11 @@
 com/example/item/audit/AuditLogBenchmarkTest$ConcurrentMetrics.class
-com/example/item/service/OrderRiskCommandHandlerTest.class
 com/example/item/audit/AuditLogBenchmarkTest$LatencyMetrics.class
+com/example/item/config/TradeOrderPropertiesTest.class
+com/example/item/audit/AuditLogTest.class
+com/example/item/audit/AuditLogBenchmarkTest$BenchmarkService.class
+com/example/item/web/GlobalExceptionHandlerTest.class
+com/example/item/web/TraceContextFilterTest.class
+com/example/item/service/OrderRiskCommandHandlerTest.class
 com/example/item/audit/AuditLogTest$SampleOrderService.class
 com/example/item/service/TradeOrderServiceTest.class
-com/example/item/audit/AuditLogTest.class
 com/example/item/audit/AuditLogBenchmarkTest.class
-com/example/item/audit/AuditLogBenchmarkTest$BenchmarkService.class

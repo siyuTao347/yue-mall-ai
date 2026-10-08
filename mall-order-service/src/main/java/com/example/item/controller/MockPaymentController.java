@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,7 @@ import java.util.UUID;
 @RestController
 @Slf4j
 @RequestMapping("/api/payment")
+@Profile({"local", "dev", "test", "default"})
 public class MockPaymentController {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 

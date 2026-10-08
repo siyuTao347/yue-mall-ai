@@ -1,3 +1,4 @@
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/web/InternalAccessFilter.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/PointRecordMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/controller/AccountController.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/dto/WithdrawListQuery.java
@@ -22,6 +23,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/dto/UserAccountBalanceDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/FundFlowMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/PointService.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/web/TraceContextFilter.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/UserAccountMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/controller/MerchantController.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/controller/WithdrawController.java
@@ -29,6 +31,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/FundTransaction.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/controller/UserController.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/PointRecord.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/config/ClockConfig.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/MerchantCredit.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/User.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/MerchantAuditMapper.java
@@ -42,6 +45,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/MerchantCreditMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/WithdrawRequestMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/FundFlow.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/web/GlobalExceptionHandler.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/RiskClient.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/FundTransactionMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/MerchantAudit.java

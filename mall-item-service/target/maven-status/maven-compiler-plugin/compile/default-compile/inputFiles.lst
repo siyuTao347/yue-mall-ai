@@ -3,6 +3,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/controller/SeckillController.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/provider/AssetDubboServiceImpl.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/TccActionLog.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/web/TraceContextFilter.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/provider/SeckillServiceImpl.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/listener/ItemRiskCommandConsumer.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/ItemMapper.java
@@ -19,7 +20,10 @@
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/CardSecretMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/TccActionLogMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/SeckillItem.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/web/InternalAccessFilter.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/web/GlobalExceptionHandler.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/ItemAudit.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/config/ClockConfig.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/dto/ItemSummaryDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/config/SlowSqlInterceptor.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/vo/HomeOverviewVO.java

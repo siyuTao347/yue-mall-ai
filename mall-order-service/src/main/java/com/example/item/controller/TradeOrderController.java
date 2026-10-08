@@ -5,6 +5,13 @@ import api.common.PageQuery;
 import api.common.PageResult;
 import api.common.TimeRangeQuery;
 import api.trade.MerchantDubboService;
+import api.trade.request.AddDisputeMessageRequest;
+import api.trade.request.AddEvidenceRequest;
+import api.trade.request.ArbitrateDisputeRequest;
+import api.trade.request.CreateOrderRequest;
+import api.trade.request.DeliverOrderRequest;
+import api.trade.request.OpenDisputeRequest;
+import api.trade.request.ReviewOrderRequest;
 import com.example.item.dto.DisputeListQuery;
 import com.example.item.dto.OrderListQuery;
 import com.example.item.entity.Arbitration;
@@ -19,12 +26,12 @@ import com.example.item.service.TradeOrderService;
 import org.apache.dubbo.config.annotation.DubboReference;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,15 +54,14 @@ public class TradeOrderController {
     }
 
     @PostMapping("/orders")
-    public Map<String, Object> create(@RequestBody Map<String, Object> body) {
+    public Map<String, Object> create(@Valid @RequestBody CreateOrderRequest body) {
         Long buyerId = UserContext.getUserId();
         if (buyerId == null) {
             return response(401, "请先登录", null);
         }
         try {
             TradeOrder order = tradeOrderService.create(buyerId,
-                    Long.valueOf(String.valueOf(body.get("itemId"))),
-                    Integer.valueOf(String.valueOf(body.getOrDefault("quantity", "1"))));
+                    body.itemId(), body.quantity());
             return response(200, "担保订单已创建", order);
         } catch (Exception e) {
             return response(400, e.getMessage(), null);
@@ -125,13 +131,13 @@ public class TradeOrderController {
 
     @PostMapping("/orders/{orderNo}/deliver")
     public Map<String, Object> deliver(@PathVariable String orderNo,
-                                       @RequestBody Map<String, String> body) {
+                                       @Valid @RequestBody DeliverOrderRequest body) {
         Long sellerId = UserContext.getUserId();
         if (sellerId == null) {
             return response(401, "请先登录", null);
         }
         try {
-            return response(200, "交付成功", tradeOrderService.deliver(sellerId, orderNo, body.get("content")));
+            return response(200, "交付成功", tradeOrderService.deliver(sellerId, orderNo, body.content()));
         } catch (Exception e) {
             return response(400, e.getMessage(), null);
         }
@@ -177,14 +183,15 @@ public class TradeOrderController {
     }
 
     @PostMapping("/orders/{orderNo}/review")
-    public Map<String, Object> review(@PathVariable String orderNo, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> review(@PathVariable String orderNo,
+                                      @Valid @RequestBody ReviewOrderRequest body) {
         Long buyerId = UserContext.getUserId();
         if (buyerId == null) {
             return response(401, "请先登录", null);
         }
         try {
             OrderReview review = tradeOrderService.review(buyerId, orderNo,
-                    Integer.valueOf(String.valueOf(body.get("score"))), String.valueOf(body.get("content")));
+                    body.score(), body.content());
             return response(200, "评价成功", review);
         } catch (Exception e) {
             return response(400, e.getMessage(), null);
@@ -192,14 +199,16 @@ public class TradeOrderController {
     }
 
     @PostMapping("/orders/{orderNo}/evidence")
-    public Map<String, Object> addEvidence(@PathVariable String orderNo, @RequestBody Map<String, String> body) {
+    public Map<String, Object> addEvidence(@PathVariable String orderNo,
+                                           @Valid @RequestBody AddEvidenceRequest body) {
         Long userId = UserContext.getUserId();
         if (userId == null) {
             return response(401, "请先登录", null);
         }
         try {
             DeliveryEvidence evidence = tradeOrderService.addEvidence(userId, orderNo,
-                    body.getOrDefault("evidenceType", "TEXT"), body.get("fileUrl"), body.get("content"));
+                    body.evidenceType() == null ? "TEXT" : body.evidenceType(),
+                    body.fileUrl(), body.content());
             return response(200, "证据已提交", evidence);
         } catch (Exception e) {
             return response(400, e.getMessage(), null);
@@ -234,16 +243,14 @@ public class TradeOrderController {
     }
 
     @PostMapping("/disputes")
-    public Map<String, Object> openDispute(@RequestBody Map<String, Object> body) {
+    public Map<String, Object> openDispute(@Valid @RequestBody OpenDisputeRequest body) {
         Long userId = UserContext.getUserId();
         if (userId == null) {
             return response(401, "请先登录", null);
         }
         try {
-            BigDecimal refundAmount = body.get("refundAmount") == null
-                    ? null : new BigDecimal(String.valueOf(body.get("refundAmount")));
-            Dispute dispute = tradeOrderService.openDispute(userId, String.valueOf(body.get("orderNo")),
-                    String.valueOf(body.get("disputeType")), String.valueOf(body.get("reason")), refundAmount);
+            Dispute dispute = tradeOrderService.openDispute(userId, body.orderNo(),
+                    body.disputeType(), body.reason(), body.refundAmount());
             return response(200, "售后已提交", dispute);
         } catch (Exception e) {
             return response(400, e.getMessage(), null);
@@ -269,13 +276,15 @@ public class TradeOrderController {
     }
 
     @PostMapping("/disputes/{disputeNo}/messages")
-    public Map<String, Object> addMessage(@PathVariable String disputeNo, @RequestBody Map<String, String> body) {
+    public Map<String, Object> addMessage(@PathVariable String disputeNo,
+                                          @Valid @RequestBody AddDisputeMessageRequest body) {
         Long userId = UserContext.getUserId();
         if (userId == null) {
             return response(401, "请先登录", null);
         }
         try {
-            return response(200, "留言成功", tradeOrderService.addDisputeMessage(userId, disputeNo, body.get("message")));
+            return response(200, "留言成功",
+                    tradeOrderService.addDisputeMessage(userId, disputeNo, body.message()));
         } catch (Exception e) {
             return response(400, e.getMessage(), null);
         }
@@ -328,14 +337,15 @@ public class TradeOrderController {
     }
 
     @PostMapping("/admin/disputes/{disputeNo}/arbitrate")
-    public Map<String, Object> arbitrate(@PathVariable String disputeNo, @RequestBody Map<String, String> body) {
+    public Map<String, Object> arbitrate(@PathVariable String disputeNo,
+                                         @Valid @RequestBody ArbitrateDisputeRequest body) {
         Long adminId = UserContext.getUserId();
         if (adminId == null || !merchantService.isAdmin(adminId)) {
             return response(403, "无管理员权限", null);
         }
         try {
             Arbitration arbitration = tradeOrderService.arbitrate(adminId, disputeNo,
-                    body.get("result"), body.get("reason"));
+                    body.result(), body.reason());
             return response(200, "仲裁完成", arbitration);
         } catch (Exception e) {
             return response(400, e.getMessage(), null);

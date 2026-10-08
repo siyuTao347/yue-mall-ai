@@ -6,18 +6,22 @@ import com.example.user.dto.LoginDTO;
 import com.example.user.dto.RegisterDTO;
 import com.example.user.service.UserService;
 import com.example.user.vo.AuthVO;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     /**
      * 发送邮箱验证码 (带有 60 秒限流保护与 QQ SMTP 真实外发)
@@ -28,9 +32,10 @@ public class UserController {
         Map<String, Object> resp = new HashMap<>();
         try {
             String code = userService.sendEmailVerificationCode(email);
+            // 验证码只写日志，不返回给客户端，避免生产环境验证码泄露
+            log.info("email verification code sent, email={}, code={}", email, code);
             resp.put("code", 200);
             resp.put("msg", "验证码已成功投递至邮箱 " + email);
-            resp.put("debugCode", code); // 开发联调便利展示
             return resp;
         } catch (Exception e) {
             resp.put("code", 400);

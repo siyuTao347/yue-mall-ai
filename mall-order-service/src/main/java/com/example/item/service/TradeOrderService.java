@@ -26,6 +26,7 @@ import com.example.item.dto.DisputeSummaryDTO;
 import com.example.item.dto.OrderListQuery;
 import com.example.item.dto.TradeOrderSummaryDTO;
 import com.example.item.dto.PaymentCallbackRequest;
+import com.example.item.config.TradeOrderProperties;
 import com.example.item.mapper.ArbitrationMapper;
 import com.example.item.mapper.DeliveryEvidenceMapper;
 import com.example.item.mapper.DeliveryRecordMapper;
@@ -38,7 +39,7 @@ import com.example.item.mapper.TradeOrderMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.function.Consumer;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -79,22 +81,20 @@ public class TradeOrderService {
     private static final List<String> RISK_BLOCKED_STATUSES =
             List.of("MANUAL_REVIEW", "FROZEN", "REJECTED");
 
-    @Value("${trade.fee-rate:2}")
     private BigDecimal feeRatePercent = new BigDecimal("2");
-    @Value("${trade.min-fee:0.01}")
     private BigDecimal minFee = new BigDecimal("0.01");
-    @Value("${trade.payment-expire-minutes:15}")
-    private int paymentExpireMinutes;
-    @Value("${trade.delivery-timeout-minutes:30}")
-    private int deliveryTimeoutMinutes;
-    @Value("${trade.auto-confirm-hours:24}")
-    private int autoConfirmHours;
-    @Value("${trade.settle-cooldown-hours:24}")
-    private int settleCooldownHours;
+    private int paymentExpireMinutes = 15;
+    private int deliveryTimeoutMinutes = 30;
+    private int autoConfirmHours = 24;
+    private int settleCooldownHours = 24;
+    private final Clock clock;
 
     @DubboReference(timeout = 5000, retries = 0, check = false)
     private AssetDubboService assetService;
 
+    /**
+     * 兼容测试与旧调用方的构造器：使用默认配置与系统时钟。
+     */
     public TradeOrderService(TradeOrderMapper orderMapper, PaymentOrderMapper paymentMapper,
                              DeliveryRecordMapper deliveryMapper,
                              DeliveryEvidenceMapper evidenceMapper, DisputeMapper disputeMapper,
@@ -104,6 +104,23 @@ public class TradeOrderService {
                             TransactionTemplate transactionTemplate, RiskClient riskClient,
                             OrderRiskStateWriter riskStateWriter,
                             TradeOrchestrationService orchestrationService) {
+        this(orderMapper, paymentMapper, deliveryMapper, evidenceMapper, disputeMapper,
+                disputeMessageMapper, arbitrationMapper, settlementMapper, reviewMapper,
+                statusLog, objectMapper, transactionTemplate, riskClient, riskStateWriter,
+                orchestrationService, TradeOrderProperties.defaults(), Clock.systemDefaultZone());
+    }
+
+    @Autowired
+    public TradeOrderService(TradeOrderMapper orderMapper, PaymentOrderMapper paymentMapper,
+                             DeliveryRecordMapper deliveryMapper,
+                             DeliveryEvidenceMapper evidenceMapper, DisputeMapper disputeMapper,
+                             DisputeMessageMapper disputeMessageMapper, ArbitrationMapper arbitrationMapper,
+                            OrderSettlementMapper settlementMapper, OrderReviewMapper reviewMapper,
+                            TradeStatusLogService statusLog, ObjectMapper objectMapper,
+                            TransactionTemplate transactionTemplate, RiskClient riskClient,
+                            OrderRiskStateWriter riskStateWriter,
+                            TradeOrchestrationService orchestrationService,
+                            TradeOrderProperties orderProperties, Clock clock) {
         this.orderMapper = orderMapper;
         this.paymentMapper = paymentMapper;
         this.deliveryMapper = deliveryMapper;
@@ -119,6 +136,13 @@ public class TradeOrderService {
         this.riskClient = riskClient;
         this.riskStateWriter = riskStateWriter;
         this.orchestrationService = orchestrationService;
+        this.feeRatePercent = orderProperties.feeRatePercent();
+        this.minFee = orderProperties.minFee();
+        this.paymentExpireMinutes = orderProperties.paymentExpireMinutes();
+        this.deliveryTimeoutMinutes = orderProperties.deliveryTimeoutMinutes();
+        this.autoConfirmHours = orderProperties.autoConfirmHours();
+        this.settleCooldownHours = orderProperties.settleCooldownHours();
+        this.clock = clock;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -126,7 +150,7 @@ public class TradeOrderService {
         requireCreateParameters(buyerId, itemId, quantity);
         String orderNo = nextBusinessNo("TR", buyerId);
         String eventNo = RiskSupport.nextEventNo("ORDER");
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         TradeOrder order = buildInitialOrder(buyerId, orderNo, itemId, quantity, now);
         orderMapper.insert(order);
         orchestrationService.createOrderCreateTask(
@@ -158,7 +182,7 @@ public class TradeOrderService {
         if (!"INIT".equals(payment.getStatus())) {
             return payment;
         }
-        paymentMapper.startPaying(order.getOrderNo(), LocalDateTime.now());
+        paymentMapper.startPaying(order.getOrderNo(), LocalDateTime.now(clock));
         return requirePaymentByNo(paymentNo);
     }
 
@@ -167,13 +191,13 @@ public class TradeOrderService {
         String orderNo = request.orderNo();
         String paymentNo = request.paymentNo();
         if (!"SUCCESS".equals(request.result())) {
-            paymentMapper.markFailed(paymentNo, LocalDateTime.now());
+            paymentMapper.markFailed(paymentNo, LocalDateTime.now(clock));
             return "PAY_CALLBACK_ACCEPTED";
         }
 
         TradeOrder order = requireOrder(orderNo);
         requirePaymentAllowed(order);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         if (order.getOrderAmount() == null
                 || request.amount().compareTo(order.getOrderAmount()) != 0) {
             throw new PaymentCallbackRejectedException(
@@ -208,7 +232,7 @@ public class TradeOrderService {
 
     @Transactional(rollbackFor = Exception.class)
     public int closeExpiredOrder(String orderNo, String operatorType, Long operatorId, String reason) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         if (orderMapper.markCancellingFromWaitPay(orderNo, now) <= 0) {
             return 0;
         }
@@ -225,7 +249,7 @@ public class TradeOrderService {
         if (!order.getBuyerId().equals(buyerId)) {
             throw new IllegalArgumentException("只有买家可以取消订单");
         }
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         if (orderMapper.markCancellingByBuyer(orderNo, now) <= 0) {
             return 0;
         }
@@ -258,7 +282,7 @@ public class TradeOrderService {
         if (manualDelivery && deliveryContent.isEmpty()) {
             throw new IllegalArgumentException("手动交付必须填写交付说明");
         }
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         if (orderMapper.markDelivered(orderNo, now, autoConfirmHours) <= 0) {
             throw new IllegalStateException("当前状态不能交付");
         }
@@ -325,7 +349,7 @@ public class TradeOrderService {
             throw new IllegalStateException("交付记录不存在");
         }
         if (record.getFirstViewTime() == null) {
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = LocalDateTime.now(clock);
             orderMapper.markDeliveryViewed(orderNo, now);
             deliveryMapper.markViewed(orderNo, now);
             record.setFirstViewTime(now);
@@ -346,7 +370,7 @@ public class TradeOrderService {
             throw new IllegalStateException("售后处理中，不能确认收货");
         }
         requireProgressAllowed(order);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         int updated = "SYSTEM".equals(operatorType)
                 ? orderMapper.markConfirmedForAutoConfirm(orderNo, now, settleCooldownHours)
                 : orderMapper.markConfirmedByBuyer(orderNo, now, settleCooldownHours);
@@ -367,7 +391,7 @@ public class TradeOrderService {
 
     @Transactional(rollbackFor = Exception.class)
     public TradeOrder settle(String orderNo) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         TradeOrder order = requireOrder(orderNo);
         requireProgressAllowed(order);
         if (!"CONFIRMED".equals(order.getOrderStatus()) && !"SETTLING".equals(order.getOrderStatus())) {
@@ -433,7 +457,7 @@ public class TradeOrderService {
         }
         Dispute dispute = buildDispute(order, userId, type, reason, refundAmount);
         transactionTemplate.executeWithoutResult(status -> {
-            if (orderMapper.markDispute(orderNo, "ARBITRATING", LocalDateTime.now()) <= 0) {
+            if (orderMapper.markDispute(orderNo, "ARBITRATING", LocalDateTime.now(clock)) <= 0) {
                 throw new IllegalArgumentException("订单售后状态已变化，请刷新后重试");
             }
             disputeMapper.insert(dispute);
@@ -454,7 +478,7 @@ public class TradeOrderService {
         record.setSenderType(dispute.getBuyerId().equals(userId) ? "BUYER" : "SELLER");
         record.setSenderId(userId);
         record.setMessage(message);
-        record.setCreatedTime(LocalDateTime.now());
+        record.setCreatedTime(LocalDateTime.now(clock));
         disputeMessageMapper.insert(record);
         return listDisputeMessages(disputeNo);
     }
@@ -472,7 +496,7 @@ public class TradeOrderService {
         evidence.setContent(content);
         evidence.setUploaderType(order.getBuyerId().equals(userId) ? "BUYER" : "SELLER");
         evidence.setUploaderId(userId);
-        evidence.setCreatedTime(LocalDateTime.now());
+        evidence.setCreatedTime(LocalDateTime.now(clock));
         evidenceMapper.insert(evidence);
         return evidence;
     }
@@ -485,7 +509,7 @@ public class TradeOrderService {
         }
         TradeOrder order = requireOrder(dispute.getOrderNo());
         if ("REFUND_ALL".equals(result)) {
-            if (orderMapper.markRefunding(order.getOrderNo(), LocalDateTime.now()) <= 0) {
+            if (orderMapper.markRefunding(order.getOrderNo(), LocalDateTime.now(clock)) <= 0) {
                 throw new IllegalStateException("订单状态变化，仲裁退款失败");
             }
             orchestrationService.createArbitrationRefundTask(order, disputeNo, adminId, reason);
@@ -495,12 +519,12 @@ public class TradeOrderService {
             if (!"DELIVERED".equals(order.getOrderStatus())) {
                 throw new IllegalArgumentException("仅已交付订单可以仲裁全额放款");
             }
-            if (orderMapper.markSettlingByArbitration(order.getOrderNo(), LocalDateTime.now()) <= 0) {
+            if (orderMapper.markSettlingByArbitration(order.getOrderNo(), LocalDateTime.now(clock)) <= 0) {
                 throw new IllegalStateException("订单状态变化，仲裁放款失败");
             }
             BigDecimal fee = calculateFee(order.getOrderAmount());
             BigDecimal income = order.getOrderAmount().subtract(fee);
-            orderMapper.updateFeeAndIncomeByOrderNo(order.getOrderNo(), fee, income, LocalDateTime.now());
+            orderMapper.updateFeeAndIncomeByOrderNo(order.getOrderNo(), fee, income, LocalDateTime.now(clock));
             orchestrationService.createArbitrationReleaseTask(order, disputeNo, adminId, reason, fee, income);
             statusLog.log(order.getOrderNo(), "ARBITRATING", "SETTLING", "ORDER",
                     "ADMIN", adminId, "仲裁全额放款任务已创建");
@@ -526,7 +550,7 @@ public class TradeOrderService {
         review.setMerchantId(order.getMerchantId());
         review.setScore(score);
         review.setContent(content);
-        review.setCreatedTime(LocalDateTime.now());
+        review.setCreatedTime(LocalDateTime.now(clock));
         transactionTemplate.executeWithoutResult(status -> reviewMapper.insert(review));
         orchestrationService.createMerchantCompleteTask(order, BigDecimal.valueOf(score));
         return review;
@@ -638,27 +662,27 @@ public class TradeOrderService {
     }
 
     public int closeExpiredPayments(int limit) {
-        return processOrders(orderMapper.selectExpiredPayOrders(LocalDateTime.now(), limit),
+        return processOrders(orderMapper.selectExpiredPayOrders(LocalDateTime.now(clock), limit),
                 order -> closeExpiredOrder(order.getOrderNo(), "SYSTEM", null, "支付超时主动关单"));
     }
 
     public int autoConfirm(int limit) {
-        return processOrders(orderMapper.selectAutoConfirmOrders(LocalDateTime.now(), limit),
+        return processOrders(orderMapper.selectAutoConfirmOrders(LocalDateTime.now(clock), limit),
                 order -> confirm(null, order.getOrderNo(), "SYSTEM"));
     }
 
     public int settleDueOrders(int limit) {
-        return processOrders(orderMapper.selectSettleableOrders(LocalDateTime.now(), limit),
+        return processOrders(orderMapper.selectSettleableOrders(LocalDateTime.now(clock), limit),
                 order -> settle(order.getOrderNo()));
     }
 
     public int handleDeliveryTimeout(int limit) {
-        List<TradeOrder> orders = orderMapper.selectDeliveryTimeoutOrders(LocalDateTime.now(), limit);
+        List<TradeOrder> orders = orderMapper.selectDeliveryTimeoutOrders(LocalDateTime.now(clock), limit);
         int processed = 0;
         for (TradeOrder order : orders) {
             try {
                 transactionTemplate.executeWithoutResult(status -> {
-                    if (orderMapper.markRefunding(order.getOrderNo(), LocalDateTime.now()) <= 0) {
+                    if (orderMapper.markRefunding(order.getOrderNo(), LocalDateTime.now(clock)) <= 0) {
                         throw new IllegalStateException("订单已被其他任务处理，交付超时退款中断");
                     }
                     statusLog.log(order.getOrderNo(), "PAID", "REFUNDING", "ORDER",
@@ -791,7 +815,7 @@ public class TradeOrderService {
 
     private Dispute buildDispute(TradeOrder order, Long userId, String type, String reason,
                                  BigDecimal refundAmount) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         Dispute dispute = new Dispute();
         dispute.setDisputeNo(nextBusinessNo("DP", userId));
         dispute.setOrderNo(order.getOrderNo());
@@ -819,12 +843,12 @@ public class TradeOrderService {
         arbitration.setReason(reason);
         arbitration.setArbitratorId(adminId);
         arbitration.setAppealStatus("NONE");
-        arbitration.setCreatedTime(LocalDateTime.now());
+        arbitration.setCreatedTime(LocalDateTime.now(clock));
         return arbitration;
     }
 
     private void markSecretViewed(String orderNo) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         orderMapper.markDeliveryViewed(orderNo, now);
         deliveryMapper.markViewed(orderNo, now);
     }
@@ -879,7 +903,7 @@ public class TradeOrderService {
     }
 
     private boolean isPayExpired(TradeOrder order) {
-        return order.getPayDeadline() != null && order.getPayDeadline().isBefore(LocalDateTime.now());
+        return order.getPayDeadline() != null && order.getPayDeadline().isBefore(LocalDateTime.now(clock));
     }
 
     private boolean closeExpiredOrderIfPayExpired(TradeOrder order) {

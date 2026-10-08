@@ -24,6 +24,13 @@ rocketmq:
     send-message-timeout: 3000
 
 trade:
+  order:
+    fee-rate-percent: ${TRADE_FEE_RATE_PERCENT:2}
+    min-fee: ${TRADE_MIN_FEE:0.01}
+    payment-expire-minutes: ${TRADE_PAYMENT_EXPIRE_MINUTES:15}
+    delivery-timeout-minutes: ${TRADE_DELIVERY_TIMEOUT_MINUTES:30}
+    auto-confirm-hours: ${TRADE_AUTO_CONFIRM_HOURS:24}
+    settle-cooldown-hours: ${TRADE_SETTLE_COOLDOWN_HOURS:24}
   payment-callback:
     secret: ${PAYMENT_CALLBACK_SECRET}
     secret-version: ${PAYMENT_CALLBACK_SECRET_VERSION:1}

@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.item.entity.AuditLog;
 import com.example.item.mapper.AuditLogMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -18,8 +17,11 @@ import java.util.List;
 @Service
 public class AuditLogService {
 
-    @Autowired
-    private AuditLogMapper auditLogMapper;
+    private final AuditLogMapper auditLogMapper;
+
+    public AuditLogService(AuditLogMapper auditLogMapper) {
+        this.auditLogMapper = auditLogMapper;
+    }
 
     /**
      * 将 AuditLogDTO 转换为实体并落库
