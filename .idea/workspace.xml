@@ -80,7 +80,7 @@
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "git-widget-placeholder": "main",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/yu/IdeaProjects/mall-parent/evaluation/rag-evaluation/outputs/deepseek-v4-pro-qwen-embedding",
+    "last_opened_file_path": "/Users/yu/IdeaProjects/mall-parent/evaluation/rag-evaluation/outputs",
     "nodejs_package_manager_path": "npm",
     "project.structure.last.edited": "Modules",
     "project.structure.proportion": "0.15",
@@ -92,15 +92,16 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/evaluation/rag-evaluation/outputs" />
       <recent name="$PROJECT_DIR$/evaluation/rag-evaluation/outputs/deepseek-v4-pro-qwen-embedding" />
       <recent name="$PROJECT_DIR$/mall-order-service/src/main/resources" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/evaluation/rag-evaluation/outputs/qwen-ragas-final-resumed/run-1" />
+      <recent name="$PROJECT_DIR$/evaluation/rag-evaluation/outputs/qwen-ragas-final-resumed/run-2" />
       <recent name="$PROJECT_DIR$/doc/data/MySQL" />
       <recent name="$PROJECT_DIR$/doc/agent" />
       <recent name="$PROJECT_DIR$/doc/sql" />
-      <recent name="$PROJECT_DIR$/doc/stage1_and_stage2_improve" />
-      <recent name="$PROJECT_DIR$" />
     </key>
   </component>
   <component name="RunDashboard">
@@ -262,7 +263,7 @@
       <workItem from="1790661285017" duration="8416000" />
       <workItem from="1790728447142" duration="8430000" />
       <workItem from="1791422468053" duration="25006000" />
-      <workItem from="1791507137679" duration="10753000" />
+      <workItem from="1791507137679" duration="20075000" />
     </task>
     <servers />
   </component>
