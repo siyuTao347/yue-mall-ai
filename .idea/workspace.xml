@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8275a235-79d3-4837-87f7-ed524bd10d2f" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vscode/settings.json" beforeDir="false" />
-    </list>
+    <list default="true" id="8275a235-79d3-4837-87f7-ed524bd10d2f" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -264,7 +261,7 @@
       <workItem from="1790661285017" duration="8416000" />
       <workItem from="1790728447142" duration="8430000" />
       <workItem from="1791422468053" duration="25006000" />
-      <workItem from="1791507137679" duration="22415000" />
+      <workItem from="1791507137679" duration="23099000" />
     </task>
     <servers />
   </component>
