@@ -5,20 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8275a235-79d3-4837-87f7-ed524bd10d2f" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/mall-frontend/src/App.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-frontend/src/api/client.js" beforeDir="false" afterPath="$PROJECT_DIR$/mall-frontend/src/api/client.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-frontend/src/components/layout/Navbar.css" beforeDir="false" afterPath="$PROJECT_DIR$/mall-frontend/src/components/layout/Navbar.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-frontend/src/components/layout/Navbar.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/mall-frontend/src/components/layout/Navbar.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-frontend/src/components/trade/TradeWorkbench.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/mall-frontend/src/components/trade/TradeWorkbench.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-frontend/src/context/AppContext.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/mall-frontend/src/context/AppContext.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-gateway-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-gateway-service/src/main/resources/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/service/OrderServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/service/OrderServiceImpl.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-order-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/src/main/resources/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/service/OrderServiceImpl.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/service/OrderServiceImpl.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -93,7 +80,7 @@
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "git-widget-placeholder": "main",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/yu/IdeaProjects/mall-parent",
+    "last_opened_file_path": "/Users/yu/IdeaProjects/mall-parent/evaluation/rag-evaluation/outputs/deepseek-v4-pro-qwen-embedding",
     "nodejs_package_manager_path": "npm",
     "project.structure.last.edited": "Modules",
     "project.structure.proportion": "0.15",
@@ -105,6 +92,7 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/evaluation/rag-evaluation/outputs/deepseek-v4-pro-qwen-embedding" />
       <recent name="$PROJECT_DIR$/mall-order-service/src/main/resources" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
@@ -227,11 +215,11 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Spring Boot.AgentApplication" />
-        <item itemvalue="Spring Boot.ItemApplication" />
-        <item itemvalue="Spring Boot.OrderApplication" />
         <item itemvalue="Spring Boot.UserApplication" />
+        <item itemvalue="Spring Boot.ItemApplication" />
+        <item itemvalue="Spring Boot.AgentApplication" />
         <item itemvalue="Spring Boot.RiskApplication" />
+        <item itemvalue="Spring Boot.OrderApplication" />
       </list>
     </recent_temporary>
   </component>
@@ -273,7 +261,8 @@
       <workItem from="1790654068961" duration="2451000" />
       <workItem from="1790661285017" duration="8416000" />
       <workItem from="1790728447142" duration="8430000" />
-      <workItem from="1791422468053" duration="22941000" />
+      <workItem from="1791422468053" duration="25006000" />
+      <workItem from="1791507137679" duration="10753000" />
     </task>
     <servers />
   </component>

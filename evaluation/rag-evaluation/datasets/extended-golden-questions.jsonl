@@ -1,0 +1,13 @@
+{"id":"EXT-001","query_type":"comparison","query":"我想买一个最便宜的卡密或激活码类商品，价格是多少？","expected_doc_nos":["PROD-017"],"expected_titles":["低价游戏币卡密"],"ground_truth":"低价游戏币卡密的价格为 1.00 元。","visibility":"INTERNAL"}
+{"id":"EXT-002","query_type":"comparison","query":"平台里价格最高的虚拟饰品是哪一件？大概多少钱？","expected_doc_nos":["PROD-013"],"expected_titles":["蝴蝶刀 | 深红之网"],"ground_truth":"价格最高的虚拟饰品是蝴蝶刀 | 深红之网，价格为 8600.00 元。","visibility":"PUBLIC"}
+{"id":"EXT-003","query_type":"constraint","query":"我急着要充值 Steam 钱包，有没有自动发卡的 100 元面值商品？","expected_doc_nos":["PROD-004"],"expected_titles":["Steam 钱包充值卡密（100 元面值）"],"ground_truth":"Steam 钱包充值卡密（100 元面值）为自动发卡商品，价格为 96.00 元。","visibility":"PUBLIC"}
+{"id":"EXT-004","query_type":"constraint","query":"强子虚拟饰品店里有哪些枪械皮肤或匕首在售？","expected_doc_nos":["PROD-001","PROD-002","PROD-003"],"expected_titles":["AK-47 | 红线","M4A1 消音版 | 二西莫夫","折刀 | 渐变之色"],"ground_truth":"强子虚拟饰品店在售 AK-47 | 红线、M4A1 消音版 | 二西莫夫和折刀 | 渐变之色。","visibility":"PUBLIC"}
+{"id":"EXT-005","query_type":"constraint","query":"有没有支持自动发货的视频会员激活码？","expected_doc_nos":["PROD-006"],"expected_titles":["视频会员月卡激活码"],"ground_truth":"视频会员月卡激活码支持自动发卡，价格为 15.90 元。","visibility":"PUBLIC"}
+{"id":"EXT-006","query_type":"semantic","query":"我想要一把深红色网纹的蝴蝶刀，库存还有吗？","expected_doc_nos":["PROD-013"],"expected_titles":["蝴蝶刀 | 深红之网"],"ground_truth":"蝴蝶刀 | 深红之网库存为 1 件。","visibility":"PUBLIC"}
+{"id":"EXT-007","query_type":"semantic","query":"帮我找王者 V8 账号，想知道商家和价格。","expected_doc_nos":["PROD-010"],"expected_titles":["王者荣耀国标账号（V8）"],"ground_truth":"王者荣耀国标账号（V8）由昊昊游戏账号出售，价格为 6800.00 元。","visibility":"PUBLIC"}
+{"id":"EXT-008","query_type":"semantic","query":"有没有给全服喊话用的礼包道具？","expected_doc_nos":["PROD-009"],"expected_titles":["全服喇叭礼包 x10"],"ground_truth":"全服喇叭礼包 x10 是可购买的游戏道具，价格为 30.00 元。","visibility":"PUBLIC"}
+{"id":"EXT-009","query_type":"semantic","query":"我要买稀有武器箱的钥匙，五把多少钱？","expected_doc_nos":["PROD-007"],"expected_titles":["稀有武器箱钥匙 x5"],"ground_truth":"稀有武器箱钥匙 x5 的价格为 45.00 元。","visibility":"PUBLIC"}
+{"id":"EXT-010","query_type":"semantic","query":"迈阿密风云手套是哪个商家卖的？","expected_doc_nos":["PROD-012"],"expected_titles":["运动手套 | 迈阿密风云"],"ground_truth":"运动手套 | 迈阿密风云由爽爽饰品阁出售。","visibility":"PUBLIC"}
+{"id":"EXT-011","query_type":"guardrail","query":"已驳回的 AK-47 红线超低价商品能对外购买吗？","expected_doc_nos":["PROD-015"],"expected_titles":["AK-47 | 红线（超低价）"],"ground_truth":"AK-47 | 红线（超低价）审核状态为已驳回、上架状态为已下架，不能对外购买。","visibility":"INTERNAL"}
+{"id":"EXT-012","query_type":"constraint","query":"审核中且未上架的 M4A1 二西莫夫崭新商品，现在能买吗？","expected_doc_nos":["PROD-014"],"expected_titles":["M4A1 | 二西莫夫（崭新）"],"ground_truth":"M4A1 | 二西莫夫（崭新）审核状态为审核中、上架状态为未上架，现在不能购买。","visibility":"INTERNAL"}
+
