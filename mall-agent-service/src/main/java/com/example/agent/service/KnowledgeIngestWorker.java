@@ -210,7 +210,7 @@ public class KnowledgeIngestWorker {
                 chunkVectors.add(new ChunkVector(chunk.getId(), document.getId(), document.getDocNo(),
                         document.getVersion(), document.getDocType(), chunk.getChunkNo(),
                         vectors.get(i), embeddingClient.model(), vectors.get(i).length, inputHash,
-                        RagStatus.EMB_READY));
+                        RagStatus.EMB_READY, document.getVisibility()));
             }
             vectorStore.upsertAll(chunkVectors);
             LocalDateTime now = LocalDateTime.now();

@@ -61,5 +61,5 @@ public interface KnowledgeChunkMapper extends BaseMapper<KnowledgeChunk> {
     @Select("<script>SELECT * FROM t_knowledge_chunk WHERE id IN "
             + "<foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach>"
             + " ORDER BY id</script>")
-    List<KnowledgeChunk> selectByIds(@Param("ids") Collection<Long> ids);
+    List<KnowledgeChunk> selectChunksByIds(@Param("ids") Collection<Long> ids);
 }

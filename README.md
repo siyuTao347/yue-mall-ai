@@ -2,7 +2,7 @@
 
 > 一个 C2C 虚拟资产交易平台，重点不是“能买买买”，而是把担保交易、资金账本、交付证据、售后仲裁、规则风控和异步补偿这些平台级问题做扎实。
 
-项目当前已落地统一网关、用户、商品、担保订单、Mock 支付、资金账户、交付确认、结算提现、售后仲裁，以及覆盖风险事件、决策、案件处置和命令补偿的风控运营闭环；同时完成统一枚举、异常响应、traceId 贯通、内部接口防护和工程规范扫描等治理能力。Agent 能力已有完整设计，尚未开始实现。
+项目当前已落地统一网关、用户、商品、担保订单、Mock 支付、资金账户、交付确认、结算提现、售后仲裁，以及覆盖风险事件、决策、案件处置和命令补偿的风控运营闭环；同时完成统一枚举、异常响应、traceId 贯通、内部接口防护和工程规范扫描等治理能力。智能客服已实现分层意图识别、只读业务工具、公开知识检索、转人工、运行追踪和前端入口；运行准备见 [客服实现说明](doc/agent/customerServiceAgent/implementation.md)。
 
 ## 项目边界
 
@@ -16,7 +16,7 @@
 | 资金托管 | 平台内部账户 + 冻结 / 待结算 / 可用余额 |
 | KYC | 资料提交 + 后台审核状态 |
 | 风控模型 | 规则引擎、风险指标、案件处置、证据聚合、命令追踪与人工兜底 |
-| Agent | 阶段三设计，默认 Mock 模型，可选 OpenAI 兼容接口 |
+| Agent | 智能客服 Graph 编排，默认 Mock，可选 DashScope；其他 Agent 尚未实现 |
 
 外部服务可以是假的，但状态机、幂等、一致性、审计和权限必须按真实平台标准实现。
 
@@ -183,13 +183,21 @@ flowchart TD
 
 ```bash
 mysql -u <username> -p < db.sql
-mysql -u <username> -p < doc/sql/stage1_schema.sql
-mysql -u <username> -p < doc/sql/stage1_payment_callback_security_migration.sql
-mysql -u <username> -p < doc/sql/stage1_trade_consistency_migration.sql
-mysql -u <username> -p < doc/sql/stage2_schema.sql
-mysql -u <username> -p < doc/sql/stage2_batch2_query_performance_migration.sql
-mysql -u <username> -p < doc/sql/stage2_batch3_operation_closure_migration.sql
+mysql -u <username> -p < doc/sql/init/seata_undo_log_migration.sql
+mysql -u <username> -p < doc/sql/init/stage1_schema.sql
+mysql -u <username> -p < doc/sql/init/stage1_payment_callback_security_migration.sql
+mysql -u <username> -p < doc/sql/init/stage1_trade_consistency_migration.sql
+mysql -u <username> -p < doc/sql/init/stage2_schema.sql
+mysql -u <username> -p < doc/sql/init/stage2_batch2_query_performance_migration.sql
+mysql -u <username> -p < doc/sql/init/stage2_batch3_operation_closure_migration.sql
 ```
+
+已有业务库遇到 `in AT mode, undo_log table not exist` 时，只需执行
+`doc/sql/init/seata_undo_log_migration.sql`，无需重跑基础库或其他增量脚本。
+连接远程 MySQL 时增加 `-h <数据库主机> -P <端口>`，确保与服务实际使用的数据源一致。
+该脚本在 `db_item`、`db_user`、`db_order` 中分别创建 Seata AT 回滚日志表，可重复执行。
+项目包含 TCC 业务，但当前 Seata Starter 仍启用了默认 AT 数据源代理；TCC 业务表不能替代 `undo_log`。
+必须先执行此脚本再启动服务：Seata 在数据源创建阶段检查该表，早于 Spring SQL 初始化。
 
 ### 2. 配置基础设施
 
@@ -315,14 +323,14 @@ bash scripts/ci/engineering-standards-scan.sh
 
 ## 文档索引
 
-- [三阶段演进规划](doc/virtual_asset_market_three_phase_roadmap.md)
-- [Spring Cloud Gateway 接入层设计](doc/spring_cloud_gateway_design.md)
-- [阶段一：担保交易闭环设计](doc/stage1_virtual_asset_trading_design.md)
-- [阶段二：风控与反黑产设计](doc/stage2_risk_control_design.md)
+- [三阶段演进规划](doc/init/virtual_asset_market_three_phase_roadmap.md)
+- [Spring Cloud Gateway 接入层设计](doc/init/spring_cloud_gateway_design.md)
+- [阶段一：担保交易闭环设计](doc/init/stage1_virtual_asset_trading_design.md)
+- [阶段二：风控与反黑产设计](doc/init/stage2_risk_control_design.md)
 - [阶段三：Agent 能力设计](doc/agent/stage3_agent_development_design.md)
-- [企业级认证与用户上下文设计](doc/enterprise_auth_and_user_context_design.md)
-- [React 前端工程化设计](doc/react_frontend_architecture_design.md)
-- [秒杀与积分系统设计](doc/seckill_mall_points_system_design.md)
+- [企业级认证与用户上下文设计](doc/init/enterprise_auth_and_user_context_design.md)
+- [React 前端工程化设计](doc/init/react_frontend_architecture_design.md)
+- [秒杀与积分系统设计](doc/init/seckill_mall_points_system_design.md)
 - [阶段一与阶段二优化总评审](doc/stage1_and_stage2_improve/stage1_stage2_optimization_review.md)
 - [第一批：安全与一致性](doc/stage1_and_stage2_improve/stage1_stage2_batch1_security_consistency_dev_design.md)
 - [第二批：查询与性能](doc/stage1_and_stage2_improve/stage1_stage2_batch2_query_performance_dev_design.md)

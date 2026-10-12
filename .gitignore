@@ -12,3 +12,8 @@ dist-ssr/
 logs/
 *.log
 .DS_Store
+
+# Python virtualenv
+.venv/
+venv/
+__pycache__/

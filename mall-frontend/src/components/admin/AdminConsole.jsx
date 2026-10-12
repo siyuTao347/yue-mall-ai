@@ -4,12 +4,14 @@ import { Navbar } from '../layout/Navbar';
 import { AdminOperations } from './AdminOperations';
 import { RiskCaseWorkbench } from '../risk/RiskCaseWorkbench';
 import { RagKnowledgeWorkbench } from '../agent/RagKnowledgeWorkbench';
+import { CustomerServiceAdmin } from '../customer/CustomerServiceAdmin';
 import './AdminConsole.css';
 
 const ADMIN_TABS = [
   { key: 'operations', label: '运营审核' },
   { key: 'risk', label: '风控案件' },
-  { key: 'rag', label: '知识库管理' }
+  { key: 'rag', label: '知识库管理' },
+  { key: 'customer', label: '智能客服' }
 ];
 
 /** 管理员专属控制台：不再渲染用户商城、秒杀与下单链路。 */
@@ -55,6 +57,7 @@ export const AdminConsole = () => {
         {activeTab === 'operations' ? <AdminOperations /> : null}
         {activeTab === 'risk' ? <RiskCaseWorkbench /> : null}
         {activeTab === 'rag' ? <RagKnowledgeWorkbench /> : null}
+        {activeTab === 'customer' ? <CustomerServiceAdmin /> : null}
       </main>
     </div>
   );

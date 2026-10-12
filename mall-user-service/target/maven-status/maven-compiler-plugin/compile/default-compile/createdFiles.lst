@@ -35,6 +35,7 @@ com/example/user/web/TraceContextFilter.class
 com/example/user/entity/FundTransaction.class
 com/example/user/mapper/MerchantAuditMapper.class
 com/example/user/dto/WithdrawSummaryDTO.class
+com/example/user/entity/MerchantCreditOperation.class
 com/example/user/dto/MerchantSummaryDTO.class
 com/example/user/mapper/WithdrawRequestMapper.class
 com/example/user/annoation/SendCodeLimit.class

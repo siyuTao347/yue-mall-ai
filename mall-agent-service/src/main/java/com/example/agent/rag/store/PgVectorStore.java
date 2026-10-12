@@ -50,14 +50,14 @@ public class PgVectorStore implements VectorStore {
     private void upsertBatch(List<ChunkVector> batch) {
         StringBuilder sql = new StringBuilder(
                 "INSERT INTO rag_chunk_embedding (chunk_id, document_id, doc_no, doc_version, doc_type, "
-                        + "chunk_no, embedding, embedding_model, embedding_dim, embedding_input_hash, status, "
+                        + "chunk_no, embedding, embedding_model, embedding_dim, embedding_input_hash, status, visibility, "
                         + "created_time, updated_time) VALUES ");
-        List<Object> params = new ArrayList<>(batch.size() * 11);
+        List<Object> params = new ArrayList<>(batch.size() * 12);
         for (int i = 0; i < batch.size(); i++) {
             if (i > 0) {
                 sql.append(',');
             }
-            sql.append("(?,?,?,?,?,?,?::vector,?,?,?,?,now(),now())");
+            sql.append("(?,?,?,?,?,?,?::vector,?,?,?,?,?,now(),now())");
             ChunkVector vector = batch.get(i);
             params.add(vector.chunkId());
             params.add(vector.documentId());
@@ -70,12 +70,13 @@ public class PgVectorStore implements VectorStore {
             params.add(vector.dim());
             params.add(vector.inputHash());
             params.add(vector.status());
+            params.add(vector.visibility());
         }
         sql.append(" ON CONFLICT (chunk_id) DO UPDATE SET embedding = EXCLUDED.embedding, "
                 + "embedding_model = EXCLUDED.embedding_model, embedding_dim = EXCLUDED.embedding_dim, "
                 + "embedding_input_hash = EXCLUDED.embedding_input_hash, doc_no = EXCLUDED.doc_no, "
                 + "doc_version = EXCLUDED.doc_version, doc_type = EXCLUDED.doc_type, "
-                + "chunk_no = EXCLUDED.chunk_no, status = EXCLUDED.status, updated_time = now()");
+                + "chunk_no = EXCLUDED.chunk_no, status = EXCLUDED.status, visibility = EXCLUDED.visibility, updated_time = now()");
         jdbcTemplate.update(sql.toString(), params.toArray());
     }
 

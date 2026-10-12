@@ -118,7 +118,7 @@ public class KnowledgeStatsService {
 
         Map<Long, KnowledgeChunk> childById = new LinkedHashMap<>();
         if (!hits.isEmpty()) {
-            for (KnowledgeChunk chunk : chunkMapper.selectByIds(hits.stream().map(VectorHit::chunkId).toList())) {
+            for (KnowledgeChunk chunk : chunkMapper.selectChunksByIds(hits.stream().map(VectorHit::chunkId).toList())) {
                 childById.put(chunk.getId(), chunk);
             }
         }
@@ -144,7 +144,7 @@ public class KnowledgeStatsService {
                 .toList();
         if (!parentIds.isEmpty()) {
             Map<Long, KnowledgeChunk> parentById = new LinkedHashMap<>();
-            for (KnowledgeChunk parent : chunkMapper.selectByIds(new LinkedHashSet<>(parentIds))) {
+            for (KnowledgeChunk parent : chunkMapper.selectChunksByIds(new LinkedHashSet<>(parentIds))) {
                 parentById.put(parent.getId(), parent);
             }
             for (Long parentId : parentIds) {

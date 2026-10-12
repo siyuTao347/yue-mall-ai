@@ -84,3 +84,33 @@ management:
     web:
       exposure:
         include: health,metrics,prometheus
+
+
+# 客服模型和知识库 Embedding 分开配置。默认 MOCK 不调用外部 ChatModel。
+customer-service:
+  provider: ${CUSTOMER_SERVICE_PROVIDER:MOCK}
+  api-key: ${CUSTOMER_SERVICE_API_KEY:}
+  master-model: ${CUSTOMER_SERVICE_MASTER_MODEL:qwen-turbo}
+  response-model: ${CUSTOMER_SERVICE_RESPONSE_MODEL:qwen-plus}
+  run-timeout-ms: 90000
+  model-timeout-ms: 15000
+  retrieval-timeout-ms: 12000
+  knowledge-threshold: 0.5 # 初始门槛，需用真实知识评估集校准
+  l1-max-chars: 20
+  rag-enabled: true
+  pre-sale-enabled: false
+
+# 只读客服 Dubbo consumer；订单提供者未启动不阻止知识库管理服务启动。
+dubbo:
+  application:
+    name: mall-agent-service
+    qos-enable: false
+  registry:
+    address: ${DUBBO_REGISTRY_ADDRESS:nacos://100.121.74.115:8848}
+  protocol:
+    name: dubbo
+    port: -1
+  consumer:
+    check: false
+    timeout: 3000
+    retries: 0

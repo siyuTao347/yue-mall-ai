@@ -11,55 +11,57 @@ spring:
       config:
         server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
     gateway:
-      discovery:
-        locator:
-          enabled: false
-      httpclient:
-        connect-timeout: 2000
-        response-timeout: 20s
-      routes:
-        - id: mall-user-route
-          uri: lb://mall-user-service
-          predicates:
-            - Path=/api/user/**,/api/account/**,/api/merchant/**,/api/withdraw/**
-        - id: mall-item-route
-          uri: lb://mall-item-service
-          predicates:
-            - Path=/api/home/**,/api/item/**,/api/seckill/**,/api/asset/**,/api/system/time
-        - id: mall-order-route
-          uri: lb://mall-order-service
-          predicates:
-            - Path=/api/order/**,/api/trade/**,/api/payment/**,/api/audit/**
-        - id: mall-risk-route
-          uri: lb://mall-risk-service
-          predicates:
-            - Path=/api/admin/risk/**
-        - id: mall-agent-route
-          uri: lb://mall-agent-service
-          predicates:
-            - Path=/api/agent/**,/api/admin/agent/**
-          # 管理端知识库存在远程序列化/向量写入，按路由放宽响应超时（默认 20s 会 504）
-          metadata:
-            connect-timeout: 3000
-            response-timeout: 30000
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowedOriginPatterns:
-              - ${FRONTEND_ORIGIN:http://localhost:3000}
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - OPTIONS
-            allowedHeaders:
-              - Authorization
-              - Content-Type
-              - X-Requested-With
-              - X-Request-Id
-            allowCredentials: true
-            maxAge: 3600
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: false
+          httpclient:
+            connect-timeout: 2000
+            response-timeout: 20s
+          routes:
+            - id: mall-user-route
+              uri: lb://mall-user-service
+              predicates:
+                - Path=/api/user/**,/api/account/**,/api/merchant/**,/api/withdraw/**
+            - id: mall-item-route
+              uri: lb://mall-item-service
+              predicates:
+                - Path=/api/home/**,/api/item/**,/api/seckill/**,/api/asset/**,/api/system/time
+            - id: mall-order-route
+              uri: lb://mall-order-service
+              predicates:
+                - Path=/api/order/**,/api/trade/**,/api/payment/**,/api/audit/**
+            - id: mall-risk-route
+              uri: lb://mall-risk-service
+              predicates:
+                - Path=/api/admin/risk/**
+            - id: mall-agent-route
+              uri: lb://mall-agent-service
+              predicates:
+                - Path=/api/agent/**,/api/admin/agent/**
+              # 客服 run 总预算 90s；保留管理端知识库长请求支持
+              metadata:
+                connect-timeout: 3000
+                response-timeout: 95000
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOriginPatterns:
+                  - ${FRONTEND_ORIGIN:http://localhost:3000}
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                allowedHeaders:
+                  - Authorization
+                  - Content-Type
+                  - X-Requested-With
+                  - X-Request-Id
+                allowCredentials: true
+                maxAge: 3600
   data:
     redis:
       host: ${REDIS_HOST:100.121.74.115}

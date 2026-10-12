@@ -332,7 +332,7 @@ class TradeOrderServiceTest {
         verify(fundService, never()).refundEscrow(any(), any(), any());
         verify(assetService, never()).invalidateByOrderNo(anyString());
         verify(orchestrationService).createDeliveryTimeoutRefundTask(order);
-        verify(disputeMapper, never()).insert(any());
+        verify(disputeMapper, never()).insert(any(Dispute.class));
     }
 
     @Test

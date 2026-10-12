@@ -15,6 +15,7 @@ import { AuthModal } from './components/auth/AuthModal';
 import { ToastViewport } from './components/ui/UiFeedback';
 import { TradeWorkbench } from './components/trade/TradeWorkbench';
 import { AdminConsole } from './components/admin/AdminConsole';
+import { CustomerServiceLauncher } from './components/customer/CustomerServiceLauncher';
 
 /** 普通用户商城：首页、秒杀、商品目录与担保交易工作台。 */
 const UserStorefront = () => {
@@ -60,7 +61,7 @@ const UserStorefront = () => {
       <Navbar searchKeyword={searchKeyword} onSearch={handleSearch} />
       <LiveTicker tickers={overview.tickers} />
       <HeroCarousel banners={overview.banners} />
-      <TradeWorkbench items={overview.catalogItems || overview.hotItems || []} />
+      <div id="tradeSection"><TradeWorkbench items={overview.catalogItems || overview.hotItems || []} /></div>
 
       <main className="layout-container page-section" id="seckillSection">
         <div className="section-header seckill-header">
@@ -98,6 +99,7 @@ const UserStorefront = () => {
 
       <PointsDrawer />
       <SeckillModal />
+      <CustomerServiceLauncher />
     </div>
   );
 };

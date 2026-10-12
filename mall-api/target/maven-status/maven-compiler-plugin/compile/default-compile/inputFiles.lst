@@ -38,9 +38,11 @@
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/common/PageResult.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/exception/ValidationException.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/exception/BadRequestException.java
+/Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/agent/AgentOrderQueryDubboService.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/RelationGraphDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/exception/ForbiddenException.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/SensitiveWordDTO.java
+/Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/agent/AgentActor.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/audit/AuditLogDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/context/UserContext.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/RiskDubboService.java

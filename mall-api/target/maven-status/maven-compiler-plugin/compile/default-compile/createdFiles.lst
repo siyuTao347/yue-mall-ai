@@ -11,6 +11,7 @@ api/risk/RiskDecisionResult.class
 api/trade/MerchantDubboService.class
 api/audit/DeliveryMode.class
 api/enums/OrderStatus.class
+api/agent/AgentOrderQueryDubboService$EvidenceFact.class
 api/enums/PayStatus.class
 api/risk/RiskRuleHitDTO.class
 api/ItemDubboService.class
@@ -18,6 +19,7 @@ api/enums/WithdrawStatus.class
 api/trade/AssetReservationResult$AssetReservationResultBuilder.class
 api/trade/request/OpenDisputeRequest.class
 api/trade/CardSecretDTO.class
+api/agent/AgentOrderQueryDubboService.class
 api/enums/RiskCaseStatus.class
 api/trade/AssetReservationResult.class
 api/exception/NotFoundException.class
@@ -53,6 +55,8 @@ api/enums/DeliveryStatus.class
 api/trade/FundOperationResult.class
 api/enums/DisputeStatus.class
 api/enums/RiskLevel.class
+api/agent/AgentOrderQueryDubboService$DisputeFact.class
+api/agent/AgentActor.class
 api/common/PageQuery.class
 api/enums/EscrowStatus.class
 api/trade/request/AddDisputeMessageRequest.class
@@ -62,6 +66,7 @@ api/trade/request/ReviewOrderRequest.class
 api/risk/RiskEvaluateRequest.class
 api/enums/RiskStatus.class
 api/enums/MerchantAuditStatus.class
+api/agent/AgentOrderQueryDubboService$OrderFact.class
 api/risk/RiskDubboService.class
 api/risk/RiskCommandResultDTO.class
 api/common/TimeRangeQuery.class
@@ -71,4 +76,5 @@ api/response/ErrorCodes.class
 api/risk/SensitiveWordHitDTO.class
 api/risk/RelationGraphDTO$RelationGraphDTOBuilder.class
 api/exception/RemoteDependencyException.class
+api/agent/AgentOrderQueryDubboService$TimelineFact.class
 api/context/TraceContext.class

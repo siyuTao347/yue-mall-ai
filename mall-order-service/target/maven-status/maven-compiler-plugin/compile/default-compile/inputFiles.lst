@@ -11,6 +11,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/mapper/PaymentCallbackNonceMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/dto/OrderListQuery.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/TradeOrchestrationService.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/AgentOrderQueryService.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/listener/OrderRiskCommandConsumer.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/component/ReconciliationJobHandler.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/dto/TradeOrchestrationContext.java

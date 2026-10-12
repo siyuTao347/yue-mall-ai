@@ -27,21 +27,25 @@ spring:
           max-idle: 20
   mail:
     host: smtp.qq.com
-    port: 465
+    # 使用 587 + 强制 STARTTLS；避免当前网络下 465 收到明文响应而握手失败。
+    port: 587
     username: 1677345232@qq.com
     password: mfjdzzbjxcabcgbd
-    protocol: smtps
+    protocol: smtp
     default-encoding: UTF-8
     properties:
       mail:
         smtp:
           auth: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
           ssl:
+            enable: false
+            checkserveridentity: true
+          starttls:
             enable: true
-          socketFactory:
-            port: 465
-            class: javax.net.ssl.SSLSocketFactory
-            fallback: false
+            required: true
 
 rocketmq:
   name-server: 100.120.228.17:9876
