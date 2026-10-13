@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+fixtures/local.json
+config/local*.json
+outputs/
+__pycache__/
+*.pyc
+.venv/
+
