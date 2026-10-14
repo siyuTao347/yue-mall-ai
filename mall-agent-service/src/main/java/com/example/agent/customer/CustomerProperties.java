@@ -8,14 +8,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class CustomerProperties {
     private String provider="MOCK";
     private String apiKey="";
-    private String masterModel="qwen-turbo";
-    private String responseModel="qwen-plus";
+    private String baseUrl="https://dashscope.aliyuncs.com";
+    private String masterModel="qwen3.8-flash";
+    private String responseModel="qwen3.8-flash";
     private int runTimeoutMs=90000;
     private int modelTimeoutMs=15000;
     private int retrievalTimeoutMs=12000;
     private int l1MaxChars=20;
     private boolean ragEnabled=true;
     private double knowledgeThreshold=0.5;
-    private boolean preSaleEnabled=false;
+    private boolean preSaleEnabled=true;
     private int maxIntents=2;
 }

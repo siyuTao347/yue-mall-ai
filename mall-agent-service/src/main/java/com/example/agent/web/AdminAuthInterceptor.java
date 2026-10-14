@@ -2,12 +2,10 @@ package com.example.agent.web;
 
 import api.context.UserContext;
 import api.response.ErrorCodes;
-import api.util.JwtUtil;
 import com.example.agent.exception.RagApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
@@ -17,27 +15,16 @@ import org.springframework.web.servlet.HandlerInterceptor;
 @Component
 public class AdminAuthInterceptor implements HandlerInterceptor {
 
-    private static final String USER_ID_HEADER = "X-User-Id";
-    private static final String USER_ROLE_HEADER = "X-User-Role";
     private static final String ADMIN = "ADMIN";
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String authorization = request.getHeader("Authorization");
-        Long userId = parseUserId(request.getHeader(USER_ID_HEADER));
-        if (userId == null) {
-            userId = JwtUtil.parseUserId(authorization);
-        }
-        String role = request.getHeader(USER_ROLE_HEADER);
-        if (!StringUtils.hasText(role)) {
-            role = JwtUtil.parseRole(authorization);
-        }
-        if (!ADMIN.equalsIgnoreCase(role == null ? "" : role.trim())) {
+        var actor=AgentActorResolver.resolve(request);
+        if (!ADMIN.equalsIgnoreCase(actor.role())) {
             throw new RagApiException(403, ErrorCodes.COMMON_FORBIDDEN, "知识库管理接口仅限 ADMIN 访问");
         }
-        if (userId != null) {
-            UserContext.setUserId(userId);
-        }
+        request.setAttribute(AgentActorResolver.REQUEST_ATTRIBUTE,actor);
+        UserContext.setUserId(actor.userId());
         return true;
     }
 
@@ -45,16 +32,5 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
         UserContext.clear();
-    }
-
-    private Long parseUserId(String header) {
-        if (!StringUtils.hasText(header)) {
-            return null;
-        }
-        try {
-            return Long.valueOf(header.trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 }

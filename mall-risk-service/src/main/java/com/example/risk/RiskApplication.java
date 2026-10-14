@@ -9,6 +9,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @EnableDubbo
 @MapperScan("com.example.risk.mapper")
 public class RiskApplication {
+    static {
+        System.setProperty("dubbo.network.interface.ignored", "utun.*");
+        System.setProperty("dubbo.network.interface.preferred", "en0");
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(RiskApplication.class, args);
     }

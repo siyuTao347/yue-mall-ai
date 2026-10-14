@@ -14,6 +14,7 @@ public class CustomerMaster {
     static final Pattern IDENTITY=Pattern.compile("(?:你是谁|你是什么|你是机器人吗|你是真人吗|你叫什么名字|who are you)[!！?？。.,，、～~\\s]*");
     static final Pattern ORDER=Pattern.compile("(?i)(?<![a-z0-9])(?:TR|T)\\d{6,40}(?![a-z0-9])");
     static final Pattern DISPUTE=Pattern.compile("(?i)(?<![a-z0-9])(?:DP|D)\\d{6,40}(?![a-z0-9])");
+    static final Pattern ITEM_ID=Pattern.compile("(?i)(?:商品(?:编号|ID)?\\s*[:：#]?\\s*|item\\s*#?\\s*)(\\d{3,18})");
     private final CustomerProperties props; private final IntentReleaseService releases; private final CustomerModels models;
     public CustomerMaster(CustomerProperties props,IntentReleaseService releases,CustomerModels models){this.props=props;this.releases=releases;this.models=models;}
     static String l1(String text,int limit){String q=normalize(text);if(q.codePointCount(0,q.length())>limit)return null;if(GREETING.matcher(q).matches())return "GREETING";if(IDENTITY.matcher(q).matches())return "BOT_IDENTITY";return null;}
@@ -71,17 +72,18 @@ public class CustomerMaster {
                 for(Pattern pattern:List.of(ORDER,DISPUTE))if(pattern.matcher(rewrite).results().anyMatch(m->!f.contains(m.group())))throw error(422,"AGENT_OUTPUT_INVALID","重写问题包含无依据业务编号");
             }
             if(!i.path("slots").isObject())throw error(422,"AGENT_OUTPUT_INVALID","槽位结构不正确");
-            for(String key:List.of("orderNo","disputeNo","itemId")){JsonNode value=i.path("slots").path(key);if(!value.isMissingNode()&&!value.isNull()&&(!value.isTextual()||value.asText().isBlank()||!f.contains(value.asText())))throw error(422,"AGENT_OUTPUT_INVALID","业务编号没有原句依据");}}
+            for(String key:List.of("orderNo","disputeNo","itemId")){JsonNode value=i.path("slots").path(key);if(!value.isMissingNode()&&!value.isNull()&&(!value.isTextual()||value.asText().isBlank()||!f.contains(value.asText())))throw error(422,"AGENT_OUTPUT_INVALID","业务编号没有原句依据");if("itemId".equals(key)&&!value.isMissingNode()&&!value.isNull()&&ITEM_ID.matcher(f).results().noneMatch(m->m.group(1).equals(value.asText())))throw error(422,"AGENT_OUTPUT_INVALID","商品编号格式不正确");}}
     }
     static ObjectNode task(String code,String fragment,String id,Double confidence){ObjectNode t=object().put("intentInstanceId",id).put("code",code).put("priority",1).put("questionFragment",fragment).put("rewrittenQuestion",fragment).put("resolutionState","READY");
         if(confidence==null)t.putNull("confidence");else t.put("confidence",confidence);t.putNull("similarity");t.putNull("clarifyQuestion");t.set("slots",object());t.set("slotSources",object());t.set("missingSlots",array());t.set("requiredSlots",node(IntentCatalog.slots(code)));return t;}
     static void resolve(ObjectNode task,JsonNode context,String question){
         ObjectNode slots=(ObjectNode)task.get("slots"),sources=(ObjectNode)task.get("slotSources");String fragment=task.path("questionFragment").asText();
         for(var entry:Map.of("orderNo",ORDER,"disputeNo",DISPUTE).entrySet()){var matches=entry.getValue().matcher(fragment).results().map(m->m.group().toUpperCase(Locale.ROOT)).distinct().toList();if(matches.size()==1)slots.put(entry.getKey(),matches.getFirst());else if(matches.size()>1)slots.remove(entry.getKey());}
+        var itemIds=ITEM_ID.matcher(fragment).results().map(m->m.group(1)).distinct().toList();if(itemIds.size()==1)slots.put("itemId",itemIds.getFirst());else if(itemIds.size()>1)slots.remove("itemId");
         slots.fieldNames().forEachRemaining(k->sources.put(k,"CURRENT_MESSAGE"));
         ArrayNode missing=array();for(var required:task.path("requiredSlots")){String key=required.asText();if(!slots.hasNonNull(key)){
             JsonNode candidates=context.path("confirmedEntities").path(key);
-            if(candidates.isArray()&&candidates.size()==1&&question.matches("(?s).*(这个订单|那个订单|这笔订单|这个售后|那个呢|这笔呢|那一笔|刚才那笔|还没到账|还没到).*")){JsonNode entity=candidates.get(0);
+            if(candidates.isArray()&&candidates.size()==1&&question.matches("(?s).*(这个订单|那个订单|这笔订单|这个售后|这个商品|这个产品|那个呢|这笔呢|那一笔|刚才那笔|还没到账|还没到).*")){JsonNode entity=candidates.get(0);
                 if(entity.isTextual()||entity.path("confirmed").asBoolean()) {
                     slots.set(key,entity.isTextual()?entity:entity.path("value"));sources.put(key,"CONFIRMED_CONTEXT");
                 }else missing.add(key);}
@@ -94,10 +96,11 @@ public class CustomerMaster {
     static ObjectNode resume(String question,JsonNode context){
         String target=context.path("clarifyingIntentInstanceId").asText();if(target.isBlank())return null;
         for(var value:context.path("pendingIntents")){if(!target.equals(value.path("intentInstanceId").asText()))continue;ObjectNode task=value.deepCopy();String key=task.path("missingSlots").path(0).asText();
-            Pattern p=key.equals("orderNo")?ORDER:key.equals("disputeNo")?DISPUTE:Pattern.compile("(?!)");var matches=p.matcher(question).results().map(m->m.group().toUpperCase(Locale.ROOT)).toList();
-            String remainder=p.matcher(question).replaceAll("").strip();
+            Pattern p=key.equals("orderNo")?ORDER:key.equals("disputeNo")?DISPUTE:key.equals("itemId")?ITEM_ID:Pattern.compile("(?!)");var matches=p.matcher(question).results().map(m->key.equals("itemId")?m.group(1):m.group().toUpperCase(Locale.ROOT)).toList();
+            boolean bareItemId="itemId".equals(key)&&question.strip().matches("\\d{3,18}");if(bareItemId&&matches.isEmpty())matches=List.of(question.strip());
+            String remainder=bareItemId?"":p.matcher(question).replaceAll("").strip();
             // Only an unambiguous slot-only answer can resume an instance.
-            if(matches.size()!=1 || !remainder.matches("(?:是|订单号|订单|售后单号|售后单|编号|这个|这个订单|选|选择|第一个|第二个|[:：，,。!！?？\\s])*") ) {
+            if(matches.size()!=1 || !remainder.matches("(?:是|商品|商品编号|商品ID|订单号|订单|售后单号|售后单|编号|这个|这个订单|选|选择|第一个|第二个|[:：，,。!！?？\\s])*")) {
                 if(question.matches("(?s).*(查询|结算|退款|投诉|另外|规则|手续费|提现|售后|订单).*") && !question.matches("(?s).*(那个|这个|不知道|不清楚).*")) return null;
                 ObjectNode retry=object().put("schemaVersion",2).put("originalQuestion",question).put("needHuman",false);
                 task.put("resolutionState","NEED_CLARIFICATION");
@@ -111,7 +114,7 @@ public class CustomerMaster {
     static ObjectNode mock(String question,JsonNode context) {
         String code=context.path("lastIntent").asText();
         if(IntentCatalog.ROUTES.containsKey(code)&&!IntentCatalog.slots(code).isEmpty()
-            && question.matches("(?:那个呢|这笔呢|那一笔呢|还没到账|还没到)[?？。!！]*")) {
+            && question.matches("(?:那个呢|这笔呢|那一笔呢|还没到账|还没到|这个商品(?:价格|库存)?呢?|这个产品(?:价格|库存)?呢?)[?？。!！]*")) {
             ObjectNode task=object().put("code",code).put("confidence",.95).put("questionFragment",question);
             task.set("slots",object());ObjectNode result=object().put("needHuman",false);result.set("intents",array().add(task));return result;
         }
@@ -120,10 +123,14 @@ public class CustomerMaster {
     static ObjectNode mock(String question){ArrayNode tasks=array();for(String part:question.split("[，,；;]|再查|另外")){String q=part.strip();if(q.isEmpty()||l1(q,20)!=null)continue;String code;
         if(human(q))code="HUMAN_HELP";else if(q.contains("退款")||q.contains("售后")||q.contains("退货"))code=q.matches(".*(进度|到哪|状态).*")?"AFTER_SALE_PROGRESS":"AFTER_SALE_GUIDE";
         else if(q.contains("提现"))code="WITHDRAW_RULE";else if(q.contains("手续费"))code="SETTLEMENT_RULE";else if(q.contains("结算"))code=q.contains("订单")||ORDER.matcher(q).find()?"SETTLEMENT":"SETTLEMENT_RULE";
+        else if(ITEM_ID.matcher(q).find()||q.matches(".*(商品|产品).*(购买|价格|库存|介绍|怎么样).*"))code="PRE_SALE_PRODUCT";
         else if(q.matches(".*(时间记录|时间线).*"))code="ORDER_TIMELINE";else if(q.contains("订单列表")||q.contains("最近订单"))code="ORDER_SEARCH";
         else if(q.matches(".*(订单|交付|发货|到账).*")||ORDER.matcher(q).find())code="ORDER_STATUS";
         else if(q.matches(".*(规则|担保|禁售).*"))code="PLATFORM_RULE";else if(q.contains("实名")||q.contains("绑定"))code="ACCOUNT_RULE";else code="OTHER";
         ObjectNode t=object().put("code",code).put("confidence",code.equals("OTHER")?.2:.95).put("questionFragment",q);t.set("slots",object());tasks.add(t);if(tasks.size()==2)break;}
+        ArrayNode filtered=array();boolean hasDomainIntent=false;
+        for(JsonNode t:tasks){if(!"OTHER".equals(t.path("code").asText())){hasDomainIntent=true;filtered.add(t);}}
+        if(hasDomainIntent)tasks=filtered;
         if(tasks.isEmpty()){ObjectNode t=object().put("code",Optional.ofNullable(l1(question,20)).orElse("OTHER")).put("confidence",.95).put("questionFragment",question);t.set("slots",object());tasks.add(t);}
         ObjectNode result=object().put("needHuman",human(question));result.set("intents",tasks);return result;}
 }

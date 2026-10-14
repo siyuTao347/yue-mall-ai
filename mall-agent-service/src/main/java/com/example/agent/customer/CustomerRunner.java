@@ -1,6 +1,8 @@
 package com.example.agent.customer;
 
 import api.agent.*;
+import com.alibaba.cloud.ai.graph.CompiledGraph;
+import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.StateGraph;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.*;
@@ -9,55 +11,80 @@ import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.atomic.*;
 import java.util.function.Supplier;
+import java.util.function.Consumer;
 import static com.alibaba.cloud.ai.graph.action.AsyncNodeAction.node_async;
 import static com.alibaba.cloud.ai.graph.action.AsyncEdgeAction.edge_async;
 import static com.example.agent.customer.CustomerJson.*;
 
 @Service
 public class CustomerRunner {
-    @DubboReference(timeout=3000,retries=0,check=false)
+    private static final Logger log=LoggerFactory.getLogger(CustomerRunner.class);
+    @DubboReference(timeout=3000,retries=0,check=false,url="${DUBBO_ORDER_SERVICE_URL:dubbo://127.0.0.1:20880}")
     private AgentOrderQueryDubboService orders;
+    @DubboReference(timeout=3000,retries=0,check=false,url="${DUBBO_ITEM_QUERY_SERVICE_URL:dubbo://127.0.0.1:20880}")
+    private AgentItemQueryDubboService items;
     private final CustomerStore store;private final CustomerMaster master;private final CustomerProperties props;
     private final CustomerModels models;private final CustomerKnowledgeService knowledge;private final IntentReleaseService releases;
-    public CustomerRunner(CustomerStore store,CustomerMaster master,CustomerProperties props,CustomerModels models,CustomerKnowledgeService knowledge,IntentReleaseService releases){this.store=store;this.master=master;this.props=props;this.models=models;this.knowledge=knowledge;this.releases=releases;}
+    private final CompiledGraph graph;
+    public CustomerRunner(CustomerStore store,CustomerMaster master,CustomerProperties props,CustomerModels models,CustomerKnowledgeService knowledge,IntentReleaseService releases){this.store=store;this.master=master;this.props=props;this.models=models;this.knowledge=knowledge;this.releases=releases;this.graph=compileGraph();}
     static final class Run {
         final AgentActor actor;final String session,no,question,traceId;final CustomerBudget budget;final JsonNode previous;
+        final Consumer<String> stageSink;
         final AtomicInteger tools=new AtomicInteger(),input=new AtomicInteger(),output=new AtomicInteger();final AtomicBoolean active=new AtomicBoolean(true);
         final ArrayNode path=array(),results=array();ObjectNode classified=object(),response=object(),slots=object();String handoff;int clarifications;int next;boolean clarificationShown;ArrayNode queue=array();
-        Run(AgentActor actor,String session,String no,String q,JsonNode previous,CustomerProperties props){this.actor=actor;this.session=session;this.no=no;this.question=q;this.previous=previous;this.traceId=Objects.toString(api.context.TraceContext.getTraceId(),no);budget=new CustomerBudget(props.getRunTimeoutMs());clarifications=previous.path("clarificationAttempts").asInt();}
+        Run(AgentActor actor,String session,String no,String q,JsonNode previous,CustomerProperties props,Consumer<String> stageSink){this.actor=actor;this.session=session;this.no=no;this.question=q;this.previous=previous;this.stageSink=stageSink;this.traceId=Objects.toString(api.context.TraceContext.getTraceId(),no);budget=new CustomerBudget(props.getRunTimeoutMs());clarifications=previous.path("clarificationAttempts").asInt();}
     }
     public JsonNode send(AgentActor actor,String session,String clientId,String raw){
+        return send(actor,session,clientId,raw,ignored->{});
+    }
+    public JsonNode send(AgentActor actor,String session,String clientId,String raw,Consumer<String> stageSink){
         if(raw==null||raw.isBlank()||raw.codePointCount(0,raw.length())>2000||raw.chars().anyMatch(c->c==0)||clientId==null||!clientId.matches("[A-Za-z0-9_-]{1,64}"))throw error(400,"AGENT_MESSAGE_INVALID","消息须为 1–2000 个字符，并携带合法消息标识");
         String question=redact(raw);var started=store.start(actor,session,clientId,question,hash(raw));if(started.replay()!=null)return started.replay();
         JsonNode previous=read(started.session().get("slot_json"));
         if(previous.isObject())((ObjectNode)previous).put("summary",Objects.toString(started.session().get("summary"),"")).put("lastIntent",Objects.toString(started.session().get("last_intent"),""));
-        Run run=new Run(actor,session,started.runNo(),question,previous,props);long start=System.nanoTime();String status="SUCCEEDED";
+        Run run=new Run(actor,session,started.runNo(),question,previous,props,stageSink);long start=System.nanoTime();String status="SUCCEEDED";
         try{
-            StateGraph graph=new StateGraph();
-            graph.addNode("INPUT_GUARD",node_async(state->{run.path.add("INPUT_GUARD");run.budget.remaining();return Map.of();}));
-            graph.addNode("MASTER_AGENT",node_async(state->{run.path.add("MASTER_AGENT");run.classified=master.recognize(question,run.no,run.previous,store.history(session),run.budget,run.input,run.output);run.path.add(run.classified.path("recognition").path("source").asText());return Map.of();}));
-            graph.addNode("LOAD_CONTEXT",node_async(state->{run.path.add("LOAD_CONTEXT");return Map.of();}));
-            graph.addNode("SLOT_RESOLVE",node_async(state->{run.path.add("SLOT_RESOLVE");prepare(run);return Map.of();}));
-            graph.addNode("ROUTE",node_async(state->{run.path.add("ROUTE");run.budget.remaining();return Map.of();}));
-            Map<String,String> routes=new HashMap<>();
-            for(String name:List.of("ORDER_AGENT","AFTER_SALE_AGENT","RULE_AGENT","COMPLAINT_AGENT","PRE_SALE_AGENT","TEMPLATE_RESPONSE","CLARIFY","FALLBACK")) {
-                routes.put(name,name);
-                graph.addNode(name,node_async(state->{executeNext(run,name);return Map.of();}));
-                graph.addEdge(name,"ROUTE");
-            }
-            routes.put("RESPONSE_AGENT","RESPONSE_AGENT");
-            graph.addConditionalEdges("ROUTE",edge_async(state->nextNode(run)),routes);
-            graph.addNode("RESPONSE_AGENT",node_async(state->{respond(run);return Map.of();}));
-            graph.addNode("OUTPUT_GUARD",node_async(state->{guard(run);return Map.of();}));
-            graph.addEdge(StateGraph.START,"INPUT_GUARD").addEdge("INPUT_GUARD","LOAD_CONTEXT").addEdge("LOAD_CONTEXT","MASTER_AGENT").addEdge("MASTER_AGENT","SLOT_RESOLVE").addEdge("SLOT_RESOLVE","ROUTE").addEdge("RESPONSE_AGENT","OUTPUT_GUARD").addEdge("OUTPUT_GUARD",StateGraph.END);
-            graph.compile().invoke(Map.of());run.budget.remaining();
-        }catch(Exception e){String code=failureCode(e);status="AGENT_TIMEOUT".equals(code)?"TIMEOUT":"FAILED";run.response=object().put("schemaVersion",2).put("answer","暂时无法完成查询，请稍后重试，或发送“转人工”。").put("runNo",run.no).put("traceId",run.traceId).put("errorCode",code).put("handoffRequired",run.handoff!=null).put("handoffNo",run.handoff);run.response.set("citations",array());run.response.set("suggestedActions",array());run.response.set("intentResults",run.results);run.slots=run.previous.isObject()?(ObjectNode)run.previous.deepCopy():object();}
+            graph.invoke(Map.of("run",run));run.budget.remaining();
+        }catch(Exception e){String code=failureCode(e);
+            log.error("CustomerAgent failed: runNo={}, traceId={}, code={}, detail={}",run.no,run.traceId,code,failureDetail(e));
+            status="AGENT_TIMEOUT".equals(code)?"TIMEOUT":"FAILED";run.response=object().put("schemaVersion",2).put("answer","暂时无法完成查询，请稍后重试，或发送“转人工”。").put("runNo",run.no).put("traceId",run.traceId).put("errorCode",code).put("handoffRequired",run.handoff!=null).put("handoffNo",run.handoff);run.response.set("citations",array());run.response.set("suggestedActions",array());run.response.set("intentResults",run.results);run.slots=run.previous.isObject()?(ObjectNode)run.previous.deepCopy():object();}
         finally{run.active.set(false);}
         store.finish(actor,session,run.no,run.classified,run.results,run.response,run.slots,run.path,run.tools.get(),run.input.get(),run.output.get(),(System.nanoTime()-start)/1000000,status);
         return run.response;
+    }
+    private CompiledGraph compileGraph() {
+        try {
+            StateGraph graph=new StateGraph();
+            graph.addNode("INPUT_GUARD",node_async(state->{Run run=run(state);run.path.add("INPUT_GUARD");stage(run,"正在接收问题…");run.budget.remaining();return graphState(run);}));
+            graph.addNode("MASTER_AGENT",node_async(state->{Run run=run(state);run.path.add("MASTER_AGENT");stage(run,"正在识别问题…");run.classified=master.recognize(run.question,run.no,run.previous,store.history(run.session),run.budget,run.input,run.output);run.path.add(run.classified.path("recognition").path("source").asText());return graphState(run);}));
+            graph.addNode("LOAD_CONTEXT",node_async(state->{Run run=run(state);run.path.add("LOAD_CONTEXT");stage(run,"正在读取会话上下文…");return graphState(run);}));
+            graph.addNode("SLOT_RESOLVE",node_async(state->{Run run=run(state);run.path.add("SLOT_RESOLVE");prepare(run);return graphState(run);}));
+            graph.addNode("ROUTE",node_async(state->{Run run=run(state);run.path.add("ROUTE");run.budget.remaining();return graphState(run);}));
+            Map<String,String> routes=new HashMap<>();
+            for(String name:List.of("ORDER_AGENT","AFTER_SALE_AGENT","RULE_AGENT","COMPLAINT_AGENT","PRE_SALE_AGENT","TEMPLATE_RESPONSE","CLARIFY","FALLBACK")) {
+                routes.put(name,name);
+                graph.addNode(name,node_async(state->{Run run=run(state);stage(run,stageName(name));executeNext(run,name);return graphState(run);}));
+                graph.addEdge(name,"ROUTE");
+            }
+            routes.put("RESPONSE_AGENT","RESPONSE_AGENT");
+            graph.addConditionalEdges("ROUTE",edge_async(state->nextNode(run(state))),routes);
+            graph.addNode("RESPONSE_AGENT",node_async(state->{Run run=run(state);respond(run);return graphState(run);}));
+            graph.addNode("OUTPUT_GUARD",node_async(state->{Run run=run(state);stage(run,"正在校验并整理答复…");guard(run);return graphState(run);}));
+            graph.addEdge(StateGraph.START,"INPUT_GUARD").addEdge("INPUT_GUARD","LOAD_CONTEXT").addEdge("LOAD_CONTEXT","MASTER_AGENT").addEdge("MASTER_AGENT","SLOT_RESOLVE").addEdge("SLOT_RESOLVE","ROUTE").addEdge("RESPONSE_AGENT","OUTPUT_GUARD").addEdge("OUTPUT_GUARD",StateGraph.END);
+            return graph.compile();
+        } catch(Exception e) { throw new IllegalStateException("Unable to compile CustomerAgent graph",e); }
+    }
+    private static Run run(OverAllState state) { return state.value("run",Run.class).orElseThrow(); }
+    private static void stage(Run run,String message){try{run.stageSink.accept(message);}catch(RuntimeException ignored){}}
+    private static String stageName(String node){return switch(node){case "ORDER_AGENT"->"正在查询订单…";case "AFTER_SALE_AGENT"->"正在查询售后事实、发货凭证和规则…";case "RULE_AGENT"->"正在检索公开规则…";case "PRE_SALE_AGENT"->"正在查询商品信息和说明…";case "COMPLAINT_AGENT"->"正在记录并转交人工…";case "CLARIFY"->"正在确认必要信息…";default->"正在处理问题…";};}
+    private static Map<String,Object> graphState(Run run) {
+        return Map.of("run",run,"graphPath",run.path.deepCopy(),"classified",run.classified.deepCopy(),
+            "pendingIntents",run.queue.deepCopy(),"intentResults",run.results.deepCopy(),"response",run.response.deepCopy());
     }
     private static String failureCode(Throwable error) {
         for(Throwable cause=error;cause!=null;cause=cause.getCause()) {
@@ -66,9 +93,19 @@ public class CustomerRunner {
         }
         return "AGENT_DEPENDENCY_UNAVAILABLE";
     }
+    private String failureDetail(Throwable error) {
+        Throwable cause=error;
+        Set<Throwable> seen=Collections.newSetFromMap(new IdentityHashMap<>());
+        while(cause.getCause()!=null && seen.add(cause.getCause()))cause=cause.getCause();
+        String message=Objects.toString(cause.getMessage(),"");
+        if(props.getApiKey()!=null && !props.getApiKey().isBlank())message=message.replace(props.getApiKey(),"[已隐藏]");
+        String detail=cause.getClass().getSimpleName()+": "+redact(message)
+            .replaceAll("\\bsk-[A-Za-z0-9_-]+","[已隐藏]").replace('\r',' ').replace('\n',' ');
+        return detail.substring(0,Math.min(detail.length(),1000));
+    }
     private void prepare(Run r) {
         String release=r.classified.path("recognition").path("releaseNo").asText();
-        if("L2_RAG".equals(r.classified.path("recognition").path("source").asText())&&!releases.ready(release))
+        if("L2_RAG".equals(r.classified.path("recognition").path("source").asText())&&!r.budget.call(500,()->releases.isActive(release)))
             throw error(503,"INTENT_RELEASE_REVOKED","意图库已撤销");
         boolean failedReply="CONTEXT_RESUME".equals(r.classified.path("recognition").path("source").asText())
             && "NEED_CLARIFICATION".equals(r.classified.path("intents").path(0).path("resolutionState").asText());
@@ -120,6 +157,7 @@ public class CustomerRunner {
             else if(code.startsWith("PRE_SALE")&&!props.isPreSaleEnabled())result.put("answer","售前咨询暂未开放，请查看商品详情或联系人工。");
             else if(agent.equals("ORDER_AGENT"))order(r,task,result);
             else if(code.equals("AFTER_SALE_PROGRESS")||code.equals("AFTER_SALE_STATUS_COMBINED"))dispute(r,task,result);
+            else if(agent.equals("PRE_SALE_AGENT"))preSale(r,task,result);
             else policy(r,task,result,agent);
             CustomerOutputGuard.redactPayload(result);
             CustomerOutputGuard.validate(task,result);
@@ -148,14 +186,45 @@ public class CustomerRunner {
         result.put("answer",answer);
     }
     private void dispute(Run r,ObjectNode task,ObjectNode result){String no=task.path("slots").path("disputeNo").asText();JsonNode fact=tool(r,task,"queryDispute",Map.of("disputeNo",no),()->orders.queryDispute(r.actor,no));
-        if(task.path("code").asText().equals("AFTER_SALE_STATUS_COMBINED")){String order=task.path("slots").path("orderNo").asText();if(!order.equals(fact.path("orderNo").asText()))throw error(400,"AGENT_SLOT_CONFLICT","订单与售后不对应");JsonNode orderFact=tool(r,task,"queryOrder",Map.of("orderNo",order),()->orders.queryOrder(r.actor,order));result.set("order",orderFact);}
-        result.put("bizType","DISPUTE").put("bizNo",no).put("answer","售后单 "+no+" 当前状态："+label(fact.path("status").asText())+"，最近更新时间："+fact.path("updatedTime").asText()+"。");result.set("evidence",array().add(fact));
-        if(result.has("order")) {
-            JsonNode orderFact=result.path("order");
-            if(!task.path("slots").path("orderNo").equals(orderFact.path("orderNo")))throw error(422,"AGENT_EVIDENCE_MISSING","订单事实不匹配");
-            result.withArray("evidence").add(orderFact);
-            result.put("answer",result.path("answer").asText()+"订单 "+orderFact.path("orderNo").asText()+" 当前状态："+label(orderFact.path("orderStatus").asText())+"，交付："+label(orderFact.path("deliveryStatus").asText())+"。");
+        String order=task.path("code").asText().equals("AFTER_SALE_STATUS_COMBINED")?task.path("slots").path("orderNo").asText():fact.path("orderNo").asText();
+        if(task.path("code").asText().equals("AFTER_SALE_STATUS_COMBINED")&&!order.equals(fact.path("orderNo").asText()))throw error(400,"AGENT_SLOT_CONFLICT","订单与售后不对应");
+        JsonNode orderFact=null;
+        if(!order.isBlank()) {
+            try {orderFact=tool(r,task,"queryOrder",Map.of("orderNo",order),()->orders.queryOrder(r.actor,order));result.set("order",orderFact);}
+            catch(RuntimeException unavailable) {if("AFTER_SALE_STATUS_COMBINED".equals(task.path("code").asText()))throw unavailable;result.put("orderFactsUnavailable",true);}
+            if(orderFact!=null)try {JsonNode delivery=tool(r,task,"queryDeliveryEvidenceSummary",Map.of("orderNo",order),()->orders.queryDeliveryEvidenceSummary(r.actor,order));result.set("deliveryEvidenceSummary",delivery);}
+            catch(RuntimeException unavailable) {result.put("deliveryEvidenceUnavailable",true);}
         }
+        result.put("bizType","DISPUTE").put("bizNo",no);result.set("evidence",array().add(fact));
+        if(orderFact!=null)result.withArray("evidence").add(orderFact);
+        ArrayNode sources=array();
+        try { sources=searchKnowledge(r,task,"AFTER_SALE_AGENT",task.path("rewrittenQuestion").asText()); }
+        catch(RuntimeException unavailable) { result.put("policyUnavailable",true); }
+        result.set("citations",sources);
+        if(!sources.isEmpty())result.put("policyAnswer",true);
+        JsonNode synthesisFacts=object().set("dispute",fact.deepCopy());
+        ((ObjectNode)synthesisFacts).set("order",orderFact==null?NullNode.instance:orderFact.deepCopy());
+        ((ObjectNode)synthesisFacts).set("deliveryEvidenceSummary",result.path("deliveryEvidenceSummary").deepCopy());
+        result.put("answer",synthesis(r,task.path("rewrittenQuestion").asText(),synthesisFacts,sources,
+            "售后单 "+no+" 当前状态："+label(fact.path("status").asText())+"，最近更新时间："+fact.path("updatedTime").asText()+"。"));
+        if(result.has("order")&&"AFTER_SALE_STATUS_COMBINED".equals(task.path("code").asText())) {
+            if(!task.path("slots").path("orderNo").equals(orderFact.path("orderNo")))throw error(422,"AGENT_EVIDENCE_MISSING","订单事实不匹配");
+        }
+    }
+    private void preSale(Run r,ObjectNode task,ObjectNode result) {
+        JsonNode itemFact=NullNode.instance;
+        String itemIdValue=task.path("slots").path("itemId").asText();
+        if(itemIdValue.matches("\\d{3,18}")) {
+            long itemId=Long.parseLong(itemIdValue);
+            itemFact=tool(r,task,"queryPublicItem",Map.of("itemId",itemId),()->items.queryPublicItem(itemId));
+            result.set("evidence",array().add(itemFact));
+        }
+        ArrayNode sources=searchKnowledge(r,task,"PRE_SALE_AGENT",task.path("rewrittenQuestion").asText());
+        result.set("citations",sources);
+        if(!sources.isEmpty())result.put("policyAnswer",true);
+        ObjectNode facts=object();facts.set("product",itemFact);
+        result.put("answer",synthesis(r,task.path("rewrittenQuestion").asText(),facts,sources,
+            itemFact.isNull()?"当前未找到可确认的商品资料，请查看商品详情页或联系人工。":"商品 "+itemFact.path("itemName").asText()+"（编号 "+itemFact.path("itemId").asText()+"）：价格 "+itemFact.path("price").asText()+"，可售库存 "+itemFact.path("availableStock").asText()+"。"));
     }
     private void policy(Run r,ObjectNode task,ObjectNode result,String agent){KnowledgeTool tool=new KnowledgeTool(r,task,agent);
         Map<String,Object> context=Map.of("runNo",r.no,"sessionNo",r.session,"intentInstanceId",task.path("intentInstanceId").asText(),"agentName",agent);
@@ -163,7 +232,32 @@ public class CustomerRunner {
         else models.retrieve(task.path("rewrittenQuestion").asText(),tool,Map.of("runNo",r.no,"sessionNo",r.session,"intentInstanceId",task.path("intentInstanceId").asText(),"agentName",agent),r.budget,r.input,r.output);
         ArrayNode sources=tool.sources;result.set("citations",sources);
         if(sources.isEmpty()){result.put("answer","当前未找到可确认的公开规则，请查看官方说明或联系人工。");return;}
-        result.put("policyAnswer",true);StringBuilder answer=new StringBuilder("可参考以下公开说明：\n");for(var source:sources)answer.append('[').append(source.path("sourceNo").asText()).append("] ").append(source.path("content").asText()).append('\n');result.put("answer",answer.toString());}
+        result.put("policyAnswer",true);result.put("answer",synthesis(r,task.path("rewrittenQuestion").asText(),object(),sources,"可参考公开说明"));}
+    private ArrayNode searchKnowledge(Run r,ObjectNode task,String agent,String query) {
+        KnowledgeTool tool=new KnowledgeTool(r,task,agent);
+        Map<String,Object> context=Map.of("runNo",r.no,"sessionNo",r.session,"intentInstanceId",task.path("intentInstanceId").asText(),"agentName",agent);
+        tool.search(query,null,new ToolContext(context));
+        return tool.sources;
+    }
+    private String synthesis(Run r,String question,JsonNode facts,ArrayNode sources,String fallback) {
+        if(sources.isEmpty()&&!hasEvidence(facts))return fallback;
+        if(models.mock()) {
+            if(!sources.isEmpty())return fallback+" "+sources.get(0).path("content").asText().substring(0,Math.min(240,sources.get(0).path("content").asText().length()))+" [S1]";
+            return fallback;
+        }
+        String answer=models.synthesize(question,facts,sources,r.budget,r.input,r.output);
+        if(answer==null||answer.isBlank())return fallback;
+        Set<String> valid=new HashSet<>();for(JsonNode source:sources)valid.add(source.path("sourceNo").asText());
+        var matcher=java.util.regex.Pattern.compile("\\[(S\\d+)\\]").matcher(answer);
+        while(matcher.find())if(!valid.contains(matcher.group(1)))throw error(422,"AGENT_CITATION_INVALID","回答包含无效知识引用");
+        if(!sources.isEmpty()&&!matcher.reset().find())return fallback+" [S1]";
+        return answer.strip();
+    }
+    private static boolean hasEvidence(JsonNode value) {
+        if(value==null||value.isNull()||value.isMissingNode())return false;
+        if(value.isContainerNode()){for(JsonNode child:value)if(hasEvidence(child))return true;return false;}
+        return !value.asText().isBlank();
+    }
     public final class KnowledgeTool {
         private final Run r;private final ObjectNode task;private final String agent;private boolean called;private ArrayNode sources=array();
         KnowledgeTool(Run r,ObjectNode task,String agent){this.r=r;this.task=task;this.agent=agent;}

@@ -9,6 +9,11 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 @EnableDubbo
 @ConfigurationPropertiesScan
 public class OrderApplication {
+    static {
+        System.setProperty("dubbo.network.interface.ignored", "utun.*");
+        System.setProperty("dubbo.network.interface.preferred", "en0");
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(OrderApplication.class, args);
         System.out.println("====== 订单服务 (mall-order-service) 启动成功 ======");

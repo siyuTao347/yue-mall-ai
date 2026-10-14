@@ -1,3 +1,0 @@
-# Python >= 3.9. The runner and tests use only the Python standard library.
-# No model SDK, RAGAS, or package installation is required.
-

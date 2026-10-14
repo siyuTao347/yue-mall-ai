@@ -48,4 +48,9 @@ class CustomerMasterTest {
         ((ObjectNode)output.path("intents").get(0)).put("rewrittenQuestion","查订单 TR202610120001");
         assertThrows(RuntimeException.class,()->CustomerMaster.validateModel(output,"我的订单在哪"));
     }
+    @Test void ca001ReturnsSingleOrderStatusIntent() {
+        var output=CustomerMaster.mock("我的 TR202610120001 还没发货，帮我看看现在是什么状态。");
+        assertEquals(1,output.path("intents").size());
+        assertEquals("ORDER_STATUS",output.path("intents").get(0).path("code").asText());
+    }
 }

@@ -25,6 +25,7 @@ public class IntentReleaseService {
     private final OnlineEmbedding embedding;
     private final CustomerProperties properties;
     private final String query;
+    private final ConcurrentMap<String,Snapshot> verifiedSnapshots=new ConcurrentHashMap<>();
     private final ExecutorService builder=new ThreadPoolExecutor(1,1,0,TimeUnit.SECONDS,new ArrayBlockingQueue<>(4),r->{Thread t=new Thread(r,"intent-release-builder");t.setDaemon(true);return t;});
     public IntentReleaseService(CustomerDatabase db,OnlineEmbedding embedding,CustomerProperties properties) throws Exception {
         this.db=db;this.embedding=embedding;this.properties=properties;
@@ -34,8 +35,13 @@ public class IntentReleaseService {
     public List<Map<String,Object>> list(){return db.mysql.queryForList("SELECT release_no,status,embedding_model,expected_intent_count,expected_example_count,validated_time,created_time FROM t_customer_service_intent_release ORDER BY created_time DESC LIMIT 50");}
     public Map<String,Object> detail(String no){Map<String,Object> h=header(no);h.put("report",read(h.remove("validation_report_json")));return h;}
     private Map<String,Object> header(String no){var rows=db.mysql.queryForList("SELECT * FROM t_customer_service_intent_release WHERE release_no=?",no);if(rows.isEmpty())throw error(404,"INTENT_RELEASE_NOT_FOUND","版本不存在");return rows.getFirst();}
-    Snapshot snapshot(String no){return new Snapshot(header(no),db.mysql.queryForList("SELECT intent_code,intent_version,intent_name,description,route_node,required_slots_json,similarity_threshold,expected_example_count FROM t_customer_service_intent_release_item WHERE release_no=? ORDER BY intent_code",no),
-        db.mysql.queryForList("SELECT example_no,example_version,intent_code,intent_version,example_text,normalized_text,example_hash,embedding_input_hash FROM t_customer_service_intent_release_example WHERE release_no=? ORDER BY example_no",no));}
+    Snapshot snapshot(String no){return new Snapshot(immutable(header(no)),immutableRows(db.mysql.queryForList("SELECT intent_code,intent_version,intent_name,description,route_node,required_slots_json,similarity_threshold,expected_example_count FROM t_customer_service_intent_release_item WHERE release_no=? ORDER BY intent_code",no)),
+        immutableRows(db.mysql.queryForList("SELECT example_no,example_version,intent_code,intent_version,example_text,normalized_text,example_hash,embedding_input_hash FROM t_customer_service_intent_release_example WHERE release_no=? ORDER BY example_no",no)));}
+    private static Map<String,Object> immutable(Map<String,Object> row){return Collections.unmodifiableMap(new LinkedHashMap<>(row));}
+    private static List<Map<String,Object>> immutableRows(List<Map<String,Object>> rows){return rows.stream().map(IntentReleaseService::immutable).toList();}
+    private Snapshot verifiedSnapshot(String no) {
+        return verifiedSnapshots.computeIfAbsent(no,key->{Snapshot value=snapshot(key);assertReady(value);validate(value);return value;});
+    }
     static String canonical(Object value){
         if(value instanceof Map<?,?> m){Map<String,String> sorted=new TreeMap<>();m.forEach((k,v)->sorted.put(k.toString(),canonical(v)));return write(sorted);}
         if(value instanceof List<?> l)return write(l.stream().map(IntentReleaseService::canonical).toList());
@@ -65,22 +71,25 @@ public class IntentReleaseService {
         long started=System.nanoTime();ObjectNode trace=object();
         try {
             CustomerBudget budget=new CustomerBudget(Math.min(run.remaining(),properties.getRetrievalTimeoutMs()));
-            Snapshot snapshot=budget.call(1000,()->{
-                var pointer=db.mysql.queryForList("SELECT active_release_no FROM t_customer_service_intent_active_release WHERE scene='CUSTOMER_SERVICE'");
-                if(pointer.isEmpty()||pointer.getFirst().get("active_release_no")==null)throw error(503,"INTENT_RELEASE_UNPUBLISHED","意图库尚未发布");
-                Snapshot s=snapshot(pointer.getFirst().get("active_release_no").toString());assertReady(s);validate(s);return s;
-            });
+            String active=budget.call(500,this::activeRelease);
+            if(active==null)throw error(503,"INTENT_RELEASE_UNPUBLISHED","意图库尚未发布");
+            Snapshot snapshot=budget.call(1000,()->verifiedSnapshot(active));
             trace.put("releaseNo",snapshot.no()).put("manifestHash",snapshot.header.get("manifest_hash").toString())
                 .put("expectedExampleCount",snapshot.count()).put("embeddingModel",snapshot.model()).put("embeddingDim",1536);
             OnlineEmbedding.Result embedded=budget.call(9000,()->embedding.embedWithUsage(normalize(question),snapshot.model(),1536));
             trace.set("embeddingTokens",node(embedded.tokens()));
             ObjectNode result=budget.call(2000,()->search(snapshot,embedded.vector()));
             result.set("embeddingTokens",node(embedded.tokens()));
-            if(!budget.call(1000,()->ready(snapshot.no())))throw incomplete();
+            if(!budget.call(500,()->Objects.equals(activeRelease(),snapshot.no())))throw incomplete();
             result.put("elapsedMs",(System.nanoTime()-started)/1000000);return result;
         }catch(Exception e){trace.put("source","L3_LLM").put("fallbackReason",e instanceof com.example.agent.exception.RagApiException r?r.errorCode():"INTENT_RAG_UNAVAILABLE");
             trace.put("elapsedMs",(System.nanoTime()-started)/1000000);return trace;}
     }
+    private String activeRelease() {
+        var pointer=db.mysql.queryForList("SELECT active_release_no FROM t_customer_service_intent_active_release WHERE scene='CUSTOMER_SERVICE'");
+        return pointer.isEmpty()?null:Objects.toString(pointer.getFirst().get("active_release_no"),null);
+    }
+    public boolean isActive(String no){return no!=null&&!no.isBlank()&&Objects.equals(activeRelease(),no);}
 
     private void assertReady(Snapshot s){if(!"READY".equals(s.header.get("status")))throw incomplete();if(embedding.mock()&&!"MOCK".equals(properties.getProvider()))throw incomplete();}
     ObjectNode search(Snapshot s,float[] vector){
@@ -127,14 +136,22 @@ public class IntentReleaseService {
     private void build(String no,List<Evaluation> tests){
         try{
             Snapshot s=snapshot(no);validate(s);
-            // One worker owns this newly generated release; every write rechecks state under the release-row lock.
-            for(var e:s.examples){float[] v=embedding.embed(e.get("normalized_text").toString(),s.model(),1536);
-                db.tx.executeWithoutResult(tx->{var h=db.mysql.queryForMap("SELECT status FROM t_customer_service_intent_release WHERE release_no=? FOR UPDATE",no);if(!"BUILDING".equals(h.get("status")))throw incomplete();
-                    db.vector.update("INSERT INTO rag_customer_service_intent_release_embedding(release_no,example_no,example_version,intent_code,intent_version,embedding,embedding_model,embedding_dim,embedding_input_hash) VALUES(?,?,?,?,?,?::vector,?,1536,?) ON CONFLICT(release_no,example_no) DO UPDATE SET embedding=EXCLUDED.embedding,embedding_input_hash=EXCLUDED.embedding_input_hash,updated_time=now()",no,e.get("example_no"),e.get("example_version"),e.get("intent_code"),e.get("intent_version"),VectorFormat.toLiteral(v),s.model(),e.get("embedding_input_hash"));});}
+            String insert="INSERT INTO rag_customer_service_intent_release_embedding(release_no,example_no,example_version,intent_code,intent_version,embedding,embedding_model,embedding_dim,embedding_input_hash) VALUES(?,?,?,?,?,?::vector,?,1536,?) ON CONFLICT(release_no,example_no) DO UPDATE SET embedding=EXCLUDED.embedding,embedding_input_hash=EXCLUDED.embedding_input_hash,updated_time=now()";
+            for(int from=0;from<s.examples.size();from+=32){
+                List<Map<String,Object>> examples=s.examples.subList(from,Math.min(from+32,s.examples.size()));
+                var vectors=embedding.embedBatchWithUsage(examples.stream().map(e->e.get("normalized_text").toString()).toList(),s.model(),1536).vectors();
+                List<Object[]> rows=new ArrayList<>(examples.size());
+                for(int i=0;i<examples.size();i++){var e=examples.get(i);rows.add(new Object[]{no,e.get("example_no"),e.get("example_version"),e.get("intent_code"),e.get("intent_version"),VectorFormat.toLiteral(vectors.get(i)),s.model(),e.get("embedding_input_hash")});}
+                db.tx.executeWithoutResult(tx->{var h=db.mysql.queryForMap("SELECT status FROM t_customer_service_intent_release WHERE release_no=? FOR UPDATE",no);if(!"BUILDING".equals(h.get("status")))throw incomplete();db.vector.batchUpdate(insert,rows);});
+            }
             if(db.mysql.update("UPDATE t_customer_service_intent_release SET status='VALIDATING' WHERE release_no=? AND status='BUILDING'",no)!=1)throw incomplete();
             ArrayNode results=array();boolean passed=true;Set<String> training=new HashSet<>();s.examples.forEach(e->training.add(e.get("normalized_text").toString()));
-            for(var test:tests){if(training.contains(normalize(test.query())))throw error(400,"INTENT_EVAL_LEAKAGE","评估问句不能与训练示例完全相同");
-                ObjectNode actual=search(s,embedding.embed(normalize(test.query()),s.model(),1536));boolean ok=test.expectedIntent().equals(actual.path("code").asText());passed &= ok;
+            List<String> normalizedTests=tests.stream().map(test->normalize(test.query())).toList();
+            for(String normalized:normalizedTests)if(training.contains(normalized))throw error(400,"INTENT_EVAL_LEAKAGE","评估问句不能与训练示例完全相同");
+            List<float[]> testVectors=new ArrayList<>(tests.size());
+            for(int from=0;from<normalizedTests.size();from+=32)testVectors.addAll(embedding.embedBatchWithUsage(normalizedTests.subList(from,Math.min(from+32,normalizedTests.size())),s.model(),1536).vectors());
+            for(int index=0;index<tests.size();index++){var test=tests.get(index);
+                ObjectNode actual=search(s,testVectors.get(index));boolean ok=test.expectedIntent().equals(actual.path("code").asText());passed &= ok;
                 results.add(object().put("query",redact(test.query())).put("expected",test.expectedIntent()).put("actual",actual.path("code").asText()).put("passed",ok));}
             ObjectNode report=object().put("passed",passed).put("mockEmbedding",embedding.mock()).put("manifestHash",manifest(s)).put("evaluationHash",hash(write(tests))).put("expectedExampleCount",s.count()).put("embeddingModel",s.model()).put("embeddingDim",1536);report.set("evaluations",results);
             db.mysql.update("UPDATE t_customer_service_intent_release SET status=?,validation_report_json=?,validated_time=now(3) WHERE release_no=? AND status='VALIDATING'",passed?"READY":"FAILED",write(report),no);
@@ -147,9 +164,10 @@ public class IntentReleaseService {
             var h=db.mysql.queryForMap("SELECT status,manifest_hash FROM t_customer_service_intent_release WHERE release_no=? FOR UPDATE",no);
             if(!"READY".equals(h.get("status"))||!Objects.equals(h.get("manifest_hash"),s.header.get("manifest_hash")))throw incomplete();
             if(db.mysql.update("UPDATE t_customer_service_intent_active_release SET active_release_no=?,lock_version=lock_version+1 WHERE scene='CUSTOMER_SERVICE'",no)!=1)throw incomplete();});
+        verifiedSnapshots.put(no,s);
     }
     public void revoke(String no){db.tx.executeWithoutResult(tx->{db.mysql.queryForList("SELECT scene FROM t_customer_service_intent_active_release WHERE scene='CUSTOMER_SERVICE' FOR UPDATE");
         db.mysql.update("UPDATE t_customer_service_intent_release SET status='REVOKED' WHERE release_no=?",no);
-        db.mysql.update("UPDATE t_customer_service_intent_active_release SET active_release_no=NULL,lock_version=lock_version+1 WHERE scene='CUSTOMER_SERVICE' AND active_release_no=?",no);});}
+        db.mysql.update("UPDATE t_customer_service_intent_active_release SET active_release_no=NULL,lock_version=lock_version+1 WHERE scene='CUSTOMER_SERVICE' AND active_release_no=?",no);});verifiedSnapshots.remove(no);}
     public boolean ready(String no){return "READY".equals(header(no).get("status"));}
 }

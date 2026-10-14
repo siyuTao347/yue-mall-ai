@@ -44,6 +44,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/SensitiveWordDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/agent/AgentActor.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/audit/AuditLogDTO.java
+/Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/agent/AgentItemQueryDubboService.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/context/UserContext.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/RiskDubboService.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/ItemDubboService.java

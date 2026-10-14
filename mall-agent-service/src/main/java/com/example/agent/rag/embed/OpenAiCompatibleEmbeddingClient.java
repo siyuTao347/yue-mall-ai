@@ -49,8 +49,13 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
 
     @Override
     public List<float[]> embed(List<String> texts) {
+        return embedWithUsage(texts).vectors();
+    }
+
+    @Override
+    public BatchResult embedWithUsage(List<String> texts) {
         if (texts == null || texts.isEmpty()) {
-            return List.of();
+            return new BatchResult(List.of(), 0);
         }
         Map<String, Object> body = Map.of(
                 "model", props.getModel(),
@@ -68,7 +73,15 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
         } catch (Exception e) {
             throw new EmbeddingException("调用 Embedding 服务失败: " + e.getMessage(), e);
         }
-        return parse(response, texts.size());
+        List<float[]> vectors=parse(response, texts.size());
+        Integer tokens=null;
+        try {
+            JsonNode usage=objectMapper.readTree(response).path("usage").path("total_tokens");
+            if(usage.canConvertToInt())tokens=usage.asInt();
+        } catch(JsonProcessingException e) {
+            throw new EmbeddingException("解析 Embedding usage 失败", e);
+        }
+        return new BatchResult(vectors,tokens);
     }
 
     /** 按返回的 index 归位，避免服务端乱序导致向量与文本错配。 */

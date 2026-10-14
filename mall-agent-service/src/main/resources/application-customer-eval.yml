@@ -1,0 +1,8 @@
+customer-service:
+  # Real Aliyun DashScope profile for CustomerAgent online evaluation.
+  provider: DASHSCOPE
+  api-key: ${CUSTOMER_SERVICE_API_KEY:}
+  # Set the workspace endpoint through the environment when using a private deployment.
+  base-url: ${CUSTOMER_SERVICE_BASE_URL:https://dashscope.aliyuncs.com}
+  master-model: ${CUSTOMER_SERVICE_MASTER_MODEL:qwen3.8-flash}
+  response-model: ${CUSTOMER_SERVICE_RESPONSE_MODEL:qwen3.8-flash}

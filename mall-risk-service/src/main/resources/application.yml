@@ -10,7 +10,8 @@ spring:
     username: root
     password: root
     hikari:
-      maximum-pool-size: 20
+      maximum-pool-size: 10
+      minimum-idle: 2
   cloud:
     nacos:
       discovery:

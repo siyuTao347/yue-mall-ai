@@ -64,13 +64,11 @@ P1 售前默认关闭。这里没有接入其他 Agent，也没有执行退款�
 真实模型模式配置：
 
 ```sh
-export CUSTOMER_SERVICE_PROVIDER=DASHSCOPE
-export CUSTOMER_SERVICE_MASTER_MODEL=qwen-turbo
-export CUSTOMER_SERVICE_RESPONSE_MODEL=qwen-plus
-# CUSTOMER_SERVICE_API_KEY 通过本地环境或部署密钥注入。
-export RAG_EMBEDDING_PROVIDER=OPENAI_COMPATIBLE
-# 设置 RAG_EMBEDDING_MODEL、RAG_EMBEDDING_BASE_URL、RAG_EMBEDDING_API_KEY。
+# CUSTOMER_SERVICE_API_KEY 已在本地环境或部署密钥中配置时无需重复设置。
+SPRING_PROFILES_ACTIVE=customer-eval mvn -pl mall-agent-service spring-boot:run
 ```
+
+`customer-eval` 配置档将客服模型切换为阿里云 DashScope，地址默认为 `https://dashscope.aliyuncs.com`，分类与检索模型均为 `qwen3.8-flash`。可用 `CUSTOMER_SERVICE_PROVIDER`、`CUSTOMER_SERVICE_BASE_URL`、`CUSTOMER_SERVICE_MASTER_MODEL` 和 `CUSTOMER_SERVICE_RESPONSE_MODEL` 覆盖。Embedding 是独立配置，不会替代客服模型 Key。已有运行进程不会热加载配置；切换后需重启 Agent 服务。
 
 数据库、Nacos 和 Dubbo 连接仍按项目环境配置；不要把 API Key 写入源码。用户通过既有网关登录进入商城，右侧客服入口自动挂载；管理员进入后台客服页。
 

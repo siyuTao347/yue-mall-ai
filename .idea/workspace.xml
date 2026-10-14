@@ -6,6 +6,52 @@
   <component name="ChangeListManager">
     <list default="true" id="8275a235-79d3-4837-87f7-ed524bd10d2f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/agent/customerServiceAgent/implementation.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/agent/customerServiceAgent/implementation.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/agent_evaluation_tutorial.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/config/env.example" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/config/gates.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/customer_agent_evaluation_plan.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/datasets/contracts-and-faults.jsonl" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/datasets/functional.jsonl" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/datasets/l2-calibration.jsonl" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/fixtures/knowledge/EVAL-ACCOUNT-RULE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/fixtures/knowledge/EVAL-AFTER-SALE-RULE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/fixtures/knowledge/EVAL-PLATFORM-RULE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/fixtures/knowledge/EVAL-SETTLEMENT-RULE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/fixtures/knowledge/EVAL-WITHDRAW-RULE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/fixtures/template.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/graders/semantic_rubric.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/requirements.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/build_datasets.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/compare_runs.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/customer_eval/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/customer_eval/client.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/customer_eval/common.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/customer_eval/dataset.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/customer_eval/grading.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/customer_eval/judge.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/customer_eval/report.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/customer_eval/runner.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/prepare_l2_release.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/run_contract_tests.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/scripts/run_evaluation.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent/tests/test_evaluation.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-agent-service/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-agent-service/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/AgentApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/AgentApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerController.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerMaster.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerMaster.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerModels.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerModels.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerProperties.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerProperties.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerRunner.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerRunner.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerStore.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-agent-service/src/main/java/com/example/agent/customer/CustomerStore.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-agent-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-agent-service/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-agent-service/src/test/java/com/example/agent/customer/CustomerMasterTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-agent-service/src/test/java/com/example/agent/customer/CustomerMasterTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/src/main/java/api/agent/AgentActor.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/src/main/java/api/agent/AgentActor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/src/main/java/api/agent/AgentOrderQueryDubboService.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/src/main/java/api/agent/AgentOrderQueryDubboService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-api/target/classes/api/ItemDubboService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/classes/api/ItemDubboService.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-api/target/classes/api/audit/AuditLogDTO.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/classes/api/audit/AuditLogDTO.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-api/target/classes/api/audit/BusinessType.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/classes/api/audit/BusinessType.class" afterDir="false" />
@@ -46,6 +92,12 @@
       <change beforePath="$PROJECT_DIR$/mall-api/target/classes/api/trade/MerchantDTO.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/classes/api/trade/MerchantDTO.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-api/target/classes/api/trade/MerchantDubboService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/classes/api/trade/MerchantDubboService.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-api/target/classes/api/util/JwtUtil.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-api/target/classes/api/util/JwtUtil.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/target/mall-api-0.0.1-SNAPSHOT.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-api/target/maven-archiver/pom.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-gateway-service/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-gateway-service/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/ItemApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/src/main/java/com/example/item/ItemApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-item-service/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/classes/application.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/ItemApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/ItemApplication.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/config/UserContextInterceptor.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/config/UserContextInterceptor.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/config/WebMvcConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/classes/com/example/item/config/WebMvcConfig.class" afterDir="false" />
@@ -90,6 +142,9 @@
       <change beforePath="$PROJECT_DIR$/mall-item-service/target/test-classes/com/example/item/service/AssetListingServiceTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/test-classes/com/example/item/service/AssetListingServiceTest.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-item-service/target/test-classes/com/example/item/service/AssetServiceTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/test-classes/com/example/item/service/AssetServiceTest.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-item-service/target/test-classes/com/example/item/service/ItemRiskCommandHandlerTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-item-service/target/test-classes/com/example/item/service/ItemRiskCommandHandlerTest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/OrderApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/src/main/java/com/example/item/OrderApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/application.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/OrderApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/OrderApplication.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/audit/AuditLogAspect.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/audit/AuditLogAspect.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/audit/AuditLogDeliveryStrategy.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/audit/AuditLogDeliveryStrategy.class" afterDir="false" />
@@ -149,6 +204,16 @@
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/service/TradeOrderService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/service/TradeOrderService.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/service/TradeReconciliationService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/service/TradeReconciliationService.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/service/TradeStatusLogService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/classes/com/example/item/service/TradeStatusLogService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/mall-order-service-0.0.1-SNAPSHOT.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/maven-archiver/pom.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/surefire-reports/TEST-com.example.item.audit.AuditLogBenchmarkTest.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/surefire-reports/TEST-com.example.item.audit.AuditLogTest.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/surefire-reports/TEST-com.example.item.service.OrderRiskCommandHandlerTest.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/surefire-reports/TEST-com.example.item.service.TradeOrderServiceTest.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/surefire-reports/com.example.item.audit.AuditLogBenchmarkTest.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/surefire-reports/com.example.item.audit.AuditLogTest.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/surefire-reports/com.example.item.service.OrderRiskCommandHandlerTest.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-order-service/target/surefire-reports/com.example.item.service.TradeOrderServiceTest.txt" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/audit/AuditLogBenchmarkTest$BenchmarkService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/audit/AuditLogBenchmarkTest$BenchmarkService.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/audit/AuditLogBenchmarkTest$ConcurrentMetrics.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/audit/AuditLogBenchmarkTest$ConcurrentMetrics.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/audit/AuditLogBenchmarkTest$LatencyMetrics.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/audit/AuditLogBenchmarkTest$LatencyMetrics.class" afterDir="false" />
@@ -157,6 +222,9 @@
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/audit/AuditLogTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/audit/AuditLogTest.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/service/OrderRiskCommandHandlerTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/service/OrderRiskCommandHandlerTest.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/service/TradeOrderServiceTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-order-service/target/test-classes/com/example/item/service/TradeOrderServiceTest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-risk-service/src/main/java/com/example/risk/RiskApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/src/main/java/com/example/risk/RiskApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-risk-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-risk-service/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/target/classes/application.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-risk-service/target/classes/com/example/risk/RiskApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/target/classes/com/example/risk/RiskApplication.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-risk-service/target/classes/com/example/risk/controller/RiskCaseAdminController$Operator.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/target/classes/com/example/risk/controller/RiskCaseAdminController$Operator.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-risk-service/target/classes/com/example/risk/controller/RiskCaseAdminController.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/target/classes/com/example/risk/controller/RiskCaseAdminController.class" afterDir="false" />
@@ -208,6 +276,9 @@
       <change beforePath="$PROJECT_DIR$/mall-risk-service/target/classes/com/example/risk/service/RiskMetricService.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/target/classes/com/example/risk/service/RiskMetricService.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-risk-service/target/classes/com/example/risk/service/RiskRuleCache.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/target/classes/com/example/risk/service/RiskRuleCache.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-risk-service/target/test-classes/com/example/risk/service/RiskCommandServiceTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-risk-service/target/test-classes/com/example/risk/service/RiskCommandServiceTest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/UserApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/java/com/example/user/UserApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/application.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/UserApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/UserApplication.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/annoation/RateLimitAspect.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/annoation/RateLimitAspect.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/controller/AccountController.class" beforeDir="false" afterPath="$PROJECT_DIR$/mall-user-service/target/classes/com/example/user/controller/AccountController.class" afterDir="false" />
@@ -319,47 +390,47 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Maven. [org.apache.maven.plugins:maven-archetype-plugin:RELEASE:generate].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.mall-parent [clean].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.mall-parent [install].executor&quot;: &quot;Run&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
-    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
-    &quot;RequestMappingsPanelWidth0&quot;: &quot;75&quot;,
-    &quot;RequestMappingsPanelWidth1&quot;: &quot;75&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;Spring Boot.AgentApplication.executor&quot;: &quot;Run&quot;,
-    &quot;Spring Boot.GatewayApplication.executor&quot;: &quot;Run&quot;,
-    &quot;Spring Boot.ItemApplication.executor&quot;: &quot;Run&quot;,
-    &quot;Spring Boot.OrderApplication.executor&quot;: &quot;Run&quot;,
-    &quot;Spring Boot.RiskApplication.executor&quot;: &quot;Run&quot;,
-    &quot;Spring Boot.UserApplication.executor&quot;: &quot;Run&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/yu/IdeaProjects/mall-parent/doc/sql/agent&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.2413793&quot;,
-    &quot;run.configurations.included.in.services&quot;: &quot;true&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;MavenSettings&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Maven. [org.apache.maven.plugins:maven-archetype-plugin:RELEASE:generate].executor": "Run",
+    "Maven.mall-parent [clean].executor": "Run",
+    "Maven.mall-parent [install].executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RequestMappingsPanelOrder0": "0",
+    "RequestMappingsPanelOrder1": "1",
+    "RequestMappingsPanelWidth0": "75",
+    "RequestMappingsPanelWidth1": "75",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Spring Boot.AgentApplication.executor": "Run",
+    "Spring Boot.GatewayApplication.executor": "Run",
+    "Spring Boot.ItemApplication.executor": "Run",
+    "Spring Boot.OrderApplication.executor": "Run",
+    "Spring Boot.RiskApplication.executor": "Run",
+    "Spring Boot.UserApplication.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/yu/IdeaProjects/mall-parent/evaluation/agent-evaluation/customerAgent",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2413793",
+    "run.configurations.included.in.services": "true",
+    "settings.editor.selected.configurable": "MavenSettings",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/evaluation/agent-evaluation/customerAgent" />
       <recent name="$PROJECT_DIR$/doc/sql/agent" />
       <recent name="$PROJECT_DIR$/doc/sql/init" />
       <recent name="$PROJECT_DIR$/evaluation/rag-evaluation/outputs" />
       <recent name="$PROJECT_DIR$/evaluation/rag-evaluation/outputs/deepseek-v4-pro-qwen-embedding" />
-      <recent name="$PROJECT_DIR$/mall-order-service/src/main/resources" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/doc/sql/agent/customerServiceAgent" />
@@ -383,12 +454,12 @@
         <entry key="SpringBootApplicationConfigurationType">
           <value>
             <map>
-              <entry key="AgentApplication" value="STOPPED" />
-              <entry key="GatewayApplication" value="STOPPED" />
-              <entry key="ItemApplication" value="STOPPED" />
+              <entry key="AgentApplication" value="FAILED" />
+              <entry key="GatewayApplication" value="FAILED" />
+              <entry key="ItemApplication" value="FAILED" />
               <entry key="OrderApplication" value="STOPPED" />
-              <entry key="RiskApplication" value="STOPPED" />
-              <entry key="UserApplication" value="STOPPED" />
+              <entry key="RiskApplication" value="FAILED" />
+              <entry key="UserApplication" value="FAILED" />
             </map>
           </value>
         </entry>
@@ -397,8 +468,10 @@
   </component>
   <component name="RunManager" selected="Spring Boot.AgentApplication">
     <configuration name="AgentApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
+      <option name="ACTIVE_PROFILES" value="customer-eval" />
       <envs>
         <env name="RAG_EMBEDDING_API_KEY" value="sk-edbe51ee9aea422bb634bc1688416d8e" />
+        <env name="CUSTOMER_SERVICE_API_KEY" value="sk-edbe51ee9aea422bb634bc1688416d8e" />
       </envs>
       <module name="mall-agent-service" />
       <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.agent.AgentApplication" />
@@ -481,10 +554,10 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Spring Boot.OrderApplication" />
         <item itemvalue="Spring Boot.UserApplication" />
         <item itemvalue="Spring Boot.ItemApplication" />
         <item itemvalue="Spring Boot.RiskApplication" />
-        <item itemvalue="Spring Boot.OrderApplication" />
         <item itemvalue="Spring Boot.AgentApplication" />
       </list>
     </recent_temporary>
@@ -532,6 +605,7 @@
       <workItem from="1791708217575" duration="22000" />
       <workItem from="1791709322449" duration="87000" />
       <workItem from="1791794089239" duration="9608000" />
+      <workItem from="1791862621624" duration="30097000" />
     </task>
     <servers />
   </component>

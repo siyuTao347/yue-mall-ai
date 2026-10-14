@@ -34,6 +34,11 @@ public final class CustomerOutputGuard {
                 supported |= no.equals(evidence.path(key).asText()) && no.equals(task.path("slots").path(key).asText());
             if (!supported) throw error(422, "AGENT_EVIDENCE_MISSING", "业务事实缺少工具依据");
         }
+        if (task.path("code").asText().startsWith("PRE_SALE") && task.path("slots").hasNonNull("itemId")) {
+            String itemId=task.path("slots").path("itemId").asText();boolean supported=false;
+            for (var evidence:result.path("evidence")) supported|=itemId.equals(evidence.path("itemId").asText());
+            if (!supported) throw error(422,"AGENT_EVIDENCE_MISSING","商品事实缺少对应商品依据");
+        }
         Set<String> sources = new HashSet<>();
         for (var source : result.path("citations")) {
             if (!source.path("intentInstanceId").equals(task.path("intentInstanceId"))

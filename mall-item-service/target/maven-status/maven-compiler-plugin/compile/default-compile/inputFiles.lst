@@ -14,6 +14,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/AssetReservation.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/BannerMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/mapper/ItemAuditMapper.java
+/Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/provider/AgentItemQueryDubboServiceImpl.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/entity/Banner.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/service/RiskClient.java
 /Users/yu/IdeaProjects/mall-parent/mall-item-service/src/main/java/com/example/item/service/ItemRiskCommandHandler.java

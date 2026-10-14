@@ -7,17 +7,17 @@ spring:
   # 主数据源：MySQL db_agent（RAG 元数据权威源，MyBatis-Plus 使用）
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://100.121.74.115:3306/db_agent?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
+    url: ${AGENT_MYSQL_URL:jdbc:mysql://127.0.0.1:3306/db_agent?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${AGENT_MYSQL_USERNAME:root}
+    password: ${AGENT_MYSQL_PASSWORD:}
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
+      maximum-pool-size: 10
+      minimum-idle: 2
       connection-timeout: 3000
   cloud:
     nacos:
       discovery:
-        server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
@@ -29,9 +29,9 @@ rag:
   pgvector:
     datasource:
       driver-class-name: org.postgresql.Driver
-      jdbc-url: jdbc:postgresql://100.121.74.115:5432/postgres?ApplicationName=mall-agent-rag&connectTimeout=3&socketTimeout=10
-      username: root
-      password: ${PGVECTOR_PASSWORD:root}
+      jdbc-url: jdbc:postgresql://${AGENT_PGVECTOR_HOST:127.0.0.1}:${AGENT_PGVECTOR_PORT:5432}/${AGENT_PGVECTOR_DATABASE:postgres}?ApplicationName=mall-agent-rag&connectTimeout=3&socketTimeout=10
+      username: ${AGENT_PGVECTOR_USERNAME:root}
+      password: ${PGVECTOR_PASSWORD:}
       maximum-pool-size: 8
       minimum-idle: 2
       connection-timeout: 10000
@@ -66,7 +66,7 @@ rag:
       overlap-chars: 60
       max-per-parent: 8
   retrieval:
-    default-mode: VECTOR
+    default-mode: ${RAG_RETRIEVAL_MODE:HYBRID}
     fallback-enabled: true
     child-top-k: 20
     parent-top-n: 5
@@ -90,23 +90,27 @@ management:
 customer-service:
   provider: ${CUSTOMER_SERVICE_PROVIDER:MOCK}
   api-key: ${CUSTOMER_SERVICE_API_KEY:}
-  master-model: ${CUSTOMER_SERVICE_MASTER_MODEL:qwen-turbo}
-  response-model: ${CUSTOMER_SERVICE_RESPONSE_MODEL:qwen-plus}
+  base-url: ${CUSTOMER_SERVICE_BASE_URL:https://dashscope.aliyuncs.com}
+  master-model: ${CUSTOMER_SERVICE_MASTER_MODEL:qwen3.8-flash}
+  response-model: ${CUSTOMER_SERVICE_RESPONSE_MODEL:qwen3.8-flash}
   run-timeout-ms: 90000
   model-timeout-ms: 15000
   retrieval-timeout-ms: 12000
   knowledge-threshold: 0.5 # 初始门槛，需用真实知识评估集校准
   l1-max-chars: 20
   rag-enabled: true
-  pre-sale-enabled: false
+  pre-sale-enabled: ${CUSTOMER_SERVICE_PRE_SALE_ENABLED:true}
 
 # 只读客服 Dubbo consumer；订单提供者未启动不阻止知识库管理服务启动。
 dubbo:
   application:
     name: mall-agent-service
     qos-enable: false
+    register-mode: interface
+    service-discovery:
+      migration: FORCE_INTERFACE
   registry:
-    address: ${DUBBO_REGISTRY_ADDRESS:nacos://100.121.74.115:8848}
+    address: ${DUBBO_REGISTRY_ADDRESS:nacos://127.0.0.1:8848}
   protocol:
     name: dubbo
     port: -1

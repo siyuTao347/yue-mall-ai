@@ -16,7 +16,8 @@ spring:
     username: root
     password: root
     hikari:
-      maximum-pool-size: 50
+      maximum-pool-size: 10
+      minimum-idle: 2
   data:
     redis:
       host: ${REDIS_HOST:100.121.74.115}
@@ -82,6 +83,9 @@ dubbo:
       migration: FORCE_INTERFACE
   registry:
     address: nacos://100.121.74.115:8848/
+  protocol:
+    name: dubbo
+    port: 20880
 xxl:
   job:
     admin:

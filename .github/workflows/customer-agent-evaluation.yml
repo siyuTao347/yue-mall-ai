@@ -1,0 +1,41 @@
+name: CustomerAgent evaluation
+on:
+  pull_request:
+    paths:
+      - 'evaluation/agent-evaluation/customerAgent/**'
+      - 'mall-agent-service/**'
+      - 'mall-order-service/**'
+      - 'mall-api/**'
+      - 'pom.xml'
+      - '.github/workflows/customer-agent-evaluation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate assertions, mutation tests and Java contracts
+        run: make -C evaluation/agent-evaluation/customerAgent validate test test-java
+      - name: Run real Java deterministic replay and enforce its gate
+        run: make -C evaluation/agent-evaluation/customerAgent replay
+      - name: Upload redacted observations even when the gate blocks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-agent-evaluation
+          path: evaluation/agent-evaluation/customerAgent/results/
+          retention-days: 7
+          if-no-files-found: ignore

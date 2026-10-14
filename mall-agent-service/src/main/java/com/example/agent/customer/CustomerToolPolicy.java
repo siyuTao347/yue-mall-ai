@@ -13,7 +13,7 @@ public final class CustomerToolPolicy {
         "ORDER_AGENT", Set.of("queryMyOrders", "queryOrder", "queryOrderTimeline", "queryDeliveryEvidenceSummary"),
         "AFTER_SALE_AGENT", Set.of("queryOrder", "queryDispute", "queryDeliveryEvidenceSummary", "searchKnowledge"),
         "RULE_AGENT", Set.of("searchKnowledge"),
-        "PRE_SALE_AGENT", Set.of("searchKnowledge"),
+        "PRE_SALE_AGENT", Set.of("queryPublicItem", "searchKnowledge"),
         "COMPLAINT_AGENT", Set.of("createHandoff", "queryOrder", "queryDispute"));
 
     public static void require(String agent, String tool) {

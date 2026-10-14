@@ -1,7 +1,0 @@
-{
-  "version": "customer-api-v1-initial",
-  "task_success_rate": 0.9,
-  "category_success_rate": 0.85,
-  "all_k_pass_rate": 0.85,
-  "note": "Initial API quality gates. Hard assertion failures always block. Full release needs T3/T4 and human review."
-}

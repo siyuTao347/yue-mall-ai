@@ -10,6 +10,11 @@ import org.springframework.context.annotation.Import;
 @EnableDubbo // 开启 Dubbo 支持
 @Import(RocketMQAutoConfiguration.class)
 public class ItemApplication {
+    static {
+        System.setProperty("dubbo.network.interface.ignored", "utun.*");
+        System.setProperty("dubbo.network.interface.preferred", "en0");
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(ItemApplication.class, args);
         System.out.println("====== 商品服务 (mall-item-service) 启动成功 ======");
