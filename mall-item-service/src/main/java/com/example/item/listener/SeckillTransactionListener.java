@@ -5,8 +5,11 @@ import jakarta.annotation.Resource;
 import org.apache.rocketmq.spring.annotation.RocketMQTransactionListener;
 import org.apache.rocketmq.spring.core.RocketMQLocalTransactionListener;
 import org.apache.rocketmq.spring.core.RocketMQLocalTransactionState;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.messaging.Message;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @RocketMQTransactionListener
 public class SeckillTransactionListener implements RocketMQLocalTransactionListener {
@@ -16,6 +19,10 @@ public class SeckillTransactionListener implements RocketMQLocalTransactionListe
 
     @Resource
     private JdbcTemplate jdbcTemplate;
+
+    @Resource
+    private PlatformTransactionManager transactionManager;
+
     @Override
     public RocketMQLocalTransactionState executeLocalTransaction(Message msg, Object arg) {
         String transactionId = msg.getHeaders().get("TRANSACTION_ID", String.class);
@@ -23,22 +30,24 @@ public class SeckillTransactionListener implements RocketMQLocalTransactionListe
         Long itemId = Long.valueOf(msg.getHeaders().get("ITEM_ID", String.class));
 
         try {
-            // 1. 扣减 MySQL 真实库存 (直接复用我们之前写好的 Try 阶段 SQL，或者写个新的)
-            int updated = itemMapper.tryDeductStock(itemId, 1);
-            if (updated <= 0) {
-                throw new RuntimeException("MySQL 扣减库存失败");
+            // SHOP-07: 扣减 MySQL 库存与写本地事务日志必须处于同一本地事务中，保证原子性！
+            TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
+            Boolean txSuccess = txTemplate.execute(status -> {
+                int updated = itemMapper.tryDeductStock(itemId, 1);
+                if (updated <= 0) {
+                    throw new IllegalStateException("MySQL 扣减库存失败");
+                }
+                String sql = "INSERT INTO t_mq_transaction_log (transaction_id, order_no, status) VALUES (?, ?, 1)";
+                jdbcTemplate.update(sql, transactionId, orderNo);
+                return true;
+            });
+
+            if (Boolean.TRUE.equals(txSuccess)) {
+                return RocketMQLocalTransactionState.COMMIT;
+            } else {
+                return RocketMQLocalTransactionState.ROLLBACK;
             }
-
-            // 2. 【简历核心亮点】插入本地事务日志表 (状态 1 代表成功)
-            String sql = "INSERT INTO t_mq_transaction_log (transaction_id, order_no, status) VALUES (?, ?, 1)";
-            jdbcTemplate.update(sql, transactionId, orderNo);
-
-            System.out.println("本地事务执行成功，通知 MQ 提交消息！TX_ID: " + transactionId);
-            return RocketMQLocalTransactionState.COMMIT; // 告诉 MQ：可以把消息发给订单服务了
-
         } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("本地事务执行失败，通知 MQ 回滚消息！TX_ID: " + transactionId);
             return RocketMQLocalTransactionState.ROLLBACK;
         }
     }
@@ -46,7 +55,6 @@ public class SeckillTransactionListener implements RocketMQLocalTransactionListe
     @Override
     public RocketMQLocalTransactionState checkLocalTransaction(Message msg) {
         String transactionId = msg.getHeaders().get("TRANSACTION_ID", String.class);
-        System.out.println("触发 RocketMQ 事务状态回查，TX_ID: " + transactionId);
 
         // 查本地日志表
         String sql = "SELECT status FROM t_mq_transaction_log WHERE transaction_id = ?";
@@ -55,10 +63,13 @@ public class SeckillTransactionListener implements RocketMQLocalTransactionListe
             if (status != null && status == 1) {
                 return RocketMQLocalTransactionState.COMMIT;
             }
-        } catch (Exception e) {
-            // 查不到数据，说明本地事务没执行成功就回滚了
             return RocketMQLocalTransactionState.ROLLBACK;
+        } catch (EmptyResultDataAccessException e) {
+            // 明确查不到日志，说明本地事务未成功
+            return RocketMQLocalTransactionState.ROLLBACK;
+        } catch (Exception e) {
+            // 数据库连接异常或临时网络错误，不能贸然判定为回滚导致丢单，返回 UNKNOWN 等待重试回查
+            return RocketMQLocalTransactionState.UNKNOWN;
         }
-        return RocketMQLocalTransactionState.UNKNOWN;
     }
 }

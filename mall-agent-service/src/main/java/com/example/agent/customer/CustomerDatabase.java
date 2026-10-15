@@ -28,10 +28,11 @@ public class CustomerDatabase {
         JdbcTemplate template=new JdbcTemplate(source) {
             @Override protected void applyStatementSettings(Statement statement) throws java.sql.SQLException {
                 super.applyStatementSettings(statement);
-                statement.setQueryTimeout(CustomerBudget.remaining(1));
+                int remainingMs=CustomerBudget.remaining(3000);
+                statement.setQueryTimeout(Math.max(1,(remainingMs+999)/1000));
             }
         };
-        template.setQueryTimeout(1);
+        template.setQueryTimeout(3);
         return template;
     }
 }

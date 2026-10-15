@@ -59,7 +59,10 @@ export const SeckillModal = () => {
         throw new Error(seckillRes.msg || '库存锁定失败，请重试');
       }
 
-      const generatedOrderNo = seckillRes.orderNo || `ORD${Date.now()}${currentUid}`;
+      const generatedOrderNo = seckillRes.orderNo;
+      if (!generatedOrderNo) {
+        throw new Error(seckillRes.msg || '未获取到有效秒杀订单号');
+      }
       setOrderNo(generatedOrderNo);
       await sleep(300);
 
@@ -69,14 +72,12 @@ export const SeckillModal = () => {
 
       setCurrentStep(4);
       setStatusText('正在完成支付...');
-      try {
-        await orderApi.payOrder(generatedOrderNo);
-      } catch {
-        await userApi.mockRewardPoints(generatedOrderNo, activeModalItem.seckillPrice, currentUid);
+      const payRes = await orderApi.payOrder(generatedOrderNo);
+      if (payRes && payRes.code && payRes.code !== 200) {
+        throw new Error(payRes.msg || '支付扣款失败');
       }
       await sleep(300);
 
-      addPoints(earnedPoints);
       refreshPoints(currentUid);
       setIsSuccess(true);
 

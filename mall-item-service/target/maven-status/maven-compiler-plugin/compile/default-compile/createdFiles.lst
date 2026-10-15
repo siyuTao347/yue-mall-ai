@@ -21,6 +21,7 @@ com/example/item/mapper/ItemMapper.class
 com/example/item/provider/SeckillServiceImpl.class
 com/example/item/vo/SeckillSessionVO$SeckillSessionVOBuilder.class
 com/example/item/service/package-info.class
+com/example/item/provider/AgentItemQueryDubboServiceImpl.class
 com/example/item/entity/Banner.class
 com/example/item/listener/ItemRiskCommandConsumer.class
 com/example/item/dto/ItemListQuery.class

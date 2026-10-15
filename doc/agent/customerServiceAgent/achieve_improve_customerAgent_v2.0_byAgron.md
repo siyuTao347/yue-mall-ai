@@ -99,7 +99,7 @@
 
 ### 2.1 核心架构演进对比（v1.0 vs v2.0）
 
-* **编排层**：从“每次请求动态构建 `StateGraph` + 串行 `ROUTE` 循环”，演进为“单例预编译 `StateGraph` + Master Plan-and-Execute（多子任务 DAG 并行调度）+ Specialist Bounded ReAct（单子任务内受控多步工具调用）”的混合架构。
+* **编排层**：从“每次请求动态构建 `StateGraph` + 串行 `ROUTE` 循环”，演进为“单例预编译 `StateGraph` + Master Plan-and-Execute（基于 `executionStage` 的分层调度）+ Specialist Bounded ReAct（单子任务内受控多步工具调用）”的混合架构。
 
 
 * **上下文层**：从“最近 10 条原始消息 + 覆盖式简单字符串拼接 Summary”，演进为“四层上下文工程体系（Working Context + Recency Entity Graph + Rolling Semantic Summary + Sliding Window History）”。
@@ -121,16 +121,16 @@ flowchart TD
     L1 -->|命中| FastSynth[确定性快路合成器]
     L1 -->|未命中| ResumeCheck{是否处于<br/>槽位澄清恢复态?}
     
-    ResumeCheck -->|是 & 槽位唯一定位| DAGExec
+    ResumeCheck -->|是 & 槽位唯一定位| StageExec
     ResumeCheck -->|否 / 复杂语境| L2{L2 意图引擎<br/>本地不可变快照 + 向量缓存}
     
     L2 -->|高置信度单意图| SlotResolver[实体指代消解与槽位填充器]
-    L2 -->|低置信度 / 多意图 / 复杂指代| L3Planner[L3 Master Planner<br/>结构化 Prompt + 意图拆解与重写]
+    L2 -->|低置信度 / 多意图 / 复杂指代| L3Planner[L3 Master Planner<br/>结构化 Prompt + executionStage 规划]
     
     L3Planner --> SlotResolver
-    SlotResolver --> DAGExec[DAG 并行调度器<br/>CompletableFuture + CustomerBudget]
+    SlotResolver --> StageExec[分层阶段调度器 StageExec<br/>executionStage 分组 + CompletableFuture 并发]
 
-    subgraph Parallel_Specialists [专职子智能体并行执行池]
+    subgraph Parallel_Specialists [专职子智能体分层执行池]
         direction TB
         ClarifyNode[Clarify Agent<br/>候选订单列表拉取 + 追问生成]
         OrderNode[Order Agent<br/>订单/结算/时间线确定性工具链]
@@ -140,7 +140,7 @@ flowchart TD
         ComplaintNode[Complaint Agent<br/>高优工单创建 + 上下文快照挂载]
     end
 
-    DAGExec --> ClarifyNode & OrderNode & AfterSaleNode & RuleNode & PreSaleNode & ComplaintNode
+    StageExec --> ClarifyNode & OrderNode & AfterSaleNode & RuleNode & PreSaleNode & ComplaintNode
     
     ClarifyNode & OrderNode & AfterSaleNode & RuleNode & PreSaleNode & ComplaintNode --> Synthesizer[Response Synthesizer<br/>证据对齐 / 引用锚定 / SSE 流式生成]
     FastSynth --> OutputGuard
@@ -277,7 +277,7 @@ public class CustomerGraphConfig {
         graph.addNode("LOAD_CONTEXT", node_async(nodes::loadContext));
         graph.addNode("MASTER_PLANNER", node_async(nodes::masterPlan));
         graph.addNode("SLOT_RESOLVE", node_async(nodes::slotResolve));
-        graph.addNode("DAG_DISPATCHER", node_async(nodes::dispatchParallelSpecialists));
+        graph.addNode("STAGE_DISPATCHER", node_async(nodes::dispatchStageSpecialists));
         graph.addNode("RESPONSE_SYNTHESIZER", node_async(nodes::synthesizeResponse));
         graph.addNode("OUTPUT_GUARD", node_async(nodes::outputGuard));
 
@@ -287,9 +287,9 @@ public class CustomerGraphConfig {
              .addEdge("MASTER_PLANNER", "SLOT_RESOLVE")
              .addConditionalEdges("SLOT_RESOLVE", edge_async(nodes::routeAfterSlotResolve), Map.of(
                  "FAST_TEMPLATE", "RESPONSE_SYNTHESIZER",
-                 "EXECUTE_DAG", "DAG_DISPATCHER"
+                 "EXECUTE_STAGES", "STAGE_DISPATCHER"
              ))
-             .addEdge("DAG_DISPATCHER", "RESPONSE_SYNTHESIZER")
+             .addEdge("STAGE_DISPATCHER", "RESPONSE_SYNTHESIZER")
              .addEdge("RESPONSE_SYNTHESIZER", "OUTPUT_GUARD")
              .addEdge("OUTPUT_GUARD", StateGraph.END);
         return graph.compile();
@@ -298,24 +298,50 @@ public class CustomerGraphConfig {
 
 ```
 
-### 4.2 Master Planner：多意图 DAG 并行调度
+### 4.2 Master Planner：基于数字阶段标记（executionStage）的分层调度机制
 
-在现有 `CustomerRunner` 中，多个意图通过 `ROUTE` 节点串行逐个执行。升级后的 `DAG_DISPATCHER` 节点会将已就绪（`resolutionState == READY`）的多个子任务按依赖关系并行分发：
+在现有 `CustomerRunner` 中，多个意图通过 `ROUTE` 节点串行逐个执行。升级后的 `STAGE_DISPATCHER` 节点采用**数字阶段标记（`executionStage`）分层调度机制**：大模型在 Master Planner 阶段为每个拆解出的子任务输出一个正整数 `executionStage`（如 1, 2, ...）：
 
-1. **任务分组**：
-* 若存在 `COMPLAINT` / `HUMAN_HELP` 升级诉求，优先触发 `createHandoff`，同时允许并行的最多 1 个业务查询意图（如在转人工同时查出订单当前状态挂载到工单上下文中）。
+1. **核心调度原则**：
+   * **阶段内并发（Parallel within Stage）**：`executionStage` **相同**的子任务之间无数据依赖，使用 `CustomerBudget` 派生的虚拟线程执行器（Virtual Threads）**完全并行并发执行**（例如同时并发查询订单状态与提现规则）。
+   * **阶段间顺序（Sequential across Stages）**：`executionStage` **小**的阶段必须在数字**大**的阶段之前执行完成。当后序任务依赖前序任务的业务事实或状态时，标记为递增数字（例如：Stage 1 先查出订单状态，Stage 2 依据订单当前状态进行售后仲裁规则检索）。
+   * **极简防环与容错（Zero-Cycle Reliability）**：无需在运行时构建复杂的通用有向无环图（DAG），从拓扑结构上**天然杜绝了死循环与循环依赖**；若大模型未给出该字段，后端统一容错默认置为 `1`。
 
+#### 2. 分层调度执行器代码实现示例：
 
-* 若为多个独立的业务意图（例如：`i1 = ORDER_STATUS(SO202610050007)`，`i2 = WITHDRAW_RULE`），使用 `CustomerBudget` 派生的虚拟线程执行器并行调用 `ORDER_AGENT` 与 `RULE_AGENT`。
+```java
+public void dispatchStageSpecialists(RunContext run) {
+    // 1. 按 executionStage 升序分组 (如: Stage 1 -> [ORDER_STATUS, WITHDRAW_RULE], Stage 2 -> [AFTER_SALE_GUIDE])
+    Map<Integer, List<SubTask>> stageMap = run.getReadyTasks().stream()
+        .collect(Collectors.groupingBy(SubTask::executionStage, TreeMap::new, Collectors.toList()));
 
+    // 2. 依次按阶段推进：阶段内 CompletableFuture.allOf 并发，阶段间阻塞推进
+    for (Map.Entry<Integer, List<SubTask>> entry : stageMap.entrySet()) {
+        int currentStage = entry.getKey();
+        List<SubTask> stageTasks = entry.getValue();
 
+        List<CompletableFuture<Void>> stageFutures = stageTasks.stream()
+            .map(task -> CompletableFuture.runAsync(() -> {
+                run.getBudget().remaining();
+                executeSpecialist(task, run);
+            }, virtualExecutor))
+            .toList();
 
+        // 等待当前 stage 的所有并发任务全部完成，产出事实注入上下文后，才推进到下一阶段
+        try {
+            CompletableFuture.allOf(stageFutures.toArray(new CompletableFuture[0]))
+                .get(run.getBudget().remaining(), TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            log.warn("Stage {} execution partial failure or timeout: {}", currentStage, e.getMessage());
+        }
+    }
+}
+```
 
-2. **预算与并发隔离**：
-* 每个子任务共享父 `CustomerBudget` 的全局截止时间（Deadline），但拥有独立的单任务超时上限（如 Dubbo 工具调用 3000ms，RAG 检索 6000ms）。
-
-
-* 使用 `CompletableFuture.allOf()` 汇聚各专职 Agent 的结构化产出 `SpecialistResult`，按 `priority` 排序后交由 `RESPONSE_SYNTHESIZER` 统一合成。
+#### 3. 典型业务调度场景映射：
+* **无依赖多意图（Stage 1 并发）**：`ORDER_STATUS(SO202610050007, stage=1)` 与 `WITHDRAW_RULE(stage=1)` 同时发起，耗时仅取决于 Dubbo 与 RAG 两者中最慢的一个。
+* **因果依赖多意图（Stage 1 -> Stage 2 串联）**：`ORDER_STATUS(SO202610050007, stage=1)` 先查出订单已签收 15 天，`AFTER_SALE_GUIDE(stage=2)` 在 Stage 2 中带着“已签收 15 天”的精确事实检索超过退换货周期的平台仲裁政策。
+* **人工升级与事实挂载（Stage 1 并发）**：`COMPLAINT(stage=1)` 与 `ORDER_STATUS(stage=1)` 并发触发，工单创建与订单实时数据拉取同时完成，直接将订单事实挂载入工单上下文。
 
 
 
@@ -396,6 +422,7 @@ src/main/resources/customer/prompts/
 1. 意图识别与多意图拆解（最多拆分为 {{maxIntents}} 个独立子任务）。
 2. 指代消解与查询重写（rewrittenQuestion）：将包含“它”、“这个单”、“上面那个”等代词的残缺提问，结合 <active_entities> 重写为语义完整、可独立用于向量检索的完整问句。
 3. 严格提取并校验业务槽位（orderNo, disputeNo, itemId）。
+4. 调度阶段规划（executionStage）：为每个子任务标记执行阶段数字（1, 2, ...）。互不依赖的任务标记相同数字（同阶段并发执行）；后序依赖前序结果的任务标记更大数字（后阶段执行，例如先查状态标记 1，再依状态问规则标记 2）。默认均为 1。
 </system_role>
 
 <security_rules>
@@ -434,7 +461,7 @@ src/main/resources/customer/prompts/
   <example>
     <context>activeFocus.orderNo = "SO202610050007"</context>
     <input>那它什么时候能结算到账？另外提现最低多少起提？</input>
-    <output>{"intents":[{"code":"SETTLEMENT","confidence":0.96,"questionFragment":"那它什么时候能结算到账？","rewrittenQuestion":"订单 SO202610050007 什么时候能结算到账？","slots":{"orderNo":"SO202610050007","disputeNo":null,"itemId":null}},{"code":"WITHDRAW_RULE","confidence":0.95,"questionFragment":"另外提现最低多少起提？","rewrittenQuestion":"平台账户余额提现最低多少金额起提？","slots":{"orderNo":null,"disputeNo":null,"itemId":null}}],"needHuman":false,"riskLevel":"LOW","sentiment":"NEUTRAL"}</output>
+    <output>{"intents":[{"code":"SETTLEMENT","executionStage":1,"confidence":0.96,"questionFragment":"那它什么时候能结算到账？","rewrittenQuestion":"订单 SO202610050007 什么时候能结算到账？","slots":{"orderNo":"SO202610050007","disputeNo":null,"itemId":null}},{"code":"WITHDRAW_RULE","executionStage":1,"confidence":0.95,"questionFragment":"另外提现最低多少起提？","rewrittenQuestion":"平台账户余额提现最低多少金额起提？","slots":{"orderNo":null,"disputeNo":null,"itemId":null}}],"needHuman":false,"riskLevel":"LOW","sentiment":"NEUTRAL"}</output>
   </example>
 </few_shot_examples>
 
@@ -444,7 +471,7 @@ src/main/resources/customer/prompts/
 
 <output_contract>
 请仅输出合法的单行 JSON 对象，严禁输出 Markdown 代码块标记或任何解释性文字：
-{"intents":[{"code":"...","confidence":0.0,"questionFragment":"...","rewrittenQuestion":"...","slots":{"orderNo":null,"disputeNo":null,"itemId":null}}],"needHuman":false,"riskLevel":"LOW|NORMAL|HIGH|URGENT","sentiment":"POSITIVE|NEUTRAL|NEGATIVE"}
+{"intents":[{"code":"...","executionStage":1,"confidence":0.0,"questionFragment":"...","rewrittenQuestion":"...","slots":{"orderNo":null,"disputeNo":null,"itemId":null}}],"needHuman":false,"riskLevel":"LOW|NORMAL|HIGH|URGENT","sentiment":"POSITIVE|NEUTRAL|NEGATIVE"}
 </output_contract>
 
 ```
@@ -730,7 +757,7 @@ COMMIT;
 
 | 现有类 (`com.example.agent.customer`) | 升级动作 | 核心变更职责 |
 | --- | --- | --- |
-| `CustomerRunner.java`<br> | **重构** | 移除每次请求 `new StateGraph().compile()`；引入 `DAG_DISPATCHER` 并行执行多意图；接入 `AgentItemQueryDubboService` 补齐 `PRE_SALE_AGENT`；将 `policy()` 的硬编码拼接改造为 `ResponseSynthesizer` 流式/非流式双轨合成。
+| `CustomerRunner.java`<br> | **重构** | 移除每次请求 `new StateGraph().compile()`；引入 `STAGE_DISPATCHER` 按 `executionStage` 分层并行执行多意图；接入 `AgentItemQueryDubboService` 补齐 `PRE_SALE_AGENT`；将 `policy()` 的硬编码拼接改造为 `ResponseSynthesizer` 流式/非流式双轨合成。
 
 |
 | `CustomerMaster.java`<br> | **重构** | 修复 `ORDER`（支持 `SO` 前缀）、`DISPUTE`（支持 `DSP` 前缀）、`ITEM_CODE` 正则；升级 `resolve()` 支持基于 `SessionContextV3` 的焦点时间衰减消解与跨实体（纠纷->订单）推导。
@@ -802,11 +829,11 @@ COMMIT;
 * 升级 `SessionContextV3` 实体注册表、时间衰减指代消解算法与异步滚动摘要机制。
 
 
-* **Phase 3：Hybrid RAG 与 Plan-and-Execute / ReAct 编排升级（2~3 天）**
+* **Phase 3：Hybrid RAG 与分层调度 / ReAct 编排升级（2~3 天）**
 * 在 `CustomerKnowledgeService` 中落地 `VECTOR + KEYWORD` RRF 混合检索与 `DEGRADED` 自动降级。
 
 
-* 落地多意图 DAG 并行执行器、`AFTER_SALE_AGENT` / `PRE_SALE_AGENT` 受控 ReAct 循环及 `ResponseSynthesizer` 证据驱动合成。
+* 落地基于 `executionStage` 的多意图分层并行调度器、`AFTER_SALE_AGENT` / `PRE_SALE_AGENT` 受控 ReAct 循环及 `ResponseSynthesizer` 证据驱动合成。
 
 
 * **Phase 4：SSE 流式输出与全量基准验收（1~2 天）**

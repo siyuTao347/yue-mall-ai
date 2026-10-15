@@ -56,7 +56,17 @@ public class PointService {
         }
 
         try {
-            // 3. 确保用户积分账户存在
+            // 3. 检查是否已经存在该订单的积分流水（业务事实幂等）
+            LambdaQueryWrapper<PointRecord> checkWrapper = new LambdaQueryWrapper<>();
+            checkWrapper.eq(PointRecord::getOrderNo, orderNo)
+                    .eq(PointRecord::getChangeType, 1);
+            PointRecord existingRecord = pointRecordMapper.selectOne(checkWrapper);
+            if (existingRecord != null) {
+                log.warn("⚠️ 数据库流水已存在该订单的积分记录, 订单号: {}, 幂等安全返回", orderNo);
+                return true;
+            }
+
+            // 4. 确保用户积分账户存在
             UserPoint userPoint = userPointMapper.selectById(userId);
             if (userPoint == null) {
                 userPoint = new UserPoint(userId, 0, 0, 0, LocalDateTime.now(), LocalDateTime.now());
@@ -67,29 +77,37 @@ public class PointService {
                 }
             }
 
-            // 4. 原子累加积分 (防并发脏写)
-            userPointMapper.addPoints(userId, earnedPoints);
+            int currentBalance = userPoint != null ? userPoint.getTotalPoints() : 0;
+            int estimatedBalanceAfter = currentBalance + earnedPoints;
 
-            // 重新获取最新可用余额
-            UserPoint updatedPoint = userPointMapper.selectById(userId);
-            int balanceAfter = updatedPoint != null ? updatedPoint.getTotalPoints() : earnedPoints;
-
-            // 5. 第二道防线: 写入积分明细流水 (利用唯一索引 uk_order_type 杜绝重复记账)
+            // 5. SHOP-06: 先插入积分明细流水凭据 (利用唯一键 uk_order_type 拦截并发竞争与重放)
+            // 必须在修改余额之前插入；若唯一冲突，直接在此处捕获并忽略，绝不会脏改用户余额！
             PointRecord record = new PointRecord();
             record.setUserId(userId);
             record.setOrderNo(orderNo);
             record.setChangePoints(earnedPoints);
-            record.setBalanceAfter(balanceAfter);
+            record.setBalanceAfter(estimatedBalanceAfter);
             record.setChangeType(1); // 1-消费返利
             record.setRemark("订单 " + orderNo + " 消费 ￥" + payAmount + " 获得 " + earnedPoints + " 积分");
             record.setCreateTime(LocalDateTime.now());
-
             pointRecordMapper.insert(record);
+
+            // 6. 流水落库成功后，再原子累加用户积分余额
+            userPointMapper.addPoints(userId, earnedPoints);
+
+            // 7. 更新最新真实余额
+            UserPoint updatedPoint = userPointMapper.selectById(userId);
+            int realBalanceAfter = updatedPoint != null ? updatedPoint.getTotalPoints() : estimatedBalanceAfter;
+            if (realBalanceAfter != estimatedBalanceAfter) {
+                record.setBalanceAfter(realBalanceAfter);
+                pointRecordMapper.updateById(record);
+            }
+
             log.info("✅ 成功为用户 {} 发放消费积分: +{} pts (余额: {} pts), 订单号: {}",
-                    userId, earnedPoints, balanceAfter, orderNo);
+                    userId, earnedPoints, realBalanceAfter, orderNo);
             return true;
         } catch (DuplicateKeyException e) {
-            log.warn("⚠️ 数据库唯一索引拦截重复加积分事件, 订单号: {}, 已安全忽略", orderNo);
+            log.warn("⚠️ 数据库唯一索引拦截重复加积分事件, 订单号: {}, 此时未修改用户余额，已安全忽略", orderNo);
             return true;
         } catch (Exception e) {
             // 发生未知异常，清理 Redis 幂等标记以便 MQ 重试

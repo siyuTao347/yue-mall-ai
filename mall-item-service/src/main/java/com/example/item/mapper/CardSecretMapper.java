@@ -61,23 +61,23 @@ public interface CardSecretMapper extends BaseMapper<CardSecret> {
                  @Param("reservationNo") String reservationNo, @Param("now") LocalDateTime now);
 
     @Update("UPDATE t_item i SET i.stock = i.stock - #{count}, i.frozen_stock = i.frozen_stock + #{count} " +
-            "WHERE i.id = #{itemId} AND i.stock >= #{count}")
+            "WHERE i.id = #{itemId} AND #{count} > 0 AND i.stock >= #{count}")
     int reserveStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
     @Update("UPDATE t_item i SET i.stock = i.stock + #{count}, " +
             "i.frozen_stock = i.frozen_stock - #{count} " +
-            "WHERE i.id = #{itemId} AND i.frozen_stock >= #{count}")
+            "WHERE i.id = #{itemId} AND #{count} > 0 AND i.frozen_stock >= #{count}")
     int releaseStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
     @Update("UPDATE t_item i SET i.frozen_stock = i.frozen_stock - #{count} " +
-            "WHERE i.id = #{itemId} AND i.frozen_stock >= #{count}")
+            "WHERE i.id = #{itemId} AND #{count} > 0 AND i.frozen_stock >= #{count}")
     int confirmStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
-    @Update("UPDATE t_card_secret SET status = 'RELEASED', order_no = NULL, reservation_no = NULL, " +
+    @Update("UPDATE t_card_secret SET status = 'AVAILABLE', order_no = NULL, reservation_no = NULL, " +
             "locked_time = NULL, updated_time = #{now} WHERE reservation_no = #{reservationNo} AND status = 'LOCKED'")
     int releaseByReservation(@Param("reservationNo") String reservationNo, @Param("now") LocalDateTime now);
 
-    @Update("UPDATE t_card_secret SET status = 'RELEASED', order_no = NULL, reservation_no = NULL, " +
+    @Update("UPDATE t_card_secret SET status = 'AVAILABLE', order_no = NULL, reservation_no = NULL, " +
             "locked_time = NULL, updated_time = #{now} WHERE order_no = #{orderNo} " +
             "AND reservation_no = #{reservationNo} AND status = 'LOCKED'")
     int releaseByOrderAndReservation(@Param("orderNo") String orderNo,

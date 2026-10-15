@@ -3,6 +3,7 @@ package com.example.agent.customer;
 import api.agent.AgentActor;
 import api.context.TraceContext;
 import api.response.ApiResponse;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,20 +34,21 @@ public class CustomerController {
         String traceId=TraceContext.getTraceId();
         Thread.startVirtualThread(()->{
             if(traceId!=null)TraceContext.set(traceId);
-            sendStage(emitter,"已接收问题…");
             try {
-                var response=runner.send(actor,session,body.clientMessageId(),body.content(),stage->sendStage(emitter,stage));
-                String answer=response.path("answer").asText();
-                for(int offset=0;offset<answer.length();) {
-                    int count=Math.min(48,answer.codePointCount(offset,answer.length()));
-                    int end=answer.offsetByCodePoints(offset,count);
-                    try{emitter.send(SseEmitter.event().name("text").data(answer.substring(offset,end)));}catch(Exception ignored){}
-                    offset=end;
-                }
-                try{emitter.send(SseEmitter.event().name("result").data(response));}catch(Exception ignored){}
+                runner.send(actor,session,body.clientMessageId(),body.content(),
+                    (stage,label)->sendEvent(emitter,"stage.progress",Map.of("stage",stage,"label",label)),
+                    delta->sendEvent(emitter,"answer.delta",Map.of("delta",delta)),
+                    event->{String name=event.path("event").asText("run.completed");JsonNode payload=event.has("result")?event.path("result"):event;
+                        if(payload==event&&event.isObject()){payload=event.deepCopy();((com.fasterxml.jackson.databind.node.ObjectNode)payload).remove("event");}
+                        sendEvent(emitter,name,payload);});
                 emitter.complete();
             }catch(Exception failure){
-                try{emitter.send(SseEmitter.event().name("error").data(Map.of("errorCode","AGENT_STREAM_FAILED","message","暂时无法完成查询，请稍后重试。")));}catch(Exception ignored){}
+                String code="AGENT_STREAM_FAILED",msg="暂时无法完成查询，请稍后重试。";
+                for(Throwable cause=failure;cause!=null;cause=cause.getCause()) {
+                    if(cause instanceof com.example.agent.exception.RagApiException ragEx){code=ragEx.errorCode();msg=ragEx.getMessage();break;}
+                    if(cause instanceof api.exception.BizException bizEx){code=bizEx.getErrorCode();msg=bizEx.getMessage();break;}
+                }
+                sendEvent(emitter,"run.failed",Map.of("errorCode",code,"answer",Objects.toString(msg,"暂时无法完成查询，请稍后重试。")));
                 emitter.complete();
             }finally{TraceContext.clear();}
         });
@@ -69,5 +71,5 @@ public class CustomerController {
     @PostMapping("/api/admin/agent/intent-releases/{no}/activate") public Object activate(AgentActor actor,@PathVariable String no){admin(actor);releases.activate(no);return ApiResponse.success(Map.of("saved",true));}
     @PostMapping("/api/admin/agent/intent-releases/{no}/revoke") public Object revoke(AgentActor actor,@PathVariable String no){admin(actor);releases.revoke(no);return ApiResponse.success(Map.of("saved",true));}
 
-    private static void sendStage(SseEmitter emitter,String stage){try{emitter.send(SseEmitter.event().name("status").data(Map.of("stage",stage)));}catch(Exception ignored){}}
+    private static void sendEvent(SseEmitter emitter,String name,Object data){try{emitter.send(SseEmitter.event().name(name).data(data));}catch(Exception ignored){}}
 }

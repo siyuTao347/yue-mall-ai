@@ -56,11 +56,14 @@ export const tradeApi = {
 
   order: {
     list: (params = {}) => getPaged(`${API_BASE.ORDER}/api/trade/orders`, params),
+    detail: (orderNo) => get(`${API_BASE.ORDER}/api/trade/orders/${orderNo}`),
+    quote: (itemId, quantity = 1, sessionId = null) => post(`${API_BASE.ORDER}/api/trade/quotes`, { itemId, quantity, sessionId }),
     create: (itemId, quantity = 1) => post(`${API_BASE.ORDER}/api/trade/orders`, { itemId, quantity }),
     cancel: (orderNo) => post(`${API_BASE.ORDER}/api/trade/orders/${orderNo}/cancel`, {}),
     deliver: (orderNo, content) => post(`${API_BASE.ORDER}/api/trade/orders/${orderNo}/deliver`, { content }),
     secrets: (orderNo) => get(`${API_BASE.ORDER}/api/trade/orders/${orderNo}/secrets`),
     delivery: (orderNo) => get(`${API_BASE.ORDER}/api/trade/orders/${orderNo}/delivery`),
+    reveal: (orderNo) => post(`${API_BASE.ORDER}/api/trade/orders/${orderNo}/reveal`, {}),
     confirm: (orderNo) => post(`${API_BASE.ORDER}/api/trade/orders/${orderNo}/confirm`, {}),
     review: (orderNo, score, content = '') => post(`${API_BASE.ORDER}/api/trade/orders/${orderNo}/review`, {
       score,

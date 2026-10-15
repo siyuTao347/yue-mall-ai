@@ -26,34 +26,34 @@ public interface ItemMapper extends BaseMapper<Item> {
     int increaseDraftStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
     @Update("UPDATE t_item SET stock = stock - #{count}, frozen_stock = frozen_stock + #{count} " +
-            "WHERE id = #{itemId} AND stock >= #{count}")
+            "WHERE id = #{itemId} AND #{count} > 0 AND stock >= #{count}")
     int tryDeductStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
     @Update("UPDATE t_item SET stock = stock - #{count}, frozen_stock = frozen_stock + #{count}, " +
-            "version = version + 1 WHERE id = #{itemId} AND stock >= #{count} " +
+            "version = version + 1 WHERE id = #{itemId} AND #{count} > 0 AND stock >= #{count} " +
             "AND status = 1 AND audit_status = 'APPROVED'")
     int reserveStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
     @Update("UPDATE t_item SET stock = stock + #{count}, frozen_stock = frozen_stock - #{count}, " +
-            "version = version + 1 WHERE id = #{itemId} AND frozen_stock >= #{count}")
+            "version = version + 1 WHERE id = #{itemId} AND #{count} > 0 AND frozen_stock >= #{count}")
     int releaseStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
     @Update("UPDATE t_item SET frozen_stock = frozen_stock - #{count}, version = version + 1 " +
-            "WHERE id = #{itemId} AND frozen_stock >= #{count}")
+            "WHERE id = #{itemId} AND #{count} > 0 AND frozen_stock >= #{count}")
     int confirmStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
     @Update("UPDATE t_item SET stock = stock + #{count}, version = version + 1 " +
-            "WHERE id = #{itemId}")
+            "WHERE id = #{itemId} AND #{count} > 0")
     int restoreRefundedStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
     // Confirm: 直接扣减冻结库存 (因为真实库存已经在 Try 阶段扣掉了)
     @Update("UPDATE t_item SET frozen_stock = frozen_stock - #{count} " +
-            "WHERE id = #{itemId} AND frozen_stock >= #{count}")
+            "WHERE id = #{itemId} AND #{count} > 0 AND frozen_stock >= #{count}")
     int confirmDeductStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
     // Cancel: 归还真实库存，扣减冻结库存 (回滚)
     @Update("UPDATE t_item SET stock = stock + #{count}, frozen_stock = frozen_stock - #{count} " +
-            "WHERE id = #{itemId} AND frozen_stock >= #{count}")
+            "WHERE id = #{itemId} AND #{count} > 0 AND frozen_stock >= #{count}")
     int cancelDeductStock(@Param("itemId") Long itemId, @Param("count") Integer count);
 
     @Update("UPDATE t_item SET risk_status = #{riskStatus}, risk_level = #{riskLevel}, " +

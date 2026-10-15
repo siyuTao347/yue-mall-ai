@@ -25,11 +25,15 @@ public class IntentReleaseService {
     private final OnlineEmbedding embedding;
     private final CustomerProperties properties;
     private final String query;
-    private final ConcurrentMap<String,Snapshot> verifiedSnapshots=new ConcurrentHashMap<>();
+    private final String fastQuery;
+    private record ActivePointer(String releaseNo,long expiresAtNanos) {}
+    private volatile ActivePointer activePointer;
+    private final Map<String,Snapshot> verifiedSnapshots=Collections.synchronizedMap(new LinkedHashMap<>(8,.75f,true));
     private final ExecutorService builder=new ThreadPoolExecutor(1,1,0,TimeUnit.SECONDS,new ArrayBlockingQueue<>(4),r->{Thread t=new Thread(r,"intent-release-builder");t.setDaemon(true);return t;});
     public IntentReleaseService(CustomerDatabase db,OnlineEmbedding embedding,CustomerProperties properties) throws Exception {
         this.db=db;this.embedding=embedding;this.properties=properties;
         query=new ClassPathResource("customer/intent-search.sql").getContentAsString(StandardCharsets.UTF_8);
+        fastQuery=new ClassPathResource("customer/intent-search-fast.sql").getContentAsString(StandardCharsets.UTF_8);
     }
     @PreDestroy public void close(){builder.shutdownNow();}
     public List<Map<String,Object>> list(){return db.mysql.queryForList("SELECT release_no,status,embedding_model,expected_intent_count,expected_example_count,validated_time,created_time FROM t_customer_service_intent_release ORDER BY created_time DESC LIMIT 50");}
@@ -40,7 +44,12 @@ public class IntentReleaseService {
     private static Map<String,Object> immutable(Map<String,Object> row){return Collections.unmodifiableMap(new LinkedHashMap<>(row));}
     private static List<Map<String,Object>> immutableRows(List<Map<String,Object>> rows){return rows.stream().map(IntentReleaseService::immutable).toList();}
     private Snapshot verifiedSnapshot(String no) {
-        return verifiedSnapshots.computeIfAbsent(no,key->{Snapshot value=snapshot(key);assertReady(value);validate(value);return value;});
+        synchronized(verifiedSnapshots) {
+            Snapshot cached=verifiedSnapshots.get(no);if(cached!=null)return cached;
+            Snapshot value=snapshot(no);assertReady(value);validate(value);verifiedSnapshots.put(no,value);
+            while(verifiedSnapshots.size()>3)verifiedSnapshots.remove(verifiedSnapshots.keySet().iterator().next());
+            return value;
+        }
     }
     static String canonical(Object value){
         if(value instanceof Map<?,?> m){Map<String,String> sorted=new TreeMap<>();m.forEach((k,v)->sorted.put(k.toString(),canonical(v)));return write(sorted);}
@@ -77,8 +86,8 @@ public class IntentReleaseService {
             trace.put("releaseNo",snapshot.no()).put("manifestHash",snapshot.header.get("manifest_hash").toString())
                 .put("expectedExampleCount",snapshot.count()).put("embeddingModel",snapshot.model()).put("embeddingDim",1536);
             OnlineEmbedding.Result embedded=budget.call(9000,()->embedding.embedWithUsage(normalize(question),snapshot.model(),1536));
-            trace.set("embeddingTokens",node(embedded.tokens()));
-            ObjectNode result=budget.call(2000,()->search(snapshot,embedded.vector()));
+            trace.set("embeddingTokens",node(embedded.tokens()));trace.put("embeddingCacheHit",embedded.cached());
+            ObjectNode result=budget.call(2000,()->searchFast(snapshot,embedded.vector()));
             result.set("embeddingTokens",node(embedded.tokens()));
             if(!budget.call(500,()->Objects.equals(activeRelease(),snapshot.no())))throw incomplete();
             result.put("elapsedMs",(System.nanoTime()-started)/1000000);return result;
@@ -86,8 +95,15 @@ public class IntentReleaseService {
             trace.put("elapsedMs",(System.nanoTime()-started)/1000000);return trace;}
     }
     private String activeRelease() {
+        long now=System.nanoTime();ActivePointer cached=activePointer;
+        if(cached!=null&&cached.expiresAtNanos()>now)return cached.releaseNo();
+        synchronized(this) {
+            now=System.nanoTime();cached=activePointer;
+            if(cached!=null&&cached.expiresAtNanos()>now)return cached.releaseNo();
         var pointer=db.mysql.queryForList("SELECT active_release_no FROM t_customer_service_intent_active_release WHERE scene='CUSTOMER_SERVICE'");
-        return pointer.isEmpty()?null:Objects.toString(pointer.getFirst().get("active_release_no"),null);
+            String release=pointer.isEmpty()?null:Objects.toString(pointer.getFirst().get("active_release_no"),null);
+            activePointer=new ActivePointer(release,System.nanoTime()+TimeUnit.SECONDS.toNanos(2));return release;
+        }
     }
     public boolean isActive(String no){return no!=null&&!no.isBlank()&&Objects.equals(activeRelease(),no);}
 
@@ -105,6 +121,22 @@ public class IntentReleaseService {
         boolean accept=accept(score,second,threshold,margin);
         result.put("source",accept?"L2_RAG":"L3_LLM").put("code",accept?code:"OTHER").put("similarity",score).put("runnerUpScore",second).put("threshold",threshold).put("minMargin",margin);
         result.put("matchedExampleCount",((Number)row.get("matched_count")).intValue());result.set("matched",candidates.get(0));result.put("fallbackReason",accept?null:"INTENT_LOW_SCORE_OR_MARGIN");
+        result.set("requiredSlots",read(item.get("required_slots_json")));return result;
+    }
+    ObjectNode searchFast(Snapshot s,float[] vector) {
+        Map<String,Object> params=Map.of("query_vector",VectorFormat.toLiteral(vector),"release_no",s.no(),"embedding_model",s.model(),"intent_top_k",5);
+        Map<String,Object> row=new NamedParameterJdbcTemplate(db.vector).queryForMap(fastQuery,params);
+        JsonNode candidates=read(row.get("candidates"));if(!candidates.isArray()||candidates.size()<2)throw incomplete();
+        ObjectNode result=object().put("releaseNo",s.no()).put("manifestHash",s.header.get("manifest_hash").toString())
+            .put("expectedExampleCount",s.count()).put("matchedExampleCount",s.count()).put("embeddingModel",s.model()).put("embeddingDim",1536);
+        result.set("candidates",candidates);String code=candidates.get(0).path("intent_code").asText();
+        double score=candidates.get(0).path("score").asDouble(),second=candidates.get(1).path("score").asDouble();
+        Map<String,Object> item=s.items.stream().filter(i->code.equals(i.get("intent_code"))).findFirst().orElseThrow(IntentReleaseService::incomplete);
+        double threshold=((Number)item.get("similarity_threshold")).doubleValue(),margin=((Number)s.header.get("min_margin")).doubleValue();
+        boolean accept=accept(score,second,threshold,margin);
+        result.put("source",accept?"L2_RAG":"L3_LLM").put("code",accept?code:"OTHER").put("similarity",score)
+            .put("runnerUpScore",second).put("threshold",threshold).put("minMargin",margin);
+        result.put("fallbackReason",accept?null:"INTENT_LOW_SCORE_OR_MARGIN");result.set("matched",candidates.get(0));
         result.set("requiredSlots",read(item.get("required_slots_json")));return result;
     }
     static boolean accept(double best,double second,double threshold,double margin){return Double.isFinite(best)&&Double.isFinite(second)&&best>threshold&&BigDecimal.valueOf(best).subtract(BigDecimal.valueOf(second)).compareTo(BigDecimal.valueOf(margin))>=0;}
@@ -164,10 +196,11 @@ public class IntentReleaseService {
             var h=db.mysql.queryForMap("SELECT status,manifest_hash FROM t_customer_service_intent_release WHERE release_no=? FOR UPDATE",no);
             if(!"READY".equals(h.get("status"))||!Objects.equals(h.get("manifest_hash"),s.header.get("manifest_hash")))throw incomplete();
             if(db.mysql.update("UPDATE t_customer_service_intent_active_release SET active_release_no=?,lock_version=lock_version+1 WHERE scene='CUSTOMER_SERVICE'",no)!=1)throw incomplete();});
-        verifiedSnapshots.put(no,s);
+        synchronized(verifiedSnapshots){verifiedSnapshots.put(no,s);while(verifiedSnapshots.size()>3)verifiedSnapshots.remove(verifiedSnapshots.keySet().iterator().next());}
+        activePointer=null;
     }
     public void revoke(String no){db.tx.executeWithoutResult(tx->{db.mysql.queryForList("SELECT scene FROM t_customer_service_intent_active_release WHERE scene='CUSTOMER_SERVICE' FOR UPDATE");
         db.mysql.update("UPDATE t_customer_service_intent_release SET status='REVOKED' WHERE release_no=?",no);
-        db.mysql.update("UPDATE t_customer_service_intent_active_release SET active_release_no=NULL,lock_version=lock_version+1 WHERE scene='CUSTOMER_SERVICE' AND active_release_no=?",no);});verifiedSnapshots.remove(no);}
+            db.mysql.update("UPDATE t_customer_service_intent_active_release SET active_release_no=NULL,lock_version=lock_version+1 WHERE scene='CUSTOMER_SERVICE' AND active_release_no=?",no);});verifiedSnapshots.remove(no);activePointer=null;}
     public boolean ready(String no){return "READY".equals(header(no).get("status"));}
 }

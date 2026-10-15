@@ -17,12 +17,27 @@ import { TradeWorkbench } from './components/trade/TradeWorkbench';
 import { AdminConsole } from './components/admin/AdminConsole';
 import { CustomerServiceLauncher } from './components/customer/CustomerServiceLauncher';
 
-/** 普通用户商城：首页、秒杀、商品目录与担保交易工作台。 */
+import { useStoreRoute } from './hooks/useStoreRoute';
+import { UserOrdersPage } from './pages/orders/UserOrdersPage';
+import { UserOrderDetailPage } from './pages/orders/UserOrderDetailPage';
+
+/** 普通用户商城：首页、秒杀、商品目录与担保交易工作台，以及全新独立我的订单中心。 */
 const UserStorefront = () => {
   const { overview, setOverview } = useApp();
+  const { route, orderNo, params, anchor, navigate } = useStoreRoute();
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [isOverviewLoading, setIsOverviewLoading] = useState(true);
+
+  // 监听并平滑滚动至指定锚点
+  useEffect(() => {
+    if (route === 'home' && anchor) {
+      const timer = setTimeout(() => {
+        document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [route, anchor]);
 
   const fetchOverview = useCallback(async () => {
     setIsOverviewLoading(true);
@@ -52,49 +67,69 @@ const UserStorefront = () => {
   const handleSearch = useCallback((keyword) => {
     setSearchKeyword(keyword);
     if (keyword) {
-      document.getElementById('catalogSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (route !== 'home') {
+        navigate('/home');
+      }
+      setTimeout(() => {
+        document.getElementById('catalogSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     }
-  }, []);
+  }, [route, navigate]);
 
   return (
     <div className="app-shell" id="top">
-      <Navbar searchKeyword={searchKeyword} onSearch={handleSearch} />
-      <LiveTicker tickers={overview.tickers} />
-      <HeroCarousel banners={overview.banners} />
-      <div id="tradeSection"><TradeWorkbench items={overview.catalogItems || overview.hotItems || []} /></div>
-
-      <main className="layout-container page-section" id="seckillSection">
-        <div className="section-header seckill-header">
-          <div>
-            <h2 className="section-title">限时秒杀</h2>
-            <p className="section-desc">每场限量，先到先得</p>
-          </div>
-
-          <CountdownTimer
-            session={activeSession}
-            onExpire={fetchOverview}
-            isLoading={isOverviewLoading}
-          />
-        </div>
-
-        {!isOverviewLoading && hasAvailableSession ? (
-          <>
-            <SessionTabs
-              sessions={sessions}
-              activeSessionId={activeSessionId}
-              onSelectSession={setActiveSessionId}
-            />
-            <SeckillGrid items={activeSession?.items} session={activeSession} />
-          </>
-        ) : (
-          <div className="empty-state">暂无秒杀活动</div>
-        )}
-      </main>
-
-      <CatalogGrid
-        items={overview.catalogItems || overview.hotItems || []}
+      <Navbar
         searchKeyword={searchKeyword}
+        onSearch={handleSearch}
+        currentRoute={route}
+        onNavigate={navigate}
       />
+
+      {route === 'orders' ? (
+        <UserOrdersPage navigate={navigate} initialParams={params} />
+      ) : route === 'orderDetail' ? (
+        <UserOrderDetailPage orderNo={orderNo} navigate={navigate} />
+      ) : (
+        <>
+          <LiveTicker tickers={overview.tickers} />
+          <HeroCarousel banners={overview.banners} />
+          <div id="tradeSection"><TradeWorkbench items={overview.catalogItems || overview.hotItems || []} /></div>
+
+          <main className="layout-container page-section" id="seckillSection">
+            <div className="section-header seckill-header">
+              <div>
+                <h2 className="section-title">限时秒杀</h2>
+                <p className="section-desc">每场限量，先到先得</p>
+              </div>
+
+              <CountdownTimer
+                session={activeSession}
+                onExpire={fetchOverview}
+                isLoading={isOverviewLoading}
+              />
+            </div>
+
+            {!isOverviewLoading && hasAvailableSession ? (
+              <>
+                <SessionTabs
+                  sessions={sessions}
+                  activeSessionId={activeSessionId}
+                  onSelectSession={setActiveSessionId}
+                />
+                <SeckillGrid items={activeSession?.items} session={activeSession} />
+              </>
+            ) : (
+              <div className="empty-state">暂无秒杀活动</div>
+            )}
+          </main>
+
+          <CatalogGrid
+            items={overview.catalogItems || overview.hotItems || []}
+            searchKeyword={searchKeyword}
+          />
+        </>
+      )}
+
       <Footer />
 
       <PointsDrawer />

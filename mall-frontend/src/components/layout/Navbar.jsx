@@ -14,7 +14,8 @@ export const Navbar = ({
   onSearch = () => {},
   mode = 'store',
   activeKey = '',
-  onNavigate = () => {}
+  onNavigate = () => {},
+  currentRoute = 'home'
 }) => {
   const { user, userPoints, openDrawer, openAuthModal, logout } = useApp();
   const isAdminMode = mode === 'admin';
@@ -49,10 +50,25 @@ export const Navbar = ({
     return () => document.removeEventListener('mousedown', close);
   }, [showDropdown]);
 
+  const handleBrandClick = (e) => {
+    if (isAdminMode) return;
+    if (currentRoute !== 'home') {
+      e.preventDefault();
+      onNavigate('/home');
+    }
+  };
+
+  const handleSectionLink = (e, sectionId) => {
+    if (currentRoute !== 'home') {
+      e.preventDefault();
+      onNavigate(`#${sectionId}`);
+    }
+  };
+
   return (
     <header className={`navbar ${isAdminMode ? 'admin-mode' : ''}`}>
       <div className="nav-container">
-        <a className="brand" href="#top" aria-label={isAdminMode ? '悦购运营管理后台' : '悦购商城首页'}>
+        <a className="brand" href="#top" onClick={handleBrandClick} aria-label={isAdminMode ? '悦购运营管理后台' : '悦购商城首页'}>
           <span className="brand-logo">悦</span>
           <span className="brand-title">
             <span className="brand-name">悦购商城</span>
@@ -98,9 +114,34 @@ export const Navbar = ({
             </button>
           )) : (
             <>
-              <a href="#tradeSection" className="nav-link active">担保交易</a>
-              <a href="#seckillSection" className="nav-link">限时秒杀</a>
-              <a href="#catalogSection" className="nav-link">饰品商城</a>
+              <button
+                type="button"
+                className={`nav-link nav-button ${currentRoute === 'orders' || currentRoute === 'orderDetail' ? 'active' : ''}`}
+                onClick={() => onNavigate('/orders')}
+              >
+                我的订单
+              </button>
+              <a
+                href="#tradeSection"
+                className={`nav-link ${currentRoute === 'home' ? '' : ''}`}
+                onClick={(e) => handleSectionLink(e, 'tradeSection')}
+              >
+                担保交易
+              </a>
+              <a
+                href="#seckillSection"
+                className="nav-link"
+                onClick={(e) => handleSectionLink(e, 'seckillSection')}
+              >
+                限时秒杀
+              </a>
+              <a
+                href="#catalogSection"
+                className="nav-link"
+                onClick={(e) => handleSectionLink(e, 'catalogSection')}
+              >
+                饰品商城
+              </a>
             </>
           )}
         </nav>
@@ -137,16 +178,28 @@ export const Navbar = ({
                     <div className="dropdown-id">{isAdminMode ? `管理员账号：${user.id}` : `会员号：${user.id}`}</div>
                   </div>
                   {!isAdminMode ? (
-                    <button
-                      type="button"
-                      className="dropdown-action"
-                      onClick={() => {
-                        setShowDropdown(false);
-                        openDrawer();
-                      }}
-                    >
-                      积分明细
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="dropdown-action"
+                        onClick={() => {
+                          setShowDropdown(false);
+                          onNavigate('/orders');
+                        }}
+                      >
+                        📦 我的订单
+                      </button>
+                      <button
+                        type="button"
+                        className="dropdown-action"
+                        onClick={() => {
+                          setShowDropdown(false);
+                          openDrawer();
+                        }}
+                      >
+                        积分明细
+                      </button>
+                    </>
                   ) : null}
                   <button
                     type="button"

@@ -7,23 +7,33 @@ import com.fasterxml.jackson.databind.node.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import static com.example.agent.customer.CustomerJson.*;
 
 /** Public knowledge retrieval with vector, keyword, hybrid and automatic degraded modes. */
 @Service
 public class CustomerKnowledgeService {
     private record Retrieval(ArrayNode sources,String mode,ObjectNode usage) {}
-    private record DocCache(long expiresAt,List<Long> ids) {}
+    public record SearchOutcome(ArrayNode sources,boolean embeddingCacheHit) {}
+    private record DocCache(long expiresAt,List<Long> ids,String versionHash) {}
+    private record SearchCacheEntry(ArrayNode sources,String mode) {}
     private record Candidate(long id,double score) {}
+    private record VectorRecall(List<Candidate> hits,Integer tokens,boolean cacheHit) {}
     private static final String ELIGIBLE_DOCS="""
-        SELECT d.id FROM t_knowledge_document d
+        SELECT d.id,d.doc_no,d.version,d.content_hash,d.updated_time FROM t_knowledge_document d
          WHERE d.visibility='PUBLIC' AND d.status='ENABLED' AND d.doc_type IN (:types)
            AND d.version=(SELECT MAX(v.version) FROM t_knowledge_document v WHERE v.doc_no=d.doc_no AND v.status='ENABLED')
         """;
     private static final int DOC_CACHE_TTL_MS=5000;
+    private static final ExecutorService RECALL_EXECUTOR=Executors.newVirtualThreadPerTaskExecutor();
+    private final Cache<String,SearchCacheEntry> searchCache=Caffeine.newBuilder().maximumSize(1000).expireAfterWrite(java.time.Duration.ofMinutes(5)).build();
+    private final AtomicBoolean fullTextAvailable=new AtomicBoolean(true);
     private final CustomerDatabase db;
     private final OnlineEmbedding embedding;
     private final CustomerProperties properties;
@@ -36,6 +46,10 @@ public class CustomerKnowledgeService {
     }
 
     public ArrayNode search(String query,List<String> requested,String run,String session,String agent,String callNo) {
+        return searchWithMetadata(query,requested,run,session,agent,callNo).sources();
+    }
+
+    public SearchOutcome searchWithMetadata(String query,List<String> requested,String run,String session,String agent,String callNo) {
         if(query==null||query.isBlank()||query.length()>512||query.chars().anyMatch(Character::isISOControl))
             throw error(400,"RAG_QUERY_INVALID","检索问题应为 1–512 个字符");
         List<String> types=CustomerToolPolicy.documentTypes(agent,requested);
@@ -46,7 +60,7 @@ public class CustomerKnowledgeService {
         budget.remaining();
         db.mysql.update("INSERT INTO t_knowledge_retrieval_log(log_no,run_no,session_no,tool_call_no,agent_name,scene,query_text,retrieval_mode,requested_mode,top_k,parent_hit_count,latency_ms,result_json) VALUES(?,?,?,?,?,'CUSTOMER_SERVICE',?,?,?,?,?,?,?)",
             id("KR"),run,session,callNo,agent,redact(query),retrieval.mode(),rag.getRetrieval().getDefaultMode().toUpperCase(Locale.ROOT),20,retrieval.sources().size(),(System.nanoTime()-start)/1000000,write(object().<ObjectNode>set("sources",retrieval.sources()).set("usage",retrieval.usage())));
-        return retrieval.sources();
+        return new SearchOutcome(retrieval.sources(),retrieval.usage().path("embeddingCacheHit").asBoolean(false));
     }
 
     static ArrayNode mockSources(String query) {
@@ -59,42 +73,54 @@ public class CustomerKnowledgeService {
     }
 
     private Retrieval retrieve(String query,List<String> types,CustomerBudget budget) {
-        List<Long> docIds=eligibleDocs(types,budget);if(docIds.isEmpty())return new Retrieval(array(),"VECTOR",object());
+        DocCache activeDocs=eligibleDocs(types,budget);List<Long> docIds=activeDocs.ids();if(docIds.isEmpty())return new Retrieval(array(),"VECTOR",object());
+        String cacheKey=hash(activeDocs.versionHash()+"|"+String.join("|",new TreeSet<>(types))+"|"+hash(normalize(query)));
+        SearchCacheEntry cached=searchCache.getIfPresent(cacheKey);
+        if(cached!=null){ObjectNode usage=object().put("embeddingCacheHit",true).put("retrievalCacheHit",true);
+            return new Retrieval(cached.sources().deepCopy(),cached.mode(),usage);}
         String requestedMode=rag.getRetrieval().getDefaultMode().toUpperCase(Locale.ROOT);
         boolean keywordOnly="KEYWORD".equals(requestedMode),hybrid="HYBRID".equals(requestedMode);
-        List<Candidate> vector=new ArrayList<>(),keyword=new ArrayList<>();ObjectNode usage=object();String actualMode=requestedMode;
-        if(!keywordOnly) {
-            try {
-                OnlineEmbedding.Result embedded=budget.call(9000,()->embedding.embedWithUsage(redact(query),embedding.model(),1536));
-                usage.set("embeddingTokens",node(embedded.tokens()));
-                vector=vectorCandidates(embedded.vector(),docIds,budget);
-            } catch(RuntimeException unavailable) {
-                if(!rag.getRetrieval().isFallbackEnabled())throw unavailable;
-                actualMode="DEGRADED";
-            }
-        }
-        if(keywordOnly||hybrid||vector.isEmpty()) {
-            try { keyword=keywordCandidates(query,types,budget); }
-            catch(RuntimeException unavailable) {
-                if(vector.isEmpty())throw unavailable;
-                actualMode="VECTOR_PARTIAL";
-            }
-        }
+        List<Candidate> vector=List.of(),keyword=List.of();ObjectNode usage=object();String actualMode=requestedMode;boolean vectorFailed=false,keywordFailed=false;
+        CompletableFuture<VectorRecall> vectorFuture=null;CompletableFuture<List<Candidate>> keywordFuture=null;
+        if(!keywordOnly)vectorFuture=CompletableFuture.supplyAsync(()->vectorRecall(query,docIds,budget),RECALL_EXECUTOR);
+        if(keywordOnly||hybrid)keywordFuture=CompletableFuture.supplyAsync(()->keywordCandidates(query,types,budget),RECALL_EXECUTOR);
+        if(vectorFuture!=null)try {
+            VectorRecall recall=vectorFuture.get(budget.remaining(),TimeUnit.MILLISECONDS);vector=recall.hits();
+            usage.set("embeddingTokens",node(recall.tokens()));usage.put("embeddingCacheHit",recall.cacheHit());
+        } catch(InterruptedException e){Thread.currentThread().interrupt();throw error(504,"AGENT_CANCELLED","请求已取消");}
+          catch(ExecutionException|TimeoutException e){vectorFailed=true;vectorFuture.cancel(true);if(!rag.getRetrieval().isFallbackEnabled()&&!hybrid)throw error(503,"RAG_VECTOR_UNAVAILABLE","向量检索暂时不可用");}
+        if(keywordFuture==null&&vector.isEmpty())keywordFuture=CompletableFuture.supplyAsync(()->keywordCandidates(query,types,budget),RECALL_EXECUTOR);
+        if(keywordFuture!=null)try{keyword=keywordFuture.get(budget.remaining(),TimeUnit.MILLISECONDS);}
+            catch(InterruptedException e){Thread.currentThread().interrupt();throw error(504,"AGENT_CANCELLED","请求已取消");}
+            catch(ExecutionException|TimeoutException e){keywordFailed=true;keywordFuture.cancel(true);if(vector.isEmpty())throw error(503,"RAG_KEYWORD_UNAVAILABLE","知识关键词检索暂时不可用");}
         if(keywordOnly)actualMode="KEYWORD";
+        else if(vectorFailed)actualMode="DEGRADED";
+        else if(keywordFailed)actualMode="VECTOR_PARTIAL";
         else if(!vector.isEmpty()&&!keyword.isEmpty())actualMode="HYBRID";
-        else if(!vector.isEmpty()&&"HYBRID".equals(requestedMode))actualMode="VECTOR_PARTIAL";
-        else if(!keyword.isEmpty()&&vector.isEmpty())actualMode="DEGRADED";
+        else if(!vector.isEmpty())actualMode="VECTOR";
+        else if(!keyword.isEmpty())actualMode="HYBRID";
         List<Candidate> ranked=rrf(vector,keyword,rag.getRetrieval().getRrfK());
-        return new Retrieval(loadParents(ranked,types,budget),actualMode,usage);
+        ArrayNode parents=loadParents(ranked,types,budget);
+        searchCache.put(cacheKey,new SearchCacheEntry(parents.deepCopy(),actualMode));
+        return new Retrieval(parents,actualMode,usage);
     }
 
-    private List<Long> eligibleDocs(List<String> types,CustomerBudget budget) {
+    private VectorRecall vectorRecall(String query,List<Long> docs,CustomerBudget budget) {
+        OnlineEmbedding.Result embedded=budget.call(9000,()->embedding.embedWithUsage(redact(query),embedding.model(),1536));
+        List<Candidate> hits=vectorCandidates(embedded.vector(),docs,budget);
+        return new VectorRecall(hits,embedded.tokens(),embedded.cached());
+    }
+
+    private DocCache eligibleDocs(List<String> types,CustomerBudget budget) {
         String key=String.join("|",new TreeSet<>(types));long now=System.nanoTime();DocCache cached=docCache.get(key);
-        if(cached!=null&&cached.expiresAt()>now)return cached.ids();
-        List<Long> ids=budget.call(1000,()->new NamedParameterJdbcTemplate(db.mysql).queryForList(ELIGIBLE_DOCS,Map.of("types",types),Long.class));
-        docCache.put(key,new DocCache(now+java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(DOC_CACHE_TTL_MS),List.copyOf(ids)));
+        if(cached!=null&&cached.expiresAt()>now)return cached;
+        List<Map<String,Object>> rows=budget.call(1000,()->new NamedParameterJdbcTemplate(db.mysql).queryForList(ELIGIBLE_DOCS+" ORDER BY d.id",Map.of("types",types)));
+        List<Long> ids=rows.stream().map(row->((Number)row.get("id")).longValue()).toList();
+        String versionHash=hash(rows.stream().map(row->String.join(":",Objects.toString(row.get("id"),""),Objects.toString(row.get("doc_no"),""),Objects.toString(row.get("version"),""),Objects.toString(row.get("content_hash"),""),Objects.toString(row.get("updated_time"),""))).collect(java.util.stream.Collectors.joining("|")));
+        DocCache snapshot=new DocCache(now+java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(DOC_CACHE_TTL_MS),List.copyOf(ids),versionHash);
+        docCache.put(key,snapshot);
         docCache.entrySet().removeIf(e->e.getValue().expiresAt()<=now);
-        return ids;
+        return snapshot;
     }
 
     private List<Candidate> vectorCandidates(float[] vector,List<Long> docs,CustomerBudget budget) {
@@ -112,7 +138,11 @@ public class CustomerKnowledgeService {
         List<String> tokens=TextTokenizer.tokens(query).stream().filter(t->!t.isBlank()).distinct().limit(8).toList();
         if(tokens.isEmpty())return List.of();
         String fullText=tokens.stream().map(t->t.replaceAll("[^\\p{IsHan}A-Za-z0-9]","")).filter(t->!t.isBlank()).distinct().collect(java.util.stream.Collectors.joining(" "));
-        if(!fullText.isBlank())try {return fullTextCandidates(fullText,types,budget);}catch(RuntimeException noFullTextIndex) { /* ngram index is optional */ }
+        if(fullTextAvailable.get()&&!fullText.isBlank())try {
+            return fullTextCandidates(fullText,query.strip(),types,budget);
+        }catch(RuntimeException noFullTextIndex) {
+            fullTextAvailable.set(false);
+        }
         Map<String,Object> params=new HashMap<>();params.put("types",types);StringBuilder score=new StringBuilder();StringBuilder matches=new StringBuilder();
         for(int i=0;i<tokens.size();i++) {
             String key="k"+i;params.put(key,"%"+tokens.get(i)+"%");if(i>0){score.append("+");matches.append(" OR ");}
@@ -133,19 +163,19 @@ public class CustomerKnowledgeService {
         List<Candidate> result=new ArrayList<>(hits.size());for(var h:hits)result.add(new Candidate(((Number)h.get("chunk_id")).longValue(),((Number)h.get("score")).doubleValue()));return result;
     }
 
-    private List<Candidate> fullTextCandidates(String query,List<String> types,CustomerBudget budget) {
+    private List<Candidate> fullTextCandidates(String booleanQuery,String rawQuery,List<String> types,CustomerBudget budget) {
         var hits=budget.call(1000,()->new NamedParameterJdbcTemplate(db.mysql).queryForList("""
             SELECT c.id AS chunk_id,
-                   (MATCH(c.chunk_content) AGAINST(:query IN BOOLEAN MODE)
+                   (MATCH(c.title_path,c.chunk_content) AGAINST(:query IN BOOLEAN MODE)
                     + CASE WHEN c.title_path LIKE :likeQuery THEN 5 ELSE 0 END
                     + CASE WHEN CAST(c.keywords_json AS CHAR) LIKE :likeQuery THEN 3 ELSE 0 END) AS score
               FROM t_knowledge_chunk c JOIN t_knowledge_document d ON d.id=c.document_id
              WHERE c.chunk_level=2 AND c.status='ENABLED' AND c.embedding_status='READY'
                AND d.visibility='PUBLIC' AND d.status='ENABLED' AND d.doc_type IN (:types)
                AND d.version=(SELECT MAX(v.version) FROM t_knowledge_document v WHERE v.doc_no=d.doc_no AND v.status='ENABLED')
-               AND (MATCH(c.chunk_content) AGAINST(:query IN BOOLEAN MODE)>0 OR c.title_path LIKE :likeQuery OR CAST(c.keywords_json AS CHAR) LIKE :likeQuery)
+               AND (MATCH(c.title_path,c.chunk_content) AGAINST(:query IN BOOLEAN MODE)>0 OR c.title_path LIKE :likeQuery OR CAST(c.keywords_json AS CHAR) LIKE :likeQuery)
              ORDER BY score DESC LIMIT 20
-            """,Map.of("query",query,"likeQuery","%"+query+"%","types",types)));
+            """,Map.of("query",booleanQuery,"likeQuery","%"+rawQuery+"%","types",types)));
         List<Candidate> result=new ArrayList<>(hits.size());for(var h:hits)result.add(new Candidate(((Number)h.get("chunk_id")).longValue(),((Number)h.get("score")).doubleValue()));return result;
     }
 

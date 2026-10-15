@@ -1,5 +1,6 @@
 api/audit/AuditLogDTO.class
 api/exception/ValidationException.class
+api/agent/AgentItemQueryDubboService.class
 api/audit/AuditLog.class
 api/risk/SensitiveWordDTO$SensitiveWordDTOBuilder.class
 api/risk/RiskDecisionResult$RiskDecisionResultBuilder.class
@@ -38,6 +39,7 @@ api/risk/SensitiveWordHitDTO$SensitiveWordHitDTOBuilder.class
 api/context/UserContext.class
 api/trade/FundOperationResult$FundOperationResultBuilder.class
 api/trade/request/CreateOrderRequest.class
+api/agent/AgentItemQueryDubboService$PublicItemFact.class
 api/exception/BadRequestException.class
 api/risk/RiskSupport.class
 api/util/JwtUtil.class

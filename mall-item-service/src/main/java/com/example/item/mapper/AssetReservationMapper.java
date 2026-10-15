@@ -13,4 +13,12 @@ public interface AssetReservationMapper extends BaseMapper<AssetReservation> {
     @Update("UPDATE t_asset_reservation SET status = 'REFUNDED', updated_time = #{now} " +
             "WHERE order_no = #{orderNo} AND status = 'CONFIRMED'")
     int markRefundedByOrderNo(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now);
+
+    @Update("UPDATE t_asset_reservation SET status = 'RELEASED', updated_time = #{now} " +
+            "WHERE reservation_no = #{reservationNo} AND status = 'RESERVED'")
+    int markReleased(@Param("reservationNo") String reservationNo, @Param("now") LocalDateTime now);
+
+    @Update("UPDATE t_asset_reservation SET status = 'CONFIRMED', updated_time = #{now} " +
+            "WHERE reservation_no = #{reservationNo} AND status = 'RESERVED'")
+    int markConfirmed(@Param("reservationNo") String reservationNo, @Param("now") LocalDateTime now);
 }

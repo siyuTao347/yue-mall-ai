@@ -57,11 +57,28 @@ export const CustomerServiceDialog = ({ user, position, onClose }) => {
       let no = session;
       if (!no) { no = (await api.create(abort.signal)).sessionNo; setSession(no); try { sessionStorage.setItem(storageKey, no); } catch { /* optional */ } }
       if (!previous) { setMessages(m => [...m, { id: request.clientMessageId, role: 'USER', content: request.text }]); setContent(''); }
-      const result = await api.send(no, request.text, request.clientMessageId, abort.signal);
+      const assistantId = `${request.clientMessageId}-assistant`;
+      setMessages(m => [...m, { id: assistantId, role: 'AGENT', content: '', stage: '正在连接客服…', streaming: true }]);
+      const result = await api.sendStream(no, request.text, request.clientMessageId, event => {
+        const payload = event.data || {};
+        if (event.event === 'stage.progress') {
+          setMessages(m => m.map(item => item.id === assistantId ? { ...item, stage: payload.label || '正在处理…' } : item));
+        } else if (event.event === 'answer.delta') {
+          setMessages(m => m.map(item => item.id === assistantId ? { ...item, content: item.content + (payload.delta || ''), stage: '' } : item));
+        } else if (event.event === 'run.completed' || event.event === 'run.failed') {
+          setMessages(m => m.map(item => item.id === assistantId ? { ...item, content: payload.answer || item.content, result: payload, stage: '', streaming: false } : item));
+        }
+      }, abort.signal);
       if (abort.signal.aborted) return;
-      setMessages(m => [...m, { id: result.runNo, role: 'AGENT', content: result.answer, result }]);
+      setMessages(m => m.map(item => item.id === assistantId ? { ...item, id: result.runNo || assistantId, content: result.answer || item.content, result, stage: '', streaming: false } : item));
       setHandoff(result.handoffRequired); setRetry(null);
-    } catch (e) { if (!abort.signal.aborted) { setError(e.message || '发送失败'); setRetry(request); } }
+      if (result.errorCode) { setError(result.answer || '客服暂时无法完成查询'); setRetry(request); }
+    } catch (e) {
+      if (!abort.signal.aborted) {
+        setMessages(m => m.filter(item => item.id !== `${request.clientMessageId}-assistant`));
+        setError(e.message || '发送失败'); setRetry(request);
+      }
+    }
     finally { if (!abort.signal.aborted) { setBusy(false); input.current?.focus(); } }
   };
   const fresh = async () => {
@@ -76,6 +93,7 @@ export const CustomerServiceDialog = ({ user, position, onClose }) => {
       {!messages.length && <p className="customer-welcome">你好！请告诉我你想查询的问题。涉及订单时，请提供订单号。</p>}
       {messages.map(m => <article key={m.id} className={`customer-message ${m.role === 'USER' ? 'customer-user' : ''}`}>
         <p>{m.content}</p>
+        {m.streaming && m.stage && <small role="status">{m.stage}</small>}
         {m.result?.citations?.map(c => <details key={`${c.intentInstanceId}-${c.sourceNo}`}><summary>{c.title} · v{c.docVersion} · {c.titlePath}</summary><p>{c.content}</p></details>)}
         {m.result?.intentResults?.flatMap(i => (i.choices || []).map(c => <button disabled={busy || handoff} key={`${i.intentInstanceId}-${c.orderNo}`} onClick={() => send(c.orderNo)}>{c.orderNo} · {c.orderStatus}</button>))}
         {m.result?.intentResults?.map(i => i.timeline?.length ? <details key={i.intentInstanceId}><summary>订单状态记录</summary>{i.timeline.map((t, index) => <p key={index}>{t.createdTime} · {t.fromStatus} → {t.toStatus}</p>)}</details> : null)}

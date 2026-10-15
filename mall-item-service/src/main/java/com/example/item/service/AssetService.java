@@ -104,12 +104,9 @@ public class AssetService {
         reservation.setUpdatedTime(now);
         try {
             reservationMapper.insert(reservation);
-        } catch (DuplicateKeyException ignored) {
-            AssetReservation winner = findByIdempotencyKey(idempotencyKey);
-            if (winner == null) {
-                throw new IllegalStateException("资产预留幂等键冲突");
-            }
-            return AssetReservationResult.success(winner.getReservationNo(), snapshotOf(winner), List.of());
+        } catch (DuplicateKeyException e) {
+            // SHOP-03: 必须抛出异常触发当前本地事务完整回滚，绝不能在已产生库存和卡密副作用后吞掉异常返回成功！
+            throw new IllegalStateException("资产预留唯一键冲突，已被其他并发事务处理", e);
         }
 
         return AssetReservationResult.success(reservationNo, snapshot(item), List.of());
@@ -124,8 +121,19 @@ public class AssetService {
     public boolean release(String orderNo, String idempotencyKey) {
         requireIdempotencyKey(ASSET_RELEASE_KEY + nullToEmpty(orderNo), idempotencyKey);
         AssetReservation reservation = getByOrderNo(orderNo);
-        if (reservation == null || !"RESERVED".equals(reservation.getStatus())) {
+        if (reservation == null) {
             return true;
+        }
+        if ("RELEASED".equals(reservation.getStatus())) {
+            return true;
+        }
+        if (!"RESERVED".equals(reservation.getStatus())) {
+            throw new IllegalStateException("资产预留状态不允许释放: " + reservation.getStatus());
+        }
+        // SHOP-04: 先通过条件更新原子占有状态迁移权，防止与 confirm 等并发交叉执行
+        int updated = reservationMapper.markReleased(reservation.getReservationNo(), LocalDateTime.now());
+        if (updated <= 0) {
+            return false;
         }
         boolean cardReservation = hasCardSecrets(reservation);
         if (cardReservation) {
@@ -138,9 +146,6 @@ public class AssetService {
         if (released <= 0) {
             throw new IllegalStateException("商品冻结库存释放失败");
         }
-        reservation.setStatus("RELEASED");
-        reservation.setUpdatedTime(LocalDateTime.now());
-        reservationMapper.updateById(reservation);
         return true;
     }
 
@@ -160,7 +165,12 @@ public class AssetService {
             return true;
         }
         if (!"RESERVED".equals(reservation.getStatus())) {
-            throw new IllegalStateException("资产预留状态不允许确认");
+            throw new IllegalStateException("资产预留状态不允许确认: " + reservation.getStatus());
+        }
+        // SHOP-04: 先通过条件更新原子占有状态迁移权
+        int updated = reservationMapper.markConfirmed(reservation.getReservationNo(), LocalDateTime.now());
+        if (updated <= 0) {
+            return false;
         }
         int confirmed;
         if (hasCardSecrets(reservation)) {
@@ -172,9 +182,6 @@ public class AssetService {
         if (confirmed <= 0) {
             throw new IllegalStateException("商品冻结库存确认失败");
         }
-        reservation.setStatus("CONFIRMED");
-        reservation.setUpdatedTime(LocalDateTime.now());
-        reservationMapper.updateById(reservation);
         return true;
     }
 

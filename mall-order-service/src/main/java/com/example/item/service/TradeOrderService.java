@@ -25,6 +25,8 @@ import com.example.item.dto.DisputeListQuery;
 import com.example.item.dto.DisputeSummaryDTO;
 import com.example.item.dto.OrderListQuery;
 import com.example.item.dto.TradeOrderSummaryDTO;
+import com.example.item.dto.UserOrderDetailDTO;
+import com.example.item.dto.UserOrderListDTO;
 import com.example.item.dto.PaymentCallbackRequest;
 import com.example.item.config.TradeOrderProperties;
 import com.example.item.mapper.ArbitrationMapper;
@@ -579,6 +581,113 @@ public class TradeOrderService {
         Page<TradeOrder> result = orderMapper.selectPage(new Page<>(page, pageSize), wrapper);
         List<TradeOrderSummaryDTO> records = result.getRecords().stream().map(this::orderSummary).toList();
         return PageResult.of(records, result.getTotal(), page, pageSize);
+    }
+
+    public PageResult<UserOrderListDTO> listUserOrders(OrderListQuery query, boolean admin, Long currentUserId,
+                                                       int page, int pageSize) {
+        if (query == null || (!admin && currentUserId == null)) {
+            throw new IllegalArgumentException("订单查询条件不合法");
+        }
+        LambdaQueryWrapper<TradeOrder> wrapper = new LambdaQueryWrapper<>();
+
+        String viewRole = query.view();
+        if (viewRole == null || viewRole.isBlank()) {
+            viewRole = "BUYER";
+        }
+
+        if (admin) {
+            wrapper.eq(query.userId() != null, TradeOrder::getBuyerId, query.userId())
+                    .eq(query.merchantId() != null, TradeOrder::getMerchantId, query.merchantId());
+        } else {
+            if ("SELLER".equalsIgnoreCase(viewRole)) {
+                wrapper.eq(TradeOrder::getSellerId, currentUserId);
+            } else {
+                wrapper.eq(TradeOrder::getBuyerId, currentUserId);
+            }
+        }
+
+        if (query.orderNo() != null && !query.orderNo().isBlank()) {
+            wrapper.eq(TradeOrder::getOrderNo, query.orderNo().trim());
+        }
+
+        String statusGroup = query.statusGroup();
+        if (statusGroup != null && !statusGroup.isBlank() && !"ALL".equalsIgnoreCase(statusGroup)) {
+            switch (statusGroup.toUpperCase()) {
+                case "WAIT_PAY" -> wrapper.eq(TradeOrder::getOrderStatus, "WAIT_PAY");
+                case "PROCESSING" -> wrapper.in(TradeOrder::getOrderStatus, List.of("CREATE_PENDING", "PAY_CONFIRMING", "CANCELLING"));
+                case "WAIT_DELIVERY" -> wrapper.eq(TradeOrder::getOrderStatus, "PAID")
+                        .eq(TradeOrder::getDisputeStatus, "NONE");
+                case "WAIT_CONFIRM" -> wrapper.eq(TradeOrder::getOrderStatus, "DELIVERED")
+                        .eq(TradeOrder::getDisputeStatus, "NONE");
+                case "COMPLETED" -> wrapper.in(TradeOrder::getOrderStatus, List.of("CONFIRMED", "SETTLING", "SETTLED"))
+                        .eq(TradeOrder::getDisputeStatus, "NONE");
+                case "AFTER_SALE" -> wrapper.and(w -> w.ne(TradeOrder::getDisputeStatus, "NONE")
+                        .or().in(TradeOrder::getOrderStatus, List.of("REFUNDING", "REFUNDED")));
+                case "CLOSED" -> wrapper.in(TradeOrder::getOrderStatus, List.of("CANCELLED", "CLOSED", "REJECTED"));
+                default -> {}
+            }
+        } else if (query.status() != null && !query.status().isBlank()) {
+            wrapper.eq(TradeOrder::getOrderStatus, query.status());
+        }
+
+        if (query.disputeStatus() != null && !query.disputeStatus().isBlank()) {
+            wrapper.eq(TradeOrder::getDisputeStatus, query.disputeStatus());
+        }
+
+        if (query.timeRange() != null && query.timeRange().fromTime() != null) {
+            wrapper.ge(TradeOrder::getCreatedTime, query.timeRange().fromTime());
+        }
+        if (query.timeRange() != null && query.timeRange().toTime() != null) {
+            wrapper.le(TradeOrder::getCreatedTime, query.timeRange().toTime());
+        }
+
+        wrapper.orderByDesc(TradeOrder::getCreatedTime).orderByDesc(TradeOrder::getId);
+
+        Page<TradeOrder> result = orderMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        final String finalViewRole = viewRole;
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<UserOrderListDTO> records = result.getRecords().stream()
+                .map(order -> OrderStatusResolver.toUserOrderDTO(order, finalViewRole, currentUserId, objectMapper, now))
+                .toList();
+
+        return PageResult.of(records, result.getTotal(), page, pageSize);
+    }
+
+    public UserOrderDetailDTO getUserOrderDetail(Long currentUserId, String orderNo) {
+        TradeOrder order = getVisibleOrder(currentUserId, orderNo);
+        String viewRole = currentUserId.equals(order.getSellerId()) ? "SELLER" : "BUYER";
+        LocalDateTime now = LocalDateTime.now(clock);
+        UserOrderListDTO summary = OrderStatusResolver.toUserOrderDTO(order, viewRole, currentUserId, objectMapper, now);
+
+        DeliveryRecord deliveryRecord = null;
+        try {
+            deliveryRecord = deliveryMapper.selectOne(new LambdaQueryWrapper<DeliveryRecord>()
+                    .eq(DeliveryRecord::getOrderNo, orderNo));
+        } catch (Exception ignored) {}
+
+        List<TradeOrderStatusLog> timeline = statusLog.listByOrderNo(orderNo);
+
+        Dispute dispute = null;
+        try {
+            dispute = disputeMapper.selectOne(new LambdaQueryWrapper<Dispute>()
+                    .eq(Dispute::getOrderNo, orderNo)
+                    .orderByDesc(Dispute::getId)
+                    .last("LIMIT 1"));
+        } catch (Exception ignored) {}
+
+        List<DeliveryEvidence> evidences = List.of();
+        try {
+            evidences = evidenceMapper.selectList(new LambdaQueryWrapper<DeliveryEvidence>()
+                    .eq(DeliveryEvidence::getOrderNo, orderNo));
+        } catch (Exception ignored) {}
+
+        return UserOrderDetailDTO.builder()
+                .order(summary)
+                .deliveryRecord(deliveryRecord)
+                .timeline(timeline)
+                .dispute(dispute)
+                .evidences(evidences)
+                .build();
     }
 
     public TradeOrder getVisibleOrder(Long userId, String orderNo) {

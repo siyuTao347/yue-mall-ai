@@ -148,7 +148,7 @@ public interface TradeOrderMapper extends BaseMapper<TradeOrder> {
     @Update("UPDATE t_trade_order SET order_status = 'SETTLING', escrow_status = 'SETTLE_PENDING', " +
             "version = version + 1, updated_time = #{now} WHERE order_no = #{orderNo} " +
             "AND order_status = 'CONFIRMED' AND escrow_status = 'SETTLE_PENDING' " +
-            "AND settle_available_time <= #{now}")
+            "AND dispute_status = 'NONE' AND settle_available_time <= #{now}")
     int markSettling(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now);
 
     @Update("UPDATE t_trade_order SET order_status = 'SETTLING', delivery_status = 'CONFIRMED', " +
@@ -192,7 +192,8 @@ public interface TradeOrderMapper extends BaseMapper<TradeOrder> {
     int markRefunded(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now);
 
     @Update("UPDATE t_trade_order SET dispute_status = #{status}, version = version + 1, " +
-            "updated_time = #{now} WHERE order_no = #{orderNo}")
+            "updated_time = #{now} WHERE order_no = #{orderNo} AND order_status IN ('PAID', 'DELIVERED') " +
+            "AND dispute_status = 'NONE'")
     int markDispute(@Param("orderNo") String orderNo, @Param("status") String status,
                     @Param("now") LocalDateTime now);
 

@@ -15,7 +15,10 @@ public final class IntentCatalog {
         case "ORDER_STATUS","ORDER_TIMELINE","SETTLEMENT" -> List.of("orderNo");
         case "AFTER_SALE_PROGRESS" -> List.of("disputeNo");
         case "AFTER_SALE_STATUS_COMBINED" -> List.of("orderNo","disputeNo");
+        default -> List.of();};}
+    public static List<String> optionalSlots(String code){return switch(code){
         case "PRE_SALE_PRODUCT","PRE_SALE_LIMIT" -> List.of("itemId");
+        case "COMPLAINT","HUMAN_HELP" -> List.of("orderNo","disputeNo");
         default -> List.of();};}
     public static boolean l2(String code){return ROUTES.containsKey(code)&&!Set.of("GREETING","BOT_IDENTITY","OTHER").contains(code);}
 }

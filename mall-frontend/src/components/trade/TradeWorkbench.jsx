@@ -393,8 +393,20 @@ export const TradeWorkbench = ({ items = [] }) => {
       </section>
 
       <section className="trade-panel">
-        <h3 className="trade-panel-title">我的担保订单</h3>
-        <p className="trade-panel-desc">支付、交付、确认、售后和结算状态集中在一张列表</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+          <div>
+            <h3 className="trade-panel-title">我的担保订单</h3>
+            <p className="trade-panel-desc">支付、交付、确认、售后和结算状态集中在一张列表</p>
+          </div>
+          <button
+            type="button"
+            className="trade-action primary"
+            onClick={() => { window.location.hash = '#/orders'; }}
+            style={{ padding: '8px 16px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            📦 前往全新【我的订单】中心 &rarr;
+          </button>
+        </div>
         <div className="trade-list">
           {orders.length === 0 ? <div className="trade-empty">暂无订单</div> : orders.map(order => (
             <div className="trade-row" key={order.orderNo}>

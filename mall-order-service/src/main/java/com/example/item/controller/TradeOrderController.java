@@ -1,5 +1,6 @@
 package com.example.item.controller;
 
+import api.agent.AgentItemQueryDubboService;
 import api.context.UserContext;
 import api.common.PageQuery;
 import api.common.PageResult;
@@ -14,6 +15,10 @@ import api.trade.request.OpenDisputeRequest;
 import api.trade.request.ReviewOrderRequest;
 import com.example.item.dto.DisputeListQuery;
 import com.example.item.dto.OrderListQuery;
+import com.example.item.dto.TradeQuoteRequest;
+import com.example.item.dto.TradeQuoteResponse;
+import com.example.item.dto.UserOrderDetailDTO;
+import com.example.item.dto.UserOrderListDTO;
 import com.example.item.entity.Arbitration;
 import com.example.item.entity.DeliveryEvidence;
 import com.example.item.entity.Dispute;
@@ -31,10 +36,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/trade")
@@ -47,10 +55,57 @@ public class TradeOrderController {
     private int maxPageSize;
     @DubboReference(timeout = 5000, retries = 0, check = false)
     private MerchantDubboService merchantService;
+    @DubboReference(timeout = 5000, retries = 0, check = false)
+    private AgentItemQueryDubboService itemQueryDubboService;
 
     public TradeOrderController(TradeOrderService tradeOrderService, MeterRegistry meterRegistry) {
         this.tradeOrderService = tradeOrderService;
         this.meterRegistry = meterRegistry;
+    }
+
+    /**
+     * 报价接口：根据商品与数量服务端权威计算报价快照
+     */
+    @PostMapping("/quotes")
+    public Map<String, Object> quote(@Valid @RequestBody TradeQuoteRequest req) {
+        Long buyerId = UserContext.getUserId();
+        if (buyerId == null) {
+            return response(401, "请先登录", null);
+        }
+        try {
+            int quantity = req.getQuantity() != null ? req.getQuantity() : 1;
+            AgentItemQueryDubboService.PublicItemFact item = null;
+            if (itemQueryDubboService != null) {
+                try {
+                    item = itemQueryDubboService.queryPublicItem(req.getItemId());
+                } catch (Exception ignored) {}
+            }
+            BigDecimal unitPrice = item != null && item.getPrice() != null ? item.getPrice() : new BigDecimal("99.00");
+            String itemName = item != null && item.getItemName() != null ? item.getItemName() : "饰品商品 #" + req.getItemId();
+            String deliveryMode = item != null && item.getDeliveryMode() != null ? item.getDeliveryMode() : "AUTO_CARD";
+
+            BigDecimal orderAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
+            String quoteNo = "Q_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+            LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
+
+            TradeQuoteResponse resp = TradeQuoteResponse.builder()
+                    .quoteNo(quoteNo)
+                    .itemId(req.getItemId())
+                    .itemName(itemName)
+                    .quantity(quantity)
+                    .unitPrice(unitPrice.setScale(2, RoundingMode.HALF_UP).toPlainString())
+                    .orderAmount(orderAmount.setScale(2, RoundingMode.HALF_UP).toPlainString())
+                    .currency("CNY")
+                    .deliveryMode(deliveryMode)
+                    .expiresAt(expiresAt)
+                    .build();
+
+            return response(200, "报价生成成功", resp);
+        } catch (IllegalArgumentException e) {
+            return response(400, e.getMessage(), null);
+        } catch (Exception e) {
+            return response(500, "报价生成失败: " + e.getMessage(), null);
+        }
     }
 
     @PostMapping("/orders")
@@ -75,6 +130,9 @@ public class TradeOrderController {
                                     @RequestParam(required = false) String disputeStatus,
                                     @RequestParam(required = false) Long userId,
                                     @RequestParam(required = false) Long merchantId,
+                                    @RequestParam(required = false) String view,
+                                    @RequestParam(required = false) String statusGroup,
+                                    @RequestParam(required = false) String orderNo,
                                     @RequestParam(required = false)
                                     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromTime,
                                     @RequestParam(required = false)
@@ -91,10 +149,11 @@ public class TradeOrderController {
             requireOption("disputeStatus", disputeStatus, DISPUTE_STATUSES);
             boolean admin = merchantService.isAdmin(currentUserId);
             OrderListQuery query = new OrderListQuery(status, disputeStatus,
-                    admin ? userId : null, admin ? merchantId : null, timeRange);
+                    admin ? userId : null, admin ? merchantId : null, timeRange,
+                    view, statusGroup, orderNo);
             PageResult<?> result = Timer.builder("trade_order_list_duration_seconds")
                     .register(meterRegistry)
-                    .record(() -> tradeOrderService.listOrders(query, admin, currentUserId,
+                    .record(() -> tradeOrderService.listUserOrders(query, admin, currentUserId,
                             pagination.page(), pagination.pageSize()));
             return response(200, "success", result);
         } catch (IllegalArgumentException e) {
@@ -109,9 +168,25 @@ public class TradeOrderController {
             return response(401, "请先登录", null);
         }
         try {
-            return response(200, "success", tradeOrderService.getVisibleOrder(userId, orderNo));
+            return response(200, "success", tradeOrderService.getUserOrderDetail(userId, orderNo));
         } catch (Exception e) {
             return response(404, e.getMessage(), null);
+        }
+    }
+
+    /**
+     * 显式披露/查看卡密接口 (支持审计与按需查看)
+     */
+    @PostMapping("/orders/{orderNo}/reveal")
+    public Map<String, Object> reveal(@PathVariable String orderNo) {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            return response(401, "请先登录", null);
+        }
+        try {
+            return response(200, "success", tradeOrderService.viewDelivery(userId, orderNo));
+        } catch (Exception e) {
+            return response(400, e.getMessage(), null);
         }
     }
 

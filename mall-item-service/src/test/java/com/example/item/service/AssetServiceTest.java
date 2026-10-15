@@ -33,6 +33,8 @@ class AssetServiceTest {
         itemMapper = mock(ItemMapper.class);
         cardSecretMapper = mock(CardSecretMapper.class);
         reservationMapper = mock(AssetReservationMapper.class);
+        when(reservationMapper.markReleased(any(), any())).thenReturn(1);
+        when(reservationMapper.markConfirmed(any(), any())).thenReturn(1);
         service = new AssetService(itemMapper, cardSecretMapper, reservationMapper,
                 mock(CryptoService.class), new ObjectMapper());
     }
@@ -151,6 +153,38 @@ class AssetServiceTest {
 
         verify(itemMapper).restoreRefundedStock(1L, 2);
         verify(cardSecretMapper, never()).invalidateByOrderNo(any(), any());
+    }
+
+    @Test
+    void reserveThrowsOnDuplicateKeyExceptionToEnsureRollback() {
+        Item item = approvedItem();
+        when(itemMapper.selectById(1L)).thenReturn(item);
+        when(cardSecretMapper.lockAvailableCards(1L, 2)).thenReturn(List.of(card(10L), card(11L)));
+        when(cardSecretMapper.reserveStock(1L, 2)).thenReturn(1);
+        when(cardSecretMapper.lockByIds(any(), eq("TR1"), any(), any())).thenReturn(2);
+        org.springframework.dao.DuplicateKeyException dke =
+                new org.springframework.dao.DuplicateKeyException("uk_order_no");
+        when(reservationMapper.insert(any(AssetReservation.class))).thenThrow(dke);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> service.reserve(1L, 2, "TR1", 15));
+    }
+
+    @Test
+    void releaseFailsWhenAlreadyConfirmed() {
+        AssetReservation reservation = reservation("ALREADY_CONFIRMED");
+        reservation.setStatus("CONFIRMED");
+        when(reservationMapper.selectOne(any())).thenReturn(reservation);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> service.release("TR1"));
+    }
+
+    @Test
+    void confirmFailsWhenAlreadyReleased() {
+        AssetReservation reservation = reservation("ALREADY_RELEASED");
+        reservation.setStatus("RELEASED");
+        when(reservationMapper.selectOne(any())).thenReturn(reservation);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> service.confirm("TR1"));
     }
 
     private Item approvedItem() {
