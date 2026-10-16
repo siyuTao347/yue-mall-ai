@@ -71,7 +71,7 @@ class CustomerRunnerTest {
         var result=runner.send(actor,"AS1","resume","TR202610120001");
         assertEquals("old:i1",result.path("intentResults").get(0).path("intentInstanceId").asText());
         var slots=org.mockito.ArgumentCaptor.forClass(ObjectNode.class);
-        verify(store).finish(eq(actor),eq("AS1"),eq("AR1"),any(),any(),any(),slots.capture(),any(),anyInt(),anyInt(),anyInt(),anyLong(),eq("SUCCEEDED"));
+        verify(store).finish(eq(actor),eq("AS1"),eq("AR1"),any(),any(),any(),slots.capture(),any(),anyInt(),anyInt(),anyInt(),anyLong(),eq("SUCCEEDED"),anyBoolean(),any(),any(),any());
         assertEquals(1,slots.getValue().path("pendingIntents").size());
         assertEquals("old:i2",slots.getValue().path("clarifyingIntentInstanceId").asText());
         assertEquals(0,slots.getValue().path("clarificationAttempts").asInt());

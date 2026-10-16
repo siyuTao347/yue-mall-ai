@@ -25,6 +25,7 @@ import static com.example.agent.customer.CustomerJson.*;
 public class CustomerRunner {
     private static final Logger log=LoggerFactory.getLogger(CustomerRunner.class);
     private static final ExecutorService STAGE_EXECUTOR=Executors.newVirtualThreadPerTaskExecutor();
+    private static final ConcurrentHashMap<String, Run> RUN_REGISTRY=new ConcurrentHashMap<>();
     private record IndexedResult(int index,ObjectNode result) {}
     @DubboReference(timeout=3000,retries=0,check=false,url="${DUBBO_ORDER_SERVICE_URL:dubbo://127.0.0.1:20880}")
     private AgentOrderQueryDubboService orders;
@@ -32,13 +33,28 @@ public class CustomerRunner {
     private AgentItemQueryDubboService items;
     private final CustomerStore store;private final CustomerMaster master;private final CustomerProperties props;
     private final CustomerModels models;private final CustomerKnowledgeService knowledge;private final IntentReleaseService releases;
+    private final com.example.agent.customer.memory.CustomerMemoryFacade memoryFacade;
+    private final com.example.agent.customer.memory.MemoryQueryEnricher queryEnricher;
+    private final com.example.agent.customer.memory.MemoryProperties memoryProps;
     private final CompiledGraph graph;
-    public CustomerRunner(CustomerStore store,CustomerMaster master,CustomerProperties props,CustomerModels models,CustomerKnowledgeService knowledge,IntentReleaseService releases){this.store=store;this.master=master;this.props=props;this.models=models;this.knowledge=knowledge;this.releases=releases;this.graph=compileGraph();}
+    public CustomerRunner(CustomerStore store,CustomerMaster master,CustomerProperties props,CustomerModels models,CustomerKnowledgeService knowledge,IntentReleaseService releases){
+        this(store,master,props,models,knowledge,releases,null,null,null);
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public CustomerRunner(CustomerStore store,CustomerMaster master,CustomerProperties props,CustomerModels models,CustomerKnowledgeService knowledge,IntentReleaseService releases,
+                          @org.springframework.beans.factory.annotation.Autowired(required=false) com.example.agent.customer.memory.CustomerMemoryFacade memoryFacade,
+                          @org.springframework.beans.factory.annotation.Autowired(required=false) com.example.agent.customer.memory.MemoryQueryEnricher queryEnricher,
+                          @org.springframework.beans.factory.annotation.Autowired(required=false) com.example.agent.customer.memory.MemoryProperties memoryProps){
+        this.store=store;this.master=master;this.props=props;this.models=models;this.knowledge=knowledge;this.releases=releases;
+        this.memoryFacade=memoryFacade;this.queryEnricher=queryEnricher;this.memoryProps=memoryProps;
+        this.graph=compileGraph();
+    }
     static final class Run {
         final AgentActor actor;final String session,no,question,traceId;final CustomerBudget budget;final JsonNode previous;final long startedNanos;
         final java.util.function.BiConsumer<String,String> stageSink;final Consumer<String> deltaSink;final Consumer<JsonNode> lifecycleSink;
         final AtomicInteger tools=new AtomicInteger(),input=new AtomicInteger(),output=new AtomicInteger();final AtomicLong ttftMs=new AtomicLong(-1);final AtomicBoolean active=new AtomicBoolean(true),embeddingCacheHit=new AtomicBoolean(false);
         final ArrayNode path=array(),results=array();final Object pathLock=new Object();ObjectNode classified=object(),response=object(),slots=object();String handoff;int clarifications;boolean clarificationShown,answerStreamed;ArrayNode queue=array();
+        com.example.agent.customer.memory.MemoryModels.MemorySnapshot memorySnapshot;ObjectNode memoryCaptureContext;
         Run(AgentActor actor,String session,String no,String q,JsonNode previous,CustomerProperties props,long startedNanos,java.util.function.BiConsumer<String,String> stageSink,Consumer<String> deltaSink,Consumer<JsonNode> lifecycleSink){this.actor=actor;this.session=session;this.no=no;this.question=q;this.previous=previous;this.startedNanos=startedNanos;this.stageSink=stageSink;this.deltaSink=deltaSink;this.lifecycleSink=lifecycleSink;this.traceId=Objects.toString(api.context.TraceContext.getTraceId(),no);budget=new CustomerBudget(props.getRunTimeoutMs());clarifications=previous.path("clarificationAttempts").asInt();}
     }
     public JsonNode send(AgentActor actor,String session,String clientId,String raw){
@@ -57,16 +73,33 @@ public class CustomerRunner {
         JsonNode previous=read(started.session().get("slot_json"));
         if(previous.isObject())((ObjectNode)previous).put("summary",Objects.toString(started.session().get("summary"),"")).put("lastIntent",Objects.toString(started.session().get("last_intent"),""));
         Run run=new Run(actor,session,started.runNo(),question,previous,props,requestStarted,stageSink,deltaSink,lifecycleSink);String status="SUCCEEDED";
+        run.memoryCaptureContext=object().put("userMessageNo",Objects.toString(started.userMessageNo(),""))
+            .put("userMessage",question)
+            .put("sourceSequence",started.sourceSequence()!=null?started.sourceSequence():0L)
+            .put("epoch",started.epoch()!=null?started.epoch():1L)
+            .put("subjectKey",Objects.toString(started.subjectKey(),""))
+            .put("captureAllowed",started.sourceSequence()!=null);
+        RUN_REGISTRY.put(run.no,run);
         notifyLifecycle(lifecycleSink,object().put("event","run.started").put("runNo",run.no).put("traceId",run.traceId));
         try{
-            graph.invoke(Map.of("run",run));run.budget.remaining();
+            graph.invoke(Map.of("runNo",run.no));run.budget.remaining();
         }catch(Exception e){String code=failureCode(e);
             log.error("CustomerAgent failed: runNo={}, traceId={}, code={}, detail={}",run.no,run.traceId,code,failureDetail(e));
             status="AGENT_TIMEOUT".equals(code)?"TIMEOUT":"FAILED";run.response=object().put("schemaVersion",2).put("answer","暂时无法完成查询，请稍后重试，或发送“转人工”。").put("runNo",run.no).put("traceId",run.traceId).put("errorCode",code).put("handoffRequired",run.handoff!=null).put("handoffNo",run.handoff);run.response.set("citations",array());run.response.set("suggestedActions",array());run.response.set("intentResults",run.results);run.slots=run.previous.isObject()?(ObjectNode)run.previous.deepCopy():object();}
-        finally{run.active.set(false);}
+        finally{run.active.set(false);RUN_REGISTRY.remove(run.no);}
         if("SUCCEEDED".equals(status)&&!run.answerStreamed)emitDeltas(run,run.response.path("answer").asText());
         boolean cacheHit=run.embeddingCacheHit.get()||run.classified.path("recognition").path("embeddingCacheHit").asBoolean(false);Integer ttft=run.ttftMs.get()<0?null:(int)Math.min(Integer.MAX_VALUE,run.ttftMs.get());
-        store.finish(actor,session,run.no,run.classified,run.results,run.response,run.slots,run.path,run.tools.get(),run.input.get(),run.output.get(),(System.nanoTime()-requestStarted)/1000000,status,cacheHit,ttft);
+        ObjectNode memoryEvidence=object();
+        if(run.memorySnapshot!=null){
+            memoryEvidence.put("status",run.memorySnapshot.status().name())
+                .put("count",run.memorySnapshot.memories().size())
+                .put("latencyMs",run.memorySnapshot.latencyMs())
+                .put("epoch",run.memorySnapshot.epoch())
+                .put("revision",run.memorySnapshot.revision());
+            ArrayNode ids=array();for(var m:run.memorySnapshot.memories())ids.add(m.memoryNo());
+            memoryEvidence.set("memoryNos",ids);
+        }
+        store.finish(actor,session,run.no,run.classified,run.results,run.response,run.slots,run.path,run.tools.get(),run.input.get(),run.output.get(),(System.nanoTime()-requestStarted)/1000000,status,cacheHit,ttft,memoryEvidence,run.memoryCaptureContext);
         if("SUCCEEDED".equals(status)){notifyLifecycle(lifecycleSink,object().put("event","run.completed").put("result",run.response.deepCopy()));}
         else notifyLifecycle(lifecycleSink,object().put("event","run.failed").put("runNo",run.no).put("errorCode",run.response.path("errorCode").asText("AGENT_DEPENDENCY_UNAVAILABLE")).put("answer",run.response.path("answer").asText()));
         return run.response;
@@ -84,21 +117,41 @@ public class CustomerRunner {
             graph.addNode("INPUT_GUARD",node_async(state->{Run run=run(state);addPath(run,"INPUT_GUARD");stage(run,"INPUT_GUARD","正在接收问题…");run.budget.remaining();return graphState(run);}));
             graph.addNode("LOAD_CONTEXT",node_async(state->{Run run=run(state);addPath(run,"LOAD_CONTEXT");stage(run,"LOAD_CONTEXT","正在读取会话上下文…");return graphState(run);}));
             graph.addNode("MASTER_AGENT",node_async(state->{Run run=run(state);addPath(run,"MASTER_AGENT");stage(run,"MASTER_AGENT","正在识别问题…");run.classified=master.recognize(run.question,run.no,run.previous,store.history(run.session),run.budget,run.input,run.output);addPath(run,run.classified.path("recognition").path("source").asText());return graphState(run);}));
+            graph.addNode("MEMORY_RECALL",node_async(state->{Run run=run(state);addPath(run,"MEMORY_RECALL");recallMemory(run);return graphState(run);}));
             graph.addNode("SLOT_RESOLVE",node_async(state->{Run run=run(state);addPath(run,"SLOT_RESOLVE");prepare(run);return graphState(run);}));
             graph.addNode("STAGE_DISPATCHER",node_async(state->{Run run=run(state);dispatchStages(run);return graphState(run);}));
             graph.addNode("RESPONSE_AGENT",node_async(state->{Run run=run(state);respond(run);return graphState(run);}));
             graph.addNode("OUTPUT_GUARD",node_async(state->{Run run=run(state);stage(run,"OUTPUT_GUARD","正在校验并整理答复…");guard(run);return graphState(run);}));
-            graph.addEdge(StateGraph.START,"INPUT_GUARD").addEdge("INPUT_GUARD","LOAD_CONTEXT").addEdge("LOAD_CONTEXT","MASTER_AGENT").addEdge("MASTER_AGENT","SLOT_RESOLVE").addEdge("SLOT_RESOLVE","STAGE_DISPATCHER").addEdge("STAGE_DISPATCHER","RESPONSE_AGENT").addEdge("RESPONSE_AGENT","OUTPUT_GUARD").addEdge("OUTPUT_GUARD",StateGraph.END);
+            graph.addEdge(StateGraph.START,"INPUT_GUARD").addEdge("INPUT_GUARD","LOAD_CONTEXT").addEdge("LOAD_CONTEXT","MASTER_AGENT").addEdge("MASTER_AGENT","MEMORY_RECALL").addEdge("MEMORY_RECALL","SLOT_RESOLVE").addEdge("SLOT_RESOLVE","STAGE_DISPATCHER").addEdge("STAGE_DISPATCHER","RESPONSE_AGENT").addEdge("RESPONSE_AGENT","OUTPUT_GUARD").addEdge("OUTPUT_GUARD",StateGraph.END);
             return graph.compile();
         } catch(Exception e) { throw new IllegalStateException("Unable to compile CustomerAgent graph",e); }
     }
-    private static Run run(OverAllState state) { return state.value("run",Run.class).orElseThrow(); }
+    private void recallMemory(Run run){
+        if(memoryFacade==null)return;
+        boolean hasPreSaleOrQuery=false;
+        for(JsonNode intent:run.classified.path("intents")){
+            String code=intent.path("code").asText();
+            if(code.startsWith("PRE_SALE")||code.startsWith("MEMORY_")){
+                hasPreSaleOrQuery=true;break;
+            }
+        }
+        if(!hasPreSaleOrQuery)return;
+        stage(run,"MEMORY_RECALL","正在检索用户历史购买偏好…");
+        int timeoutMs=memoryProps!=null?memoryProps.getRecallTimeoutMs():800;
+        com.example.agent.customer.memory.MemoryDeadline deadline=new com.example.agent.customer.memory.MemoryDeadline(Math.min(timeoutMs,Math.max(100,run.budget.remaining()-15000)));
+        var request=new com.example.agent.customer.memory.MemoryModels.RecallRequest(run.question,run.classified.path("intents"),run.previous.path("confirmedEntities"),true);
+        run.memorySnapshot=memoryFacade.recall(run.actor,request,deadline);
+    }
+    private static Run run(OverAllState state) {
+        String runNo=state.value("runNo",String.class).orElse(null);
+        if(runNo!=null){Run r=RUN_REGISTRY.get(runNo);if(r!=null)return r;}
+        return state.value("run",Run.class).orElseThrow();
+    }
     private static void addPath(Run run,String item){synchronized(run.pathLock){run.path.add(item);}}
     private static void stage(Run run,String stage,String label){try{run.stageSink.accept(stage,label);}catch(RuntimeException ignored){}}
-    private static String stageName(String node){return switch(node){case "ORDER_AGENT"->"正在查询订单…";case "AFTER_SALE_AGENT"->"正在查询售后事实、发货凭证和规则…";case "RULE_AGENT"->"正在检索公开规则…";case "PRE_SALE_AGENT"->"正在查询商品信息和说明…";case "COMPLAINT_AGENT"->"正在记录并转交人工…";case "CLARIFY"->"正在确认必要信息…";default->"正在处理问题…";};}
+    private static String stageName(String node){return switch(node){case "ORDER_AGENT"->"正在查询订单…";case "AFTER_SALE_AGENT"->"正在查询售后事实、发货凭证和规则…";case "RULE_AGENT"->"正在检索公开规则…";case "PRE_SALE_AGENT"->"正在查询商品信息和说明…";case "COMPLAINT_AGENT"->"正在记录并转交人工…";case "MEMORY_AGENT"->"正在处理购买偏好…";case "CLARIFY"->"正在确认必要信息…";default->"正在处理问题…";};}
     private static Map<String,Object> graphState(Run run) {
-        return Map.of("run",run,"graphPath",run.path.deepCopy(),"classified",run.classified.deepCopy(),
-            "pendingIntents",run.queue.deepCopy(),"intentResults",run.results.deepCopy(),"response",run.response.deepCopy());
+        return Map.of("runNo",run.no);
     }
     private static String failureCode(Throwable error) {
         for(Throwable cause=error;cause!=null;cause=cause.getCause()) {
@@ -130,7 +183,8 @@ public class CustomerRunner {
         for(var value:r.classified.path("intents")) {
             if("COMPLETED".equals(value.path("resolutionState").asText()))continue;
             boolean complaint="COMPLAINT_AGENT".equals(IntentCatalog.ROUTES.get(value.path("code").asText()));
-            if(!complaint && business++ >= (escalation?1:props.getMaxIntents()))continue;
+            boolean memory="MEMORY_AGENT".equals(IntentCatalog.ROUTES.get(value.path("code").asText()));
+            if(!complaint && !memory && business++ >= (escalation?1:props.getMaxIntents()))continue;
             r.queue.add(value);
         }
     }
@@ -206,6 +260,20 @@ public class CustomerRunner {
                 }
             }else if("COMPLAINT_AGENT".equals(agent)) {
                 createHandoff(r,"用户要求投诉或人工客服");result.put("answer","已记录你的诉求并转交人工客服。");
+            }else if("MEMORY_AGENT".equals(agent)){
+                if("MEMORY_FORGET".equals(code)){
+                    if(memoryFacade!=null){
+                        memoryFacade.clearAllMemories(r.actor,"op_"+r.no);
+                        result.put("answer","已为你清空所有购买偏好记忆。");
+                    }else result.put("answer","记忆功能暂未开放。");
+                }else{
+                    if(memoryFacade!=null&&r.memorySnapshot!=null&&r.memorySnapshot.status()==com.example.agent.customer.memory.MemoryModels.RecallStatus.HIT&&!r.memorySnapshot.memories().isEmpty()){
+                        StringBuilder sb=new StringBuilder("为你记录的常态购买偏好如下：\n");
+                        for(var m:r.memorySnapshot.memories())sb.append("- ").append(m.canonicalText()).append("\n");
+                        sb.append("你可以在设置页查看、修改，或随时对我说“清空偏好”。");
+                        result.put("answer",sb.toString().strip());
+                    }else result.put("answer","目前没有记录到可用的购买偏好。");
+                }
             }else if(code.equals("GREETING"))result.put("answer","你好，我是平台智能客服，请问有什么可以帮你？");
             else if(code.equals("BOT_IDENTITY"))result.put("answer","我是平台智能客服，可以帮你查询订单、售后进度和平台规则，也可以协助转人工。");
             else if(code.equals("OTHER"))result.put("answer","请说明你想咨询的订单、售后或平台规则问题，也可以发送“转人工”。");
@@ -279,7 +347,12 @@ public class CustomerRunner {
             result.set("evidence",array().add(itemFact));
         }
         String itemContext=itemFact.isNull()?"":" 商品 "+itemFact.path("itemName").asText("")+" "+itemFact.path("subTitle").asText("")+" 发货方式 "+itemFact.path("deliveryMode").asText("");
-        ArrayNode sources=searchKnowledge(r,task,"PRE_SALE_AGENT",CustomerContextWindowBuilder.clip(retrievalQuestion(task)+itemContext,512));
+        String baseQuery=retrievalQuestion(task)+itemContext;
+        List<com.example.agent.customer.memory.MemoryModels.MemoryRecord> applicableMemories=(r.memorySnapshot!=null&&r.memorySnapshot.slicedMemoriesByIntent()!=null)
+            ?r.memorySnapshot.slicedMemoriesByIntent().getOrDefault(task.path("intentInstanceId").asText(),Collections.emptyList())
+            :(r.memorySnapshot!=null?r.memorySnapshot.memories():Collections.emptyList());
+        String query=queryEnricher!=null?queryEnricher.enrichKnowledgeQuery(baseQuery,applicableMemories):baseQuery;
+        ArrayNode sources=searchKnowledge(r,task,"PRE_SALE_AGENT",CustomerContextWindowBuilder.clip(query,512));
         result.set("citations",sources);
         if(!sources.isEmpty())result.put("policyAnswer",true);
         ObjectNode facts=object();facts.set("product",itemFact);
@@ -317,7 +390,7 @@ public class CustomerRunner {
             if(!r.session.equals(context.getContext().get("sessionNo"))||!agent.equals(context.getContext().get("agentName")))throw error(403,"TOOL_CONTEXT_MISSING","工具上下文不正确");
             List<String> types=CustomerToolPolicy.documentTypes(agent,docTypes);
             if(called)throw error(429,"AGENT_TOOL_LIMIT","每个意图只能检索一次");called=true;int sequence=r.tools.incrementAndGet();if(sequence>6)throw error(429,"AGENT_TOOL_LIMIT","工具调用达到上限");long start=System.nanoTime();boolean success=false;String callNo=id("AT");
-            try{CustomerKnowledgeService.SearchOutcome outcome=r.budget.call(props.getRetrievalTimeoutMs(),()->knowledge.searchWithMetadata(query,types,r.no,r.session,agent,callNo));r.budget.remaining();if(!r.active.get())throw error(504,"AGENT_CANCELLED","请求已结束");r.embeddingCacheHit.compareAndSet(false,outcome.embeddingCacheHit());sources=outcome.sources();for(var c:sources)((ObjectNode)c).put("intentInstanceId",task.path("intentInstanceId").asText());success=true;return sources;}
+            try{CustomerKnowledgeService.SearchOutcome outcome=r.budget.call(props.getRetrievalTimeoutMs(),()->knowledge.searchWithMetadata(query,types,r.no,r.session,agent,callNo));if(outcome==null){ArrayNode fallbackSources=knowledge.search(query,types,r.no,r.session,agent,callNo);outcome=new CustomerKnowledgeService.SearchOutcome(fallbackSources!=null?fallbackSources:array(),false);}r.budget.remaining();if(!r.active.get())throw error(504,"AGENT_CANCELLED","请求已结束");r.embeddingCacheHit.compareAndSet(false,outcome.embeddingCacheHit());sources=outcome.sources();for(var c:sources)((ObjectNode)c).put("intentInstanceId",task.path("intentInstanceId").asText());success=true;return sources;}
             finally{if(r.active.get())store.toolWithId(callNo,r.no,r.session,task.path("intentInstanceId").asText(),agent,"searchKnowledge",sequence,Map.of("query",redact(query)),sources,success,(System.nanoTime()-start)/1000000);}
         }
     }
@@ -365,14 +438,33 @@ public class CustomerRunner {
                     registerEntity(registry.withArray("items"),"itemId",value,turn,mentionedAt,fact.path("itemName").asText(""),"",null);
                 }
             });}
-        if(!pending.isEmpty()&&!r.clarificationShown)answer.append(pending.get(0).path("clarifyQuestion").asText()).append('\n');
+        boolean hasApplicableMemory=r.memorySnapshot!=null&&r.memorySnapshot.status()==com.example.agent.customer.memory.MemoryModels.RecallStatus.HIT&&!r.memorySnapshot.memories().isEmpty();
+        ArrayNode memoryPrefArray=array();
+        if(hasApplicableMemory){
+            for(var m:r.memorySnapshot.memories()){
+                memoryPrefArray.add(object().put("memoryNo",m.memoryNo()).put("canonicalText",m.canonicalText()).put("type",m.memoryType().name()));
+            }
+        }
         boolean abnormal=write(answerFacts).matches("(?s).*(FROZEN|MANUAL_REVIEW|ARBITRATING).*");
-        if(!models.mock()&&(citations.size()>0||r.results.size()>1||abnormal)) {
+        if(!models.mock()&&(citations.size()>0||r.results.size()>1||abnormal||hasApplicableMemory)) {
             addPath(r,"RESPONSE_SYNTHESIZER");stage(r,"RESPONSE_SYNTHESIZER","正在根据已核实事实和规则整理答复…");
-            String generated=models.synthesizeResponse(r.question,subQuestions,answerFacts,citations,r.budget,r.input,r.output,delta->{r.ttftMs.compareAndSet(-1,Math.max(0,TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-r.startedNanos)));r.answerStreamed=true;try{r.deltaSink.accept(delta);}catch(RuntimeException ignored){}});
-            if(generated!=null&&!generated.isBlank()) {
-                answer=new StringBuilder(generated.strip());
-                if(r.results.size()==1)((ObjectNode)r.results.get(0)).put("answer",generated.strip());
+            if(hasApplicableMemory){
+                StringBuilder buffered=new StringBuilder();
+                String generated=models.synthesizeResponse(r.question,subQuestions,answerFacts,citations,memoryPrefArray,r.budget,r.input,r.output,buffered::append);
+                if(generated!=null&&!generated.isBlank()){
+                    if(memoryFacade!=null&&!memoryFacade.revalidate(r.actor,r.memorySnapshot,new com.example.agent.customer.memory.MemoryDeadline(200))){
+                        log.info("Pre-send memory revalidation failed, skipping memory personalized response");
+                    }else{
+                        answer=new StringBuilder(generated.strip());
+                        if(r.results.size()==1)((ObjectNode)r.results.get(0)).put("answer",generated.strip());
+                    }
+                }
+            }else{
+                String generated=models.synthesizeResponse(r.question,subQuestions,answerFacts,citations,r.budget,r.input,r.output,delta->{r.ttftMs.compareAndSet(-1,Math.max(0,TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-r.startedNanos)));r.answerStreamed=true;try{r.deltaSink.accept(delta);}catch(RuntimeException ignored){}});
+                if(generated!=null&&!generated.isBlank()) {
+                    answer=new StringBuilder(generated.strip());
+                    if(r.results.size()==1)((ObjectNode)r.results.get(0)).put("answer",generated.strip());
+                }
             }
         }
         if(r.handoff!=null) {

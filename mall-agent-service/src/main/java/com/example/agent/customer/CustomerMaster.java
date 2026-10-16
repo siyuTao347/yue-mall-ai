@@ -23,6 +23,14 @@ public class CustomerMaster {
         String intent=q.replaceAll("(?:不要|不用|不需要|别).{0,3}(?:转人工|人工客服|投诉)", "");
         return intent.matches("(?s).*(转人工|人工客服|找真人|投诉).*");
     }
+    static String memoryL1(String text) {
+        if(text==null||text.isBlank())return null;
+        String q=normalize(text);
+        if(q.matches("(?s).*(不要忘记|别忘记|不能忘记|万一|如果|要是).*"))return null;
+        if(q.matches("(?s).*(忘记|清空|删除).*(偏好).*")||q.matches("(?s).*(偏好).*(忘记|清空|删除).*"))return "MEMORY_FORGET";
+        if(q.matches("(?s).*(记得|查看|显示|查询|是什么).*(偏好).*")||q.matches("(?s).*(偏好).*(是什么|有哪些|展示|查看).*")||q.matches("(?s).*(我平时喜欢什么|我常买什么).*"))return "MEMORY_QUERY";
+        return null;
+    }
     static boolean contextDependent(String q){
         boolean hasMultiConnector=q.matches("(?s).*(再查|另外|并且|以及|同时|顺便|还有就是|[；;]).*")
             ||ORDER.matcher(q).results().count()>1
@@ -39,6 +47,13 @@ public class CustomerMaster {
                 .put("riskLevel",question.matches("(?s).*(被盗|资金损失|赔偿|仲裁).*")?"HIGH":"NORMAL").put("sentiment","NEGATIVE");
             result.set("intents",array().add(task("HUMAN_HELP",question,run+":i1",null)));
             result.set("recognition",object().put("source","ESCALATION_RULE"));return result;
+        }
+        String mem=memoryL1(question);
+        if(mem!=null){
+            ObjectNode result=object().put("schemaVersion",2).put("originalQuestion",question).put("needHuman",false).put("riskLevel","LOW").put("sentiment","NEUTRAL");
+            result.set("intents",array().add(task(mem,question,run+":i1",1.0)));
+            result.set("recognition",object().put("source","L1_RULE").put("ruleId",mem.toLowerCase(Locale.ROOT)+"-v1").put("totalElapsedMs",0).put("chatInputTokens",0).put("chatOutputTokens",0));
+            return result;
         }
         ObjectNode resumed=resume(question,context);if(resumed!=null)return resumed;
         long recognitionStarted=System.nanoTime();int initialInput=in.get(),initialOutput=out.get();
@@ -171,7 +186,7 @@ public class CustomerMaster {
         List<JsonNode> newestCandidates=candidates.stream().filter(c->c.path("turn").asInt(0)==newest).toList();
         if(newestCandidates.size()!=1)return null;
         JsonNode selected=newestCandidates.getFirst();
-        return object().put("value",selected.path("value").asText()).put("source","ACTIVE_FOCUS");
+        return object().put("value",selected.path("value").asText()).put("source","CONFIRMED_CONTEXT");
     }
     private static boolean contextReference(String question) {
         return question.matches("(?s).*(这个|那个|这笔|那笔|上面|刚才|之前|第一个|第二个|它|还没|到账|结算|呢[？?。！!]?).*");
@@ -212,6 +227,8 @@ public class CustomerMaster {
         else if(ITEM_ID.matcher(q).find()||q.matches(".*(商品|产品).*(购买|价格|库存|介绍|怎么样).*"))code="PRE_SALE_PRODUCT";
         else if(q.matches(".*(时间记录|时间线).*"))code="ORDER_TIMELINE";else if(q.contains("订单列表")||q.contains("最近订单"))code="ORDER_SEARCH";
         else if(q.matches(".*(订单|交付|发货|到账).*")||ORDER.matcher(q).find())code="ORDER_STATUS";
+        else if(q.matches("(?s).*(忘记|清空|删除).*(偏好).*"))code="MEMORY_FORGET";
+        else if(q.contains("偏好"))code="MEMORY_QUERY";
         else if(q.matches(".*(规则|担保|禁售).*"))code="PLATFORM_RULE";else if(q.contains("实名")||q.contains("绑定"))code="ACCOUNT_RULE";else code="OTHER";
         ObjectNode t=object().put("code",code).put("confidence",code.equals("OTHER")?.2:.95).put("questionFragment",q);t.set("slots",object());tasks.add(t);if(tasks.size()==2)break;}
         ArrayNode filtered=array();boolean hasDomainIntent=false;

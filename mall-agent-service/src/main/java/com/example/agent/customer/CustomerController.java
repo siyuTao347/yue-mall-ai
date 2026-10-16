@@ -23,6 +23,16 @@ public class CustomerController {
     public record Resolution(@NotBlank @Size(max=512) String resolution){}
     public record ReleaseRequest(@NotNull @Size(min=3,max=200) List<IntentReleaseService.Evaluation> evaluations){}
 
+    public static AgentActor actor(jakarta.servlet.http.HttpServletRequest request){
+        String token=request.getHeader("Authorization");
+        Long id=api.util.JwtUtil.parseUserId(token);
+        String role=api.util.JwtUtil.parseRole(token);
+        if(id==null||id<=0)throw error(401,"AGENT_UNAUTHENTICATED","请先登录");
+        String header=request.getHeader("X-User-Id");
+        if(header!=null&&!header.equals(id.toString()))throw error(403,"AGENT_PERMISSION_DENIED","身份不一致");
+        return new AgentActor(id,role!=null?role:"USER");
+    }
+
     private static AgentActor admin(AgentActor actor){if(!"ADMIN".equalsIgnoreCase(actor.role()))throw error(403,"AGENT_PERMISSION_DENIED","仅管理员可访问");return actor;}
 
     @PostMapping("/api/agent/sessions") public Object create(AgentActor actor){return ApiResponse.success(store.create(actor));}
