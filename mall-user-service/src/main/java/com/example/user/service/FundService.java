@@ -29,6 +29,9 @@ public class FundService {
     private static final String FUND_REFUND_KEY = "FUND_REFUND:";
     private static final String FUND_SETTLE_KEY = "FUND_SETTLE:";
     private static final String FUND_SETTLE_AVAILABLE_KEY = "FUND_SETTLE_AVAILABLE:";
+    private static final String FUND_REFUND_CHANNEL_KEY = "FUND_REFUND_CHANNEL:";
+    private static final String FUND_SUSPENSE_CREDIT_KEY = "FUND_SUSPENSE_CREDIT:";
+    private static final String FUND_SUSPENSE_REFUND_KEY = "FUND_SUSPENSE_REFUND:";
 
     private final FundTransactionMapper transactionMapper;
     private final FundFlowMapper flowMapper;
@@ -76,6 +79,41 @@ public class FundService {
             requireSuccess(accountMapper.creditAvailable(buyerId, amount), "买家账户记账失败");
             flow(tx, "PLATFORM", null, "ESCROW", "DEBIT", amount, null, "托管退款");
             flow(tx, "USER", buyerId, "AVAILABLE", "CREDIT", amount, amount, "仲裁退款");
+        });
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public FundOperationResult refundEscrowToChannel(String orderNo, String attemptNo, String refundNo,
+                                                    BigDecimal amount, String idempotencyKey) {
+        String key = (idempotencyKey == null || idempotencyKey.isBlank())
+                ? FUND_REFUND_CHANNEL_KEY + nullToEmpty(refundNo) : idempotencyKey;
+        return execute("REFUND_TO_CHANNEL", orderNo, null, null, null, amount, key, tx -> {
+            requireSuccess(platformMapper.debitEscrow(amount), "托管资金不足");
+            flow(tx, "PLATFORM", null, "ESCROW", "DEBIT", amount, null, "渠道原路退款，扣减平台托管");
+            flow(tx, "EXTERNAL", null, "EXTERNAL_CHANNEL", "CREDIT", amount, null, "原路退回外部渠道");
+        });
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public FundOperationResult creditPaymentSuspense(String attemptNo, BigDecimal amount, String idempotencyKey) {
+        String key = (idempotencyKey == null || idempotencyKey.isBlank())
+                ? FUND_SUSPENSE_CREDIT_KEY + nullToEmpty(attemptNo) : idempotencyKey;
+        return execute("SUSPENSE_CREDIT", null, null, null, null, amount, key, tx -> {
+            requireSuccess(platformMapper.creditPaymentSuspense(amount), "平台异常资金挂账记账失败");
+            flow(tx, "PLATFORM", null, "PAYMENT_SUSPENSE", "CREDIT", amount, null, "异常款项挂账入账");
+            flow(tx, "EXTERNAL", null, "EXTERNAL_CHANNEL", "DEBIT", amount, null, "外部渠道收款挂账");
+        });
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public FundOperationResult refundPaymentSuspense(String attemptNo, String refundNo, BigDecimal amount,
+                                                    String idempotencyKey) {
+        String key = (idempotencyKey == null || idempotencyKey.isBlank())
+                ? FUND_SUSPENSE_REFUND_KEY + nullToEmpty(refundNo) : idempotencyKey;
+        return execute("SUSPENSE_REFUND", null, null, null, null, amount, key, tx -> {
+            requireSuccess(platformMapper.debitPaymentSuspense(amount), "平台异常挂账待退余额不足");
+            flow(tx, "PLATFORM", null, "PAYMENT_SUSPENSE", "DEBIT", amount, null, "异常挂账资金原路退款释放");
+            flow(tx, "EXTERNAL", null, "EXTERNAL_CHANNEL", "CREDIT", amount, null, "挂账资金退回外部渠道");
         });
     }
 

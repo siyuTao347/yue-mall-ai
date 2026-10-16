@@ -44,4 +44,19 @@
             version = version + 1
         WHERE account_code = 'PLATFORM_MAIN'
     </update>
+
+    <update id="creditPaymentSuspense">
+        UPDATE t_platform_account
+        SET payment_suspense_amount = payment_suspense_amount + #{amount},
+            version = version + 1
+        WHERE account_code = 'PLATFORM_MAIN'
+    </update>
+
+    <update id="debitPaymentSuspense">
+        UPDATE t_platform_account
+        SET payment_suspense_amount = payment_suspense_amount - #{amount},
+            version = version + 1
+        WHERE account_code = 'PLATFORM_MAIN'
+          AND payment_suspense_amount >= #{amount}
+    </update>
 </mapper>

@@ -117,6 +117,8 @@ class FundReconciliationServiceTest {
         balance.setFlowWithdrawPendingAmount(BigDecimal.ZERO);
         balance.setDepositAmount(BigDecimal.ZERO);
         balance.setFlowDepositAmount(BigDecimal.ZERO);
+        balance.setPaymentSuspenseAmount(BigDecimal.ZERO);
+        balance.setFlowPaymentSuspenseAmount(BigDecimal.ZERO);
         return balance;
     }
 }

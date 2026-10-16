@@ -19,6 +19,7 @@ public class PlatformAccount {
     private Long id;
     private String accountCode;
     private BigDecimal escrowAmount;
+    private BigDecimal paymentSuspenseAmount;
     private BigDecimal revenueAmount;
     private BigDecimal withdrawPendingAmount;
     private BigDecimal depositAmount;

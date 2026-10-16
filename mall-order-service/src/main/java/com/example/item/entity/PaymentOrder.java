@@ -18,13 +18,19 @@ public class PaymentOrder {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String paymentNo;
+    private String activeAttemptNo;
+    private String successfulAttemptNo;
     private String orderNo;
     private String channel;
     private BigDecimal amount;
+    private String currency;
+    private String paymentMode;
+    private String dataOrigin;
     private String status;
     private String callbackTokenHash;
     private Integer callbackSecretVersion;
     private LocalDateTime expireTime;
+    private Long version;
     private LocalDateTime createdTime;
     private LocalDateTime updatedTime;
 }

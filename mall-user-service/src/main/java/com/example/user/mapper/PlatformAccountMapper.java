@@ -17,4 +17,8 @@ public interface PlatformAccountMapper extends BaseMapper<PlatformAccount> {
     int debitWithdrawPending(java.math.BigDecimal amount);
 
     int creditDeposit(java.math.BigDecimal amount);
+
+    int creditPaymentSuspense(java.math.BigDecimal amount);
+
+    int debitPaymentSuspense(java.math.BigDecimal amount);
 }

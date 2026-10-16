@@ -58,7 +58,9 @@ public class FundReconciliationService {
                 + saveDiff("PLATFORM_WITHDRAW_PENDING", "PLATFORM_MAIN", balance.getWithdrawPendingAmount(),
                         balance.getFlowWithdrawPendingAmount())
                 + saveDiff("PLATFORM_DEPOSIT", "PLATFORM_MAIN", balance.getDepositAmount(),
-                        balance.getFlowDepositAmount());
+                        balance.getFlowDepositAmount())
+                + saveDiff("PLATFORM_PAYMENT_SUSPENSE", "PLATFORM_MAIN", balance.getPaymentSuspenseAmount(),
+                        balance.getFlowPaymentSuspenseAmount());
     }
 
     private int reconcileWithdrawRequests() {

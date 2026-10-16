@@ -35,4 +35,12 @@ public interface FundDubboService {
     int reconcile();
 
     BigDecimal getPlatformEscrowAmount();
+
+    FundOperationResult refundEscrowToChannel(String orderNo, String attemptNo, String refundNo,
+                                             BigDecimal amount, String idempotencyKey);
+
+    FundOperationResult creditPaymentSuspense(String attemptNo, BigDecimal amount, String idempotencyKey);
+
+    FundOperationResult refundPaymentSuspense(String attemptNo, String refundNo, BigDecimal amount,
+                                             String idempotencyKey);
 }

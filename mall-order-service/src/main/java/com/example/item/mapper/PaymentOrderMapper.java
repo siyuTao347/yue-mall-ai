@@ -37,4 +37,27 @@ public interface PaymentOrderMapper extends BaseMapper<PaymentOrder> {
     @Update("UPDATE t_payment_order SET status = 'PAYING', updated_time = #{now} " +
             "WHERE order_no = #{orderNo} AND status = 'INIT' AND expire_time > #{now}")
     int startPaying(@Param("orderNo") String orderNo, @Param("now") LocalDateTime now);
+
+    @Update("UPDATE t_payment_order SET active_attempt_no = #{attemptNo}, channel = #{channel}, " +
+            "status = 'PAYING', updated_time = #{now}, version = version + 1 " +
+            "WHERE payment_no = #{paymentNo} AND status IN ('INIT', 'PAYING')")
+    int bindActiveAttempt(@Param("paymentNo") String paymentNo, @Param("attemptNo") String attemptNo,
+                          @Param("channel") String channel, @Param("now") LocalDateTime now);
+
+    @Update("UPDATE t_payment_order SET successful_attempt_no = #{attemptNo}, channel = #{channel}, " +
+            "status = 'SUCCESS_PENDING', updated_time = #{now}, version = version + 1 " +
+            "WHERE payment_no = #{paymentNo} AND status IN ('INIT', 'PAYING')")
+    int bindSuccessfulAttempt(@Param("paymentNo") String paymentNo, @Param("attemptNo") String attemptNo,
+                              @Param("channel") String channel, @Param("now") LocalDateTime now);
+
+    @Update("UPDATE t_payment_order SET active_attempt_no = NULL, updated_time = #{now}, version = version + 1 " +
+            "WHERE payment_no = #{paymentNo} AND active_attempt_no = #{attemptNo}")
+    int clearActiveAttempt(@Param("paymentNo") String paymentNo, @Param("attemptNo") String attemptNo,
+                           @Param("now") LocalDateTime now);
+
+    @org.apache.ibatis.annotations.Select("SELECT * FROM t_payment_order WHERE payment_no = #{paymentNo}")
+    PaymentOrder selectByPaymentNo(@Param("paymentNo") String paymentNo);
+
+    @org.apache.ibatis.annotations.Select("SELECT * FROM t_payment_order WHERE payment_no = #{paymentNo} FOR UPDATE")
+    PaymentOrder selectByPaymentNoForUpdate(@Param("paymentNo") String paymentNo);
 }

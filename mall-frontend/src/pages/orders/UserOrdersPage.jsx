@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { OrderFilters } from '../../components/orders/OrderFilters';
 import { OrderCard } from '../../components/orders/OrderCard';
 import { Pagination } from '../../components/ui/Pagination';
+import { PaymentModal } from '../../components/trade/PaymentModal';
 import './orders.css';
 
 export const UserOrdersPage = ({ navigate, initialParams = {} }) => {
@@ -23,6 +24,7 @@ export const UserOrdersPage = ({ navigate, initialParams = {} }) => {
   // Modals state
   const [revealModal, setRevealModal] = useState({ open: false, orderNo: '', content: '' });
   const [disputeModal, setDisputeModal] = useState({ open: false, order: null, type: 'NOT_AS_DESCRIBED', reason: '', amount: '' });
+  const [payingOrder, setPayingOrder] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchOrders = useCallback(async (targetPage = page) => {
@@ -95,25 +97,12 @@ export const UserOrdersPage = ({ navigate, initialParams = {} }) => {
   };
 
   // Actions
-  const handlePay = async (order) => {
+  const handlePay = (order) => {
     if (!order.paymentNo) {
       alert('订单未关联有效支付单，请刷新重试');
       return;
     }
-    const confirmed = window.confirm(`确认支付订单 ${order.orderNo}，支付金额 ¥${order.orderAmount}？`);
-    if (!confirmed) return;
-
-    try {
-      setActionLoading(true);
-      await tradeApi.payment.start(order.paymentNo);
-      await tradeApi.payment.pay(order.paymentNo);
-      alert('支付成功！');
-      fetchOrders(page);
-    } catch (err) {
-      alert(`支付失败: ${err.message || '未知错误'}`);
-    } finally {
-      setActionLoading(false);
-    }
+    setPayingOrder(order);
   };
 
   const handleCancel = async (order) => {
@@ -402,6 +391,15 @@ export const UserOrdersPage = ({ navigate, initialParams = {} }) => {
             </div>
           </form>
         </div>
+      )}
+
+      {payingOrder && (
+        <PaymentModal
+          order={payingOrder}
+          isOpen={Boolean(payingOrder)}
+          onClose={() => setPayingOrder(null)}
+          onSuccess={() => fetchOrders(page)}
+        />
       )}
     </div>
   );

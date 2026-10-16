@@ -77,7 +77,30 @@ export const tradeApi = {
 
   payment: {
     start: (paymentNo) => post(`${API_BASE.ORDER}/api/payment/${paymentNo}/start`, {}),
-    pay: (paymentNo) => post(`${API_BASE.ORDER}/api/payment/${paymentNo}/mock-pay`, { result: 'SUCCESS' })
+    pay: (paymentNo) => post(`${API_BASE.ORDER}/api/payment/${paymentNo}/mock-pay`, { result: 'SUCCESS' }),
+    methods: (paymentNo) => get(`${API_BASE.ORDER}/api/payment/${paymentNo}/methods`),
+    createAttempt: (paymentNo, paymentMethod, requestKey) => post(`${API_BASE.ORDER}/api/payment/${paymentNo}/attempts`, {
+      paymentMethod,
+      requestKey
+    }),
+    getAttempt: (attemptNo) => get(`${API_BASE.ORDER}/api/payment/attempts/${attemptNo}`),
+    mockConfirm: (attemptNo, result = 'SUCCESS') => post(`${API_BASE.ORDER}/api/payment/attempts/${attemptNo}/mock-confirm`, { result }),
+    closeAttempt: (attemptNo, requestKey) => post(`${API_BASE.ORDER}/api/payment/attempts/${attemptNo}/close`, { requestKey })
+  },
+
+  reconciliation: {
+    listRuns: (params = {}) => getPaged(`${API_BASE.ORDER}/api/trade/admin/reconciliation/runs`, params),
+    triggerRun: (channel, businessDate) => post(`${API_BASE.ORDER}/api/trade/admin/reconciliation/runs`, { channel, businessDate }),
+    runDetail: (runNo) => get(`${API_BASE.ORDER}/api/trade/admin/reconciliation/runs/${runNo}`),
+    listDiffs: (params = {}) => getPaged(`${API_BASE.ORDER}/api/trade/admin/reconciliation/diffs`, params),
+    diffAction: (diffNo, action, reason = '', requestKey = '') => post(
+      `${API_BASE.ORDER}/api/trade/admin/reconciliation/diffs/${diffNo}/actions`,
+      { action, reason, requestKey }
+    ),
+    fileDetail: (fileId) => get(`${API_BASE.ORDER}/api/trade/admin/reconciliation/files/${fileId}`),
+    listSettlements: (params = {}) => getPaged(`${API_BASE.ORDER}/api/trade/admin/channel-settlements`, params),
+    listFaultPlans: () => get(`${API_BASE.ORDER}/api/trade/admin/mock/fault-plans`),
+    createFaultPlan: (plan) => post(`${API_BASE.ORDER}/api/trade/admin/mock/fault-plans`, plan)
   },
 
   account: {

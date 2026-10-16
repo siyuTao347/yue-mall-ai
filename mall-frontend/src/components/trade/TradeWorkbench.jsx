@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { tradeApi } from '../../api/tradeApi';
 import { showToast } from '../../utils/feedback';
 import { Pagination } from '../ui/Pagination';
+import { PaymentModal } from './PaymentModal';
 import './TradeWorkbench.css';
 
 const TABS = [
@@ -67,6 +68,7 @@ export const TradeWorkbench = ({ items = [] }) => {
   const [myItemsPageInfo, setMyItemsPageInfo] = useState(null);
   const [deposit, setDeposit] = useState(null);
   const [account, setAccount] = useState(null);
+  const [payingOrder, setPayingOrder] = useState(null);
   const [withdrawals, setWithdrawals] = useState([]);
   const [withdrawalsPage, setWithdrawalsPage] = useState(1);
   const [withdrawalsPageInfo, setWithdrawalsPageInfo] = useState(null);
@@ -192,14 +194,8 @@ export const TradeWorkbench = ({ items = [] }) => {
     }
   });
 
-  const payOrder = order => requireUser(async () => {
-    const paid = await runAction(`pay-${order.orderNo}`, async () => {
-      await tradeApi.payment.start(order.paymentNo);
-      return tradeApi.payment.pay(order.paymentNo);
-    }, 'Mock 支付成功，资金已进入平台托管');
-    if (paid) {
-      await refreshOrders();
-    }
+  const payOrder = order => requireUser(() => {
+    setPayingOrder(order);
   });
 
   const cancelOrder = order => requireUser(async () => {
@@ -691,6 +687,14 @@ export const TradeWorkbench = ({ items = [] }) => {
       {activeTab === 'orders' ? renderOrders() : null}
       {activeTab === 'seller' ? renderSeller() : null}
       {activeTab === 'account' ? renderAccount() : null}
+      {payingOrder && (
+        <PaymentModal
+          order={payingOrder}
+          isOpen={Boolean(payingOrder)}
+          onClose={() => setPayingOrder(null)}
+          onSuccess={refreshOrders}
+        />
+      )}
     </section>
   );
 };

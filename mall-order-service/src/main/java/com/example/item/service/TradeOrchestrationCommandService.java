@@ -55,6 +55,7 @@ public class TradeOrchestrationCommandService {
     private final TradeOrchestrationProperties properties;
     private final RiskClient riskClient;
     private final PaymentCallbackProperties paymentCallbackProperties;
+    private final com.example.item.payment.application.PaymentApplicationService paymentApplicationService;
 
     @DubboReference(timeout = 5000, retries = 0, check = false)
     private FundDubboService fundService;
@@ -74,7 +75,8 @@ public class TradeOrchestrationCommandService {
             TradeStatusLogService statusLogService,
             TradeOrchestrationProperties properties,
             RiskClient riskClient,
-            PaymentCallbackProperties paymentCallbackProperties
+            PaymentCallbackProperties paymentCallbackProperties,
+            com.example.item.payment.application.PaymentApplicationService paymentApplicationService
     ) {
         this.orderMapper = orderMapper;
         this.paymentMapper = paymentMapper;
@@ -87,6 +89,7 @@ public class TradeOrchestrationCommandService {
         this.properties = properties;
         this.riskClient = riskClient;
         this.paymentCallbackProperties = paymentCallbackProperties;
+        this.paymentApplicationService = paymentApplicationService;
     }
 
     public String execute(TradeOrchestrationTask task, TradeOrchestrationStep step) {
@@ -384,9 +387,26 @@ public class TradeOrchestrationCommandService {
     }
 
     private String fundRefund(TradeOrchestrationContext context) {
-        FundOperationResult result = fundService.refundEscrow(
-                context.orderNo(), context.buyerId(), context.orderAmount(),
-                "FUND_REFUND:" + context.orderNo());
+        PaymentOrder payment = paymentMapper.selectOne(new LambdaQueryWrapper<PaymentOrder>()
+                .eq(PaymentOrder::getOrderNo, context.orderNo()));
+        FundOperationResult result;
+        if (payment != null && payment.getSuccessfulAttemptNo() != null) {
+            String attemptNo = payment.getSuccessfulAttemptNo();
+            String refundNo = "RF_" + context.orderNo();
+            try {
+                paymentApplicationService.processChannelRefund(context.orderNo(), context.orderAmount(),
+                        context.reason() != null ? context.reason() : "订单退款");
+            } catch (Exception e) {
+                log.warn("Channel refund execution logged warning: {}", e.getMessage());
+            }
+            result = fundService.refundEscrowToChannel(
+                    context.orderNo(), attemptNo, refundNo, context.orderAmount(),
+                    "FUND_REFUND:" + context.orderNo());
+        } else {
+            result = fundService.refundEscrow(
+                    context.orderNo(), context.buyerId(), context.orderAmount(),
+                    "FUND_REFUND:" + context.orderNo());
+        }
         requireFundSuccess(result);
         return result.getTransactionNo();
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { tradeApi } from '../../api/tradeApi';
 import { useApp } from '../../context/AppContext';
 import { getStatusText, getStatusBadgeClass, formatMoney, formatTime } from '../../utils/orderStatus';
+import { PaymentModal } from '../../components/trade/PaymentModal';
 import './orders.css';
 
 export const UserOrderDetailPage = ({ orderNo, navigate }) => {
@@ -10,6 +11,7 @@ export const UserOrderDetailPage = ({ orderNo, navigate }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   // Modals / Inputs
   const [cardSecret, setCardSecret] = useState(null);
@@ -51,25 +53,12 @@ export const UserOrderDetailPage = ({ orderNo, navigate }) => {
   const canReview = allowedActions.includes('REVIEW');
 
   // Handle Pay
-  const handlePay = async () => {
+  const handlePay = () => {
     if (!order?.paymentNo) {
       alert('订单未关联有效支付单，请刷新重试');
       return;
     }
-    const confirmed = window.confirm(`确认支付订单 ${order.orderNo}，支付金额 ${formatMoney(order.orderAmount)}？`);
-    if (!confirmed) return;
-
-    try {
-      setActionLoading(true);
-      await tradeApi.payment.start(order.paymentNo);
-      await tradeApi.payment.pay(order.paymentNo);
-      alert('支付成功！');
-      fetchDetail();
-    } catch (err) {
-      alert(`支付失败: ${err.message || '未知错误'}`);
-    } finally {
-      setActionLoading(false);
-    }
+    setIsPaymentModalOpen(true);
   };
 
   // Handle Cancel
@@ -513,6 +502,15 @@ export const UserOrderDetailPage = ({ orderNo, navigate }) => {
             </div>
           </form>
         </div>
+      )}
+
+      {isPaymentModalOpen && order && (
+        <PaymentModal
+          order={order}
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          onSuccess={fetchDetail}
+        />
       )}
     </div>
   );

@@ -95,4 +95,21 @@ public class FundDubboServiceImpl implements FundDubboService {
     public BigDecimal getPlatformEscrowAmount() {
         return fundService.getPlatformEscrowAmount();
     }
+
+    @Override
+    public FundOperationResult refundEscrowToChannel(String orderNo, String attemptNo, String refundNo,
+                                                     BigDecimal amount, String idempotencyKey) {
+        return fundService.refundEscrowToChannel(orderNo, attemptNo, refundNo, amount, idempotencyKey);
+    }
+
+    @Override
+    public FundOperationResult creditPaymentSuspense(String attemptNo, BigDecimal amount, String idempotencyKey) {
+        return fundService.creditPaymentSuspense(attemptNo, amount, idempotencyKey);
+    }
+
+    @Override
+    public FundOperationResult refundPaymentSuspense(String attemptNo, String refundNo, BigDecimal amount,
+                                                     String idempotencyKey) {
+        return fundService.refundPaymentSuspense(attemptNo, refundNo, amount, idempotencyKey);
+    }
 }

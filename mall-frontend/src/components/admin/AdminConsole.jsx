@@ -5,10 +5,12 @@ import { AdminOperations } from './AdminOperations';
 import { RiskCaseWorkbench } from '../risk/RiskCaseWorkbench';
 import { RagKnowledgeWorkbench } from '../agent/RagKnowledgeWorkbench';
 import { CustomerServiceAdmin } from '../customer/CustomerServiceAdmin';
+import { ReconciliationConsole } from './ReconciliationConsole';
 import './AdminConsole.css';
 
 const ADMIN_TABS = [
   { key: 'operations', label: '运营审核' },
+  { key: 'reconciliation', label: '对账与差错治理' },
   { key: 'risk', label: '风控案件' },
   { key: 'rag', label: '知识库管理' },
   { key: 'customer', label: '智能客服' }
@@ -55,6 +57,7 @@ export const AdminConsole = () => {
         </nav>
 
         {activeTab === 'operations' ? <AdminOperations /> : null}
+        {activeTab === 'reconciliation' ? <ReconciliationConsole /> : null}
         {activeTab === 'risk' ? <RiskCaseWorkbench /> : null}
         {activeTab === 'rag' ? <RagKnowledgeWorkbench /> : null}
         {activeTab === 'customer' ? <CustomerServiceAdmin /> : null}

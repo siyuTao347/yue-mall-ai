@@ -1,12 +1,13 @@
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/audit/AuditLogTest.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/web/GlobalExceptionHandlerTest.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/service/TradeOrchestrationServiceTest.java
-/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/service/AgentOrderQueryServiceTest.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/service/OrderStatusResolverTest.java
-/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/service/TradeOrderServiceTest.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/service/PaymentCallbackVerifierTest.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/service/OrderRiskCommandHandlerTest.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/reconciliation/MultiChannelPaymentAndReconciliationTest.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/audit/AuditLogBenchmarkTest.java
-/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/service/PaymentCallbackServiceTest.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/config/TradeOrderPropertiesTest.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/web/TraceContextFilterTest.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/service/AgentOrderQueryServiceTest.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/service/TradeOrderServiceTest.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/test/java/com/example/item/service/PaymentCallbackServiceTest.java

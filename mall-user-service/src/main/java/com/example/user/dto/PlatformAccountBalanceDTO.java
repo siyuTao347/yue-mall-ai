@@ -10,8 +10,10 @@ public class PlatformAccountBalanceDTO {
     private BigDecimal revenueAmount;
     private BigDecimal withdrawPendingAmount;
     private BigDecimal depositAmount;
+    private BigDecimal paymentSuspenseAmount;
     private BigDecimal flowEscrowAmount;
     private BigDecimal flowRevenueAmount;
     private BigDecimal flowWithdrawPendingAmount;
     private BigDecimal flowDepositAmount;
+    private BigDecimal flowPaymentSuspenseAmount;
 }

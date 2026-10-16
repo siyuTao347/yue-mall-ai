@@ -29,6 +29,7 @@ public interface FundReconciliationDiffMapper extends BaseMapper<FundReconciliat
 
     @Select("SELECT pa.escrow_amount AS escrowAmount, pa.revenue_amount AS revenueAmount, " +
             "pa.withdraw_pending_amount AS withdrawPendingAmount, pa.deposit_amount AS depositAmount, " +
+            "pa.payment_suspense_amount AS paymentSuspenseAmount, " +
             "COALESCE(SUM(CASE WHEN ff.account_type = 'ESCROW' " +
             "THEN IF(ff.direction = 'CREDIT', ff.amount, -ff.amount) ELSE 0 END), 0) AS flowEscrowAmount, " +
             "COALESCE(SUM(CASE WHEN ff.account_type = 'REVENUE' " +
@@ -36,7 +37,9 @@ public interface FundReconciliationDiffMapper extends BaseMapper<FundReconciliat
             "COALESCE(SUM(CASE WHEN ff.account_type = 'WITHDRAW_PENDING' " +
             "THEN IF(ff.direction = 'CREDIT', ff.amount, -ff.amount) ELSE 0 END), 0) AS flowWithdrawPendingAmount, " +
             "COALESCE(SUM(CASE WHEN ff.account_type = 'DEPOSIT' " +
-            "THEN IF(ff.direction = 'CREDIT', ff.amount, -ff.amount) ELSE 0 END), 0) AS flowDepositAmount " +
+            "THEN IF(ff.direction = 'CREDIT', ff.amount, -ff.amount) ELSE 0 END), 0) AS flowDepositAmount, " +
+            "COALESCE(SUM(CASE WHEN ff.account_type = 'PAYMENT_SUSPENSE' " +
+            "THEN IF(ff.direction = 'CREDIT', ff.amount, -ff.amount) ELSE 0 END), 0) AS flowPaymentSuspenseAmount " +
             "FROM t_platform_account pa " +
             "LEFT JOIN t_fund_flow ff ON ff.owner_type = 'PLATFORM' " +
             "WHERE pa.account_code = 'PLATFORM_MAIN' GROUP BY pa.id")
