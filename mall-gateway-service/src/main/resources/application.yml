@@ -36,10 +36,14 @@ spring:
               uri: lb://mall-risk-service
               predicates:
                 - Path=/api/admin/risk/**
+            - id: mall-agent-ws-route
+              uri: lb:ws://mall-agent-service
+              predicates:
+                - Path=/api/agent/realtime/ws
             - id: mall-agent-route
               uri: lb://mall-agent-service
               predicates:
-                - Path=/api/agent/**,/api/admin/agent/**
+                - Path=/api/agent/**,/api/admin/agent/**,/api/staff/agent/**
               # 客服 run 总预算 90s；保留管理端知识库长请求支持
               metadata:
                 connect-timeout: 3000
@@ -91,6 +95,8 @@ mall:
         - "POST:/api/user/register"
         - "POST:/api/user/login"
         - "POST:/api/payment/callback"
+        - "GET:/api/agent/realtime/ws"
+        - "POST:/api/agent/integrations/**"
       admin-paths:
         - "ANY:/api/merchant/admin/**"
         - "ANY:/api/withdraw/admin/**"

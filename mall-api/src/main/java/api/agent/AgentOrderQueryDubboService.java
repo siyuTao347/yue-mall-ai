@@ -11,6 +11,7 @@ public interface AgentOrderQueryDubboService {
     List<TimelineFact> queryOrderTimeline(AgentActor actor, String orderNo);
     DisputeFact queryDispute(AgentActor actor, String disputeNo);
     List<EvidenceFact> queryDeliveryEvidenceSummary(AgentActor actor, String orderNo);
+    OrderPartiesFact resolveOrderParties(String orderNo);
 
     class OrderFact implements Serializable {
         private static final long serialVersionUID = 1L;
@@ -244,5 +245,31 @@ public interface AgentOrderQueryDubboService {
         public String toString() {
             return "EvidenceFact[evidenceType=" + evidenceType + "]";
         }
+    }
+
+    class OrderPartiesFact implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private String orderNo;
+        private Long buyerId;
+        private Long sellerId;
+
+        public OrderPartiesFact() {}
+
+        public OrderPartiesFact(String orderNo, Long buyerId, Long sellerId) {
+            this.orderNo = orderNo;
+            this.buyerId = buyerId;
+            this.sellerId = sellerId;
+        }
+
+        public String orderNo() { return orderNo; }
+        public Long buyerId() { return buyerId; }
+        public Long sellerId() { return sellerId; }
+
+        public String getOrderNo() { return orderNo; }
+        public void setOrderNo(String orderNo) { this.orderNo = orderNo; }
+        public Long getBuyerId() { return buyerId; }
+        public void setBuyerId(Long buyerId) { this.buyerId = buyerId; }
+        public Long getSellerId() { return sellerId; }
+        public void setSellerId(Long sellerId) { this.sellerId = sellerId; }
     }
 }

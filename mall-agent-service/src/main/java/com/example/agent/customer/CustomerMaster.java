@@ -59,7 +59,7 @@ public class CustomerMaster {
         long recognitionStarted=System.nanoTime();int initialInput=in.get(),initialOutput=out.get();
         boolean pending=context.path("pendingIntents").size()>0;
         String simple=pending?null:l1(question,props.getL1MaxChars());ObjectNode recognition;
-        ArrayNode intents=array(); boolean human=human(question);
+        ArrayNode intents=array(); boolean human=human(question); String highestRisk = "LOW";
         if(simple!=null){recognition=object().put("source","L1_RULE").put("ruleId",simple.equals("GREETING")?"greeting-v1":"identity-v1");intents.add(task(simple,question,run+":i1",null));}
         else {
             recognition=(pending||contextDependent(question)||human)?IntentReleaseService.fallback("CONTEXT_MULTI_INTENT_OR_ESCALATION"):releases.recognize(question,budget);
@@ -76,12 +76,22 @@ public class CustomerMaster {
                     // Accept only explicitly grounded fields from the model. Session candidates are handled separately.
                     candidate.path("slots").fields().forEachRemaining(e->{if(Set.of("orderNo","disputeNo","itemId").contains(e.getKey())&&!e.getValue().isNull()&&(fragment.contains(e.getValue().asText())||contextHasEntity(context,e.getKey(),e.getValue().asText())))((ObjectNode)t.get("slots")).put(e.getKey(),e.getValue().asText());});
                     intents.add(t);}
-                human|=output.path("needHuman").asBoolean(false)||Set.of("HIGH","URGENT").contains(output.path("riskLevel").asText());
+                String r = output.path("riskLevel").asText("LOW");
+                if (riskRank(r) > riskRank(highestRisk)) highestRisk = r;
+                human |= output.path("needHuman").asBoolean(false) || Set.of("HIGH", "URGENT").contains(r);
             }
+        }
+        if (question.matches("(?s).*(报警|诈骗|起诉|立案).*")) {
+            highestRisk = "URGENT";
+        } else if (question.matches("(?s).*(被盗|资金损失|赔偿|仲裁).*") && riskRank(highestRisk) < riskRank("HIGH")) {
+            highestRisk = "HIGH";
+        }
+        if (human && riskRank(highestRisk) < riskRank("NORMAL")) {
+            highestRisk = "NORMAL";
         }
         if(intents.isEmpty())intents.add(task("OTHER",question,run+":i1",0.0));
         for(JsonNode t:intents)resolve((ObjectNode)t,context,question);
-        ObjectNode result=object().put("schemaVersion",2).put("originalQuestion",question).put("needHuman",human).put("riskLevel",human?"HIGH":"LOW").put("sentiment","NEUTRAL");recognition.put("totalElapsedMs",(System.nanoTime()-recognitionStarted)/1000000).put("chatInputTokens",in.get()-initialInput).put("chatOutputTokens",out.get()-initialOutput);
+        ObjectNode result=object().put("schemaVersion",2).put("originalQuestion",question).put("needHuman",human).put("riskLevel",highestRisk).put("sentiment","NEUTRAL");recognition.put("totalElapsedMs",(System.nanoTime()-recognitionStarted)/1000000).put("chatInputTokens",in.get()-initialInput).put("chatOutputTokens",out.get()-initialOutput);
         result.set("intents",intents);result.set("recognition",recognition);return result;
     }
     static void validateModel(JsonNode n,String question){validateModel(n,question,MissingNode.getInstance());}
@@ -236,4 +246,13 @@ public class CustomerMaster {
         if(hasDomainIntent)tasks=filtered;
         if(tasks.isEmpty()){ObjectNode t=object().put("code",Optional.ofNullable(l1(question,20)).orElse("OTHER")).put("confidence",.95).put("questionFragment",question);t.set("slots",object());tasks.add(t);}
         ObjectNode result=object().put("needHuman",human(question));result.set("intents",tasks);return result;}
+    private static int riskRank(String r) {
+        if(r == null) return 1;
+        return switch (r) {
+            case "URGENT" -> 4;
+            case "HIGH" -> 3;
+            case "NORMAL" -> 2;
+            default -> 1;
+        };
+    }
 }

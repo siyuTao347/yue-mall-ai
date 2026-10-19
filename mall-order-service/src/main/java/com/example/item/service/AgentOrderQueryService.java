@@ -62,4 +62,11 @@ public class AgentOrderQueryService implements AgentOrderQueryDubboService {
             .eq(DeliveryEvidence::getOrderNo,no).orderByDesc(DeliveryEvidence::getId).last("LIMIT 10")).stream()
             .map(e->new EvidenceFact(e.getEvidenceType(),time(e.getCreatedTime()))).toList();
     }
+    @Override
+    public OrderPartiesFact resolveOrderParties(String orderNo) {
+        if (orderNo == null || orderNo.length() > 64) return null;
+        TradeOrder order = orders.selectOne(new LambdaQueryWrapper<TradeOrder>().eq(TradeOrder::getOrderNo, orderNo));
+        if (order == null) return null;
+        return new OrderPartiesFact(order.getOrderNo(), order.getBuyerId(), order.getSellerId());
+    }
 }

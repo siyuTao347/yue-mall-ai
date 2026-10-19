@@ -20,10 +20,12 @@ public class CustomerStore {
     private final CustomerProperties props;
     private final CustomerRedisGate redisGate;
     private final com.example.agent.customer.memory.CustomerMemoryStore memoryStore;
-    public CustomerStore(CustomerDatabase db,CustomerProperties props){this(db,props,null,null);}
-    public CustomerStore(CustomerDatabase db,CustomerProperties props,CustomerRedisGate redisGate){this(db,props,redisGate,null);}
-    @Autowired public CustomerStore(CustomerDatabase db,CustomerProperties props,@Autowired(required=false) CustomerRedisGate redisGate,@Autowired(required=false) com.example.agent.customer.memory.CustomerMemoryStore memoryStore){
-        this.db=db;this.props=props;this.redisGate=redisGate;this.memoryStore=memoryStore;
+    private final com.example.agent.customer.conversation.SessionEventStore eventStore;
+    public CustomerStore(CustomerDatabase db,CustomerProperties props){this(db,props,null,null,null);}
+    public CustomerStore(CustomerDatabase db,CustomerProperties props,CustomerRedisGate redisGate){this(db,props,redisGate,null,null);}
+    public CustomerStore(CustomerDatabase db,CustomerProperties props,CustomerRedisGate redisGate,com.example.agent.customer.memory.CustomerMemoryStore memoryStore){this(db,props,redisGate,memoryStore,null);}
+    @Autowired public CustomerStore(CustomerDatabase db,CustomerProperties props,@Autowired(required=false) CustomerRedisGate redisGate,@Autowired(required=false) com.example.agent.customer.memory.CustomerMemoryStore memoryStore,@Autowired(required=false) com.example.agent.customer.conversation.SessionEventStore eventStore){
+        this.db=db;this.props=props;this.redisGate=redisGate;this.memoryStore=memoryStore;this.eventStore=eventStore;
     }
     @jakarta.annotation.PreDestroy
     public void close(){SUMMARY_EXECUTOR.shutdownNow();}
@@ -63,7 +65,7 @@ public class CustomerStore {
                 var previous=db.mysql.queryForList("SELECT r.run_no,r.request_hash,r.result_json FROM t_agent_message m JOIN t_agent_run r ON r.run_no=m.run_no WHERE m.session_no=? AND m.client_message_id=?",no,clientId);
                 if(!previous.isEmpty()){var p=previous.getFirst();if(!requestHash.equals(p.get("request_hash")))throw error(409,"AGENT_IDEMPOTENCY_CONFLICT","消息标识已被其他内容使用");if(p.get("result_json")==null)throw error(409,"AGENT_RUN_PENDING","原消息仍在处理或已中断，请查询会话状态");return new Start(p.get("run_no").toString(),s,read(p.get("result_json")));}
                 if(replayInRedis)throw error(409,"AGENT_RUN_PENDING","原消息仍在处理或已中断，请查询会话状态");
-                if(!"ACTIVE".equals(s.get("status")))throw error(409,"AGENT_SESSION_INACTIVE","会话已结束或已转人工，请创建新会话");
+                if(!"ACTIVE".equals(s.get("status"))||(s.get("service_mode")!=null&&!"BOT".equals(s.get("service_mode").toString())))throw error(409,"AGENT_SESSION_INACTIVE","会话已结束或已转人工");
                 if(truth(s.get("expired")))throw error(409,"AGENT_SESSION_EXPIRED","会话已过期，请创建新会话");
                 if(truth(gate.get("busy")))throw error(429,"AGENT_BUSY","你已有消息正在处理");
                 if(!useRedis){int count=db.mysql.queryForObject("SELECT COUNT(*) FROM t_agent_run r JOIN t_agent_session s ON r.session_no=s.session_no WHERE s.user_id=? AND r.created_time>DATE_SUB(now(3),INTERVAL 1 MINUTE)",Integer.class,actor.userId());
@@ -73,6 +75,10 @@ public class CustomerStore {
                 db.mysql.update("INSERT INTO t_agent_run(run_no,session_no,status,trace_id,request_hash,prompt_version,provider,master_model_name,model_name) VALUES(?,?,'RUNNING',?,?,'customer-agent-v3',?,?,?)",runNo,no,Objects.toString(api.context.TraceContext.getTraceId(),runNo),requestHash,props.getProvider(),props.getMasterModel(),props.getResponseModel());
                 db.mysql.update("INSERT INTO t_agent_message(message_no,session_no,run_no,client_message_id,role,content) VALUES(?,?,?,?,'USER',?)",userMsgNo,no,runNo,clientId,input);
                 db.mysql.update("UPDATE t_agent_session SET last_active_time=now(3),message_count=message_count+1 WHERE session_no=?",no);
+                if(eventStore!=null){
+                    ObjectNode userEvt=object().put("messageNo",userMsgNo).put("sessionNo",no).put("runNo",runNo).put("clientMessageId",clientId).put("role","USER").put("content",input);
+                    eventStore.appendPublicEventInTx(no,"message.created",userEvt);
+                }
                 Long allocatedSeq=null,epochVal=null;String subjKey=null;boolean writeEnabled=false;
                 if(memoryStore!=null){
                     try{
@@ -118,10 +124,29 @@ public class CustomerStore {
             int n=db.mysql.update("UPDATE t_agent_run SET status=?,error_code=?,master_result_json=?,specialist_results_json=?,result_json=?,graph_path_json=?,tool_call_count=?,tool_rounds=?,input_tokens=?,output_tokens=?,latency_ms=?,embedding_cache_hit=?,ttft_ms=?,memory_evidence_json=?,finished_time=now(3) WHERE run_no=? AND status='RUNNING'",
                 state,response.path("errorCode").asText(null),write(master),write(results),write(response),write(path),tools,Math.min(tools,3),inputTokens,outputTokens,elapsed,embeddingCacheHit?1:0,ttftMs,memoryEvidence!=null?write(memoryEvidence):null,run);
             if(n!=1)throw error(409,"AGENT_RUN_FINISHED","消息已处理");
-            db.mysql.update("INSERT INTO t_agent_message(message_no,session_no,run_no,role,content,citations_json) VALUES(?,?,?,'AGENT',?,?)",id("AM"),session,run,response.path("answer").asText(),write(response.path("citations")));
-            ArrayNode chunkIds=array();for(var c:response.path("citations"))if(c.has("chunkId"))chunkIds.add(c.path("chunkId"));
-            db.mysql.update("UPDATE t_agent_run SET knowledge_chunk_ids_json=? WHERE run_no=?",write(chunkIds),run);
-            db.mysql.update("UPDATE t_agent_session SET slot_json=?,last_intent=?,message_count=message_count+1,last_active_time=now(3) WHERE session_no=?",write(slots),master.path("intents").path(0).path("code").asText("OTHER"),session);
+
+            var sRow=db.mysql.queryForMap("SELECT service_mode,control_epoch FROM t_agent_session WHERE session_no=? FOR UPDATE",session);
+            String serviceMode=sRow.get("service_mode")!=null?sRow.get("service_mode").toString():"BOT";
+            boolean isBotMode="BOT".equalsIgnoreCase(serviceMode);
+            String agentMsgNo=id("AM");
+
+            if(isBotMode){
+                db.mysql.update("INSERT INTO t_agent_message(message_no,session_no,run_no,role,content,citations_json) VALUES(?,?,?,'AGENT',?,?)",agentMsgNo,session,run,response.path("answer").asText(),write(response.path("citations")));
+                ArrayNode chunkIds=array();for(var c:response.path("citations"))if(c.has("chunkId"))chunkIds.add(c.path("chunkId"));
+                db.mysql.update("UPDATE t_agent_run SET knowledge_chunk_ids_json=? WHERE run_no=?",write(chunkIds),run);
+                db.mysql.update("UPDATE t_agent_session SET slot_json=?,last_intent=?,message_count=message_count+1,last_active_time=now(3) WHERE session_no=?",write(slots),master.path("intents").path(0).path("code").asText("OTHER"),session);
+                if(eventStore!=null){
+                    ObjectNode agentEvt=object().put("messageNo",agentMsgNo).put("sessionNo",session).put("runNo",run).put("role","AGENT").put("content",response.path("answer").asText()).set("citations",response.path("citations"));
+                    if(response.has("richCard"))agentEvt.set("richCard",response.get("richCard"));
+                    eventStore.appendPublicEventInTx(session,"message.created",agentEvt);
+                }
+            } else {
+                log.info("CustomerStore: AI run {} completed but session {} is in mode {}, suppressing public AGENT message",run,session,serviceMode);
+                try{
+                    db.mysql.update("INSERT INTO t_agent_copilot_task(task_id,session_no,task_type,payload_json,status,created_time) VALUES(?,?,'DRAFT_ANSWER',?,'COMPLETED',now(3))",id("CP"),session,write(object().put("answer",response.path("answer").asText()).put("runNo",run)));
+                }catch(Exception ex){log.warn("CustomerStore: failed to record copilot draft: {}",ex.getMessage());}
+                db.mysql.update("UPDATE t_agent_session SET last_active_time=now(3) WHERE session_no=?",session);
+            }
             db.mysql.update("UPDATE t_agent_user_gate SET lease_run_no=NULL,lease_until=NULL WHERE user_id=? AND lease_run_no=?",actor.userId(),run);
 
             if(memoryStore!=null&&"SUCCEEDED".equals(state)&&memoryCaptureContext!=null&&memoryCaptureContext.path("captureAllowed").asBoolean(false)){

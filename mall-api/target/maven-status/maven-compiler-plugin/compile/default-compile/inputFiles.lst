@@ -5,6 +5,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/trade/AssetReservationResult.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/trade/request/DeliverOrderRequest.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/risk/RiskSupport.java
+/Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/agent/CustomerAfterSaleCommandDubboService.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/trade/AssetDubboService.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/response/ErrorCodes.java
 /Users/yu/IdeaProjects/mall-parent/mall-api/src/main/java/api/trade/request/AddEvidenceRequest.java

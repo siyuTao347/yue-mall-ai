@@ -1,110 +1,247 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import { customerServiceApi as api } from '../../api/customerServiceApi';
-
-const newMessageId = () => globalThis.crypto?.randomUUID?.() || `c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+import React, { useEffect, useRef, useState } from 'react';
+import { useCustomerRealtime } from '../../context/CustomerRealtimeContext';
+import { RichMessageRenderer } from './rich/RichMessageRenderer';
 
 export const CustomerServiceDialog = ({ user, position, onClose }) => {
-  const [session, setSession] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [content, setContent] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [handoff, setHandoff] = useState(false);
-  const [retry, setRetry] = useState(null);
-  const controller = useRef(null);
-  const input = useRef(null);
-  const dialog = useRef(null);
-  const end = useRef(null);
-  const storageKey = `mall.customerService.session.${user?.id}`;
-  const closeDialog = useEffectEvent(onClose);
+  const {
+    session,
+    serviceMode,
+    handoffInfo,
+    messages,
+    busy,
+    error,
+    setError,
+    sendMessage,
+    requestHandoff,
+    executeCardAction,
+    startNewSession
+  } = useCustomerRealtime();
+
+  const [inputContent, setInputContent] = useState('');
+  const inputRef = useRef(null);
+  const dialogRef = useRef(null);
+  const endRef = useRef(null);
+
+  // Focus and keyboard accessibility
   useEffect(() => {
-    if (input.current && !input.current.disabled) input.current.focus();
-    else dialog.current?.querySelector('button:not(:disabled)')?.focus();
-    const key = e => {
-      if (e.key === 'Escape') { e.preventDefault(); closeDialog(); }
-      if (e.key === 'Tab') {
-        const items = [...dialog.current.querySelectorAll('button:not(:disabled),textarea:not(:disabled),summary,a[href]')];
-        const first = items[0], last = items.at(-1);
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    if (inputRef.current && !inputRef.current.disabled) {
+      inputRef.current.focus();
+    }
+    const handleKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
       }
     };
-    const node = dialog.current; node.addEventListener('keydown', key);
-    return () => { node.removeEventListener('keydown', key); controller.current?.abort(); };
-  }, []);
+    const node = dialogRef.current;
+    node?.addEventListener('keydown', handleKey);
+    return () => node?.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  // Scroll to bottom on new message or status change
   useEffect(() => {
-    if (!user) return;
-    const abort = new AbortController(); let saved;
-    try { saved = sessionStorage.getItem(storageKey); } catch { /* optional */ }
-    if (saved) {
-      // Restoring a saved session is an external request; disable sending until it completes.
-      // oxlint-disable-next-line react/set-state-in-effect
-      setBusy(true);
-      api.session(saved, abort.signal).then(data => {
-        if (data.status === 'CLOSED' || data.status === 'EXPIRED') { try { sessionStorage.removeItem(storageKey); } catch { /* optional */ } return; }
-        setSession(saved); setHandoff(data.status === 'HANDOFF');
-        setMessages(data.messages.map(m => ({ id: m.message_no, role: m.role, content: m.content, result: m.result })));
-      }).catch(e => { if (!abort.signal.aborted) setError(e.message); }).finally(() => { if (!abort.signal.aborted) setBusy(false); });
-    }
-    return () => abort.abort();
-  }, [user, storageKey]);
-  useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [messages, busy]);
-  const send = async (text = content, previous = null) => {
-    if (!user || busy || handoff || !text.trim()) return;
-    const request = previous || { text: text.trim(), clientMessageId: newMessageId() };
-    setError(''); setBusy(true); const abort = new AbortController(); controller.current = abort;
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, busy]);
+
+  const handleSend = async (e) => {
+    e?.preventDefault();
+    if (!user || busy || !inputContent.trim()) return;
+    const text = inputContent.trim();
+    setInputContent('');
     try {
-      let no = session;
-      if (!no) { no = (await api.create(abort.signal)).sessionNo; setSession(no); try { sessionStorage.setItem(storageKey, no); } catch { /* optional */ } }
-      if (!previous) { setMessages(m => [...m, { id: request.clientMessageId, role: 'USER', content: request.text }]); setContent(''); }
-      const assistantId = `${request.clientMessageId}-assistant`;
-      setMessages(m => [...m, { id: assistantId, role: 'AGENT', content: '', stage: '正在连接客服…', streaming: true }]);
-      const result = await api.sendStream(no, request.text, request.clientMessageId, event => {
-        const payload = event.data || {};
-        if (event.event === 'stage.progress') {
-          setMessages(m => m.map(item => item.id === assistantId ? { ...item, stage: payload.label || '正在处理…' } : item));
-        } else if (event.event === 'answer.delta') {
-          setMessages(m => m.map(item => item.id === assistantId ? { ...item, content: item.content + (payload.delta || ''), stage: '' } : item));
-        } else if (event.event === 'run.completed' || event.event === 'run.failed') {
-          setMessages(m => m.map(item => item.id === assistantId ? { ...item, content: payload.answer || item.content, result: payload, stage: '', streaming: false } : item));
-        }
-      }, abort.signal);
-      if (abort.signal.aborted) return;
-      setMessages(m => m.map(item => item.id === assistantId ? { ...item, id: result.runNo || assistantId, content: result.answer || item.content, result, stage: '', streaming: false } : item));
-      setHandoff(result.handoffRequired); setRetry(null);
-      if (result.errorCode) { setError(result.answer || '客服暂时无法完成查询'); setRetry(request); }
-    } catch (e) {
-      if (!abort.signal.aborted) {
-        setMessages(m => m.filter(item => item.id !== `${request.clientMessageId}-assistant`));
-        setError(e.message || '发送失败'); setRetry(request);
-      }
+      await sendMessage(text);
+    } catch {
+      // error handled in context
     }
-    finally { if (!abort.signal.aborted) { setBusy(false); input.current?.focus(); } }
   };
-  const fresh = async () => {
-    if (busy) return;
-    try { if (session && !handoff) await api.close(session); setSession(null); setHandoff(false); setMessages([]); setRetry(null); setError(''); try { sessionStorage.removeItem(storageKey); } catch { /* optional */ } } catch (e) { setError(e.message); }
-  };
-  const left = position.x > window.innerWidth / 2 ? Math.max(12, position.x - 392) : Math.min(window.innerWidth - 392, position.x + 68);
-  const top = Math.max(12, Math.min(position.y, window.innerHeight - 572));
-  return <section ref={dialog} id="customer-dialog" role="dialog" aria-modal="true" aria-labelledby="customer-title" className="customer-dialog" style={{ left: Math.max(12, left), top }}>
-    <header><div><strong id="customer-title">平台智能客服</strong><small>{handoff ? '已转交人工处理' : '订单 · 售后 · 平台规则'}</small></div><button type="button" onClick={onClose} aria-label="关闭客服">×</button></header>
-    <div className="customer-messages" role="log" aria-live="polite" aria-busy={busy}>
-      {!messages.length && <p className="customer-welcome">你好！请告诉我你想查询的问题。涉及订单时，请提供订单号。</p>}
-      {messages.map(m => <article key={m.id} className={`customer-message ${m.role === 'USER' ? 'customer-user' : ''}`}>
-        <p>{m.content}</p>
-        {m.streaming && m.stage && <small role="status">{m.stage}</small>}
-        {m.result?.citations?.map(c => <details key={`${c.intentInstanceId}-${c.sourceNo}`}><summary>{c.title} · v{c.docVersion} · {c.titlePath}</summary><p>{c.content}</p></details>)}
-        {m.result?.intentResults?.flatMap(i => (i.choices || []).map(c => <button disabled={busy || handoff} key={`${i.intentInstanceId}-${c.orderNo}`} onClick={() => send(c.orderNo)}>{c.orderNo} · {c.orderStatus}</button>))}
-        {m.result?.intentResults?.map(i => i.timeline?.length ? <details key={i.intentInstanceId}><summary>订单状态记录</summary>{i.timeline.map((t, index) => <p key={index}>{t.createdTime} · {t.fromStatus} → {t.toStatus}</p>)}</details> : null)}
-        {m.result?.suggestedActions?.map(action => <button key={`${action.intentInstanceId}-${action.type}`} onClick={() => { onClose(); document.getElementById('tradeSection')?.scrollIntoView({ behavior: 'smooth' }); }}>查看交易工作台 · {action.bizNo}</button>)}
-        {m.result?.handoffNo && <small>人工记录：{m.result.handoffNo}</small>}
-        {m.result?.runNo && <button className="customer-feedback" onClick={async e => { const button = e.currentTarget; try { await api.feedback(m.result.runNo, 5); button.disabled = true; } catch (err) { setError(err.message); } }}>有帮助</button>}
-      </article>)}
-      {busy && <p role="status">正在处理，请稍候…</p>}<div ref={end} />
-    </div>
-    {error && <div className="customer-error" role="alert">{error}{retry && <button disabled={busy} onClick={() => send(retry.text, retry)}>重试原消息</button>}</div>}
-    <div className="customer-shortcuts"><button disabled={busy || handoff || !user} onClick={() => send('转人工')}>转人工</button><button disabled={busy} onClick={fresh}>新会话</button></div>
-    <form onSubmit={e => { e.preventDefault(); send(); }}><label className="customer-sr-only" htmlFor="customer-input">你的问题</label><textarea ref={input} id="customer-input" maxLength={2000} disabled={!user || busy || handoff} value={content} onChange={e => setContent(e.target.value)} placeholder={!user ? '请先在页面顶部登录' : handoff ? '已转人工，可创建新会话' : '输入你的问题…'} /><button type="submit" disabled={!user || busy || handoff || !content.trim()}>发送</button></form>
-  </section>;
+
+  const isHuman = serviceMode === 'HUMAN';
+  const isQueued = serviceMode === 'QUEUED';
+
+  // Responsive position bounds
+  const left = position.x > window.innerWidth / 2
+    ? Math.max(12, position.x - 420)
+    : Math.min(window.innerWidth - 420, position.x + 68);
+  const top = Math.max(12, Math.min(position.y, window.innerHeight - 620));
+
+  return (
+    <section
+      ref={dialogRef}
+      id="customer-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="customer-title"
+      className="customer-dialog"
+      style={{ left: Math.max(12, left), top }}
+    >
+      <header className={`customer-header mode-${serviceMode.toLowerCase()}`}>
+        <div className="customer-header-title">
+          <strong id="customer-title">平台客服中心</strong>
+          <div className="customer-mode-badge">
+            {isHuman ? (
+              <span className="badge-human">● 人工客服 ({handoffInfo?.staffName || '客服专员'})</span>
+            ) : isQueued ? (
+              <span className="badge-queued">⏳ 排队中 (请稍候)</span>
+            ) : (
+              <span className="badge-bot">🤖 智能助理</span>
+            )}
+          </div>
+        </div>
+        <button type="button" className="customer-close-btn" onClick={onClose} aria-label="关闭客服">
+          ×
+        </button>
+      </header>
+
+      <div className="customer-messages" role="log" aria-live="polite" aria-busy={busy}>
+        {!messages.length && (
+          <div className="customer-welcome">
+            <p>👋 您好！我是商城智能客服助手，很高兴为您服务。</p>
+            <p className="welcome-hint">您可以询问：订单发货、退款售后、物流查询或平台优惠规则。</p>
+          </div>
+        )}
+
+        {messages.map((m) => {
+          const isUser = m.role === 'USER';
+          const isSystem = m.role === 'SYSTEM';
+
+          return (
+            <article
+              key={m.id}
+              className={`customer-message ${isUser ? 'customer-user' : isSystem ? 'customer-system' : 'customer-agent'}`}
+            >
+              {isSystem ? (
+                <div className="system-notice-bubble">{m.content}</div>
+              ) : (
+                <div className="message-bubble">
+                  {m.content && <p className="message-text">{m.content}</p>}
+
+                  {m.streaming && m.stage && (
+                    <small className="message-stage-indicator" role="status">
+                      {m.stage}
+                    </small>
+                  )}
+
+                  {/* Rich Cards */}
+                  {m.cards && m.cards.length > 0 && (
+                    <RichMessageRenderer cards={m.cards} onCardAction={executeCardAction} />
+                  )}
+
+                  {/* Citations */}
+                  {m.citations && m.citations.length > 0 && (
+                    <div className="citations-list">
+                      {m.citations.map((c, i) => (
+                        <details key={c.chunkId || i} className="citation-item">
+                          <summary className="citation-summary">
+                            📄 参考知识: {c.title || c.titlePath || '服务知识库'}
+                          </summary>
+                          <p className="citation-content">{c.content}</p>
+                        </details>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Suggested actions */}
+                  {m.suggestedActions && m.suggestedActions.length > 0 && (
+                    <div className="suggested-actions-row">
+                      {m.suggestedActions.map((action, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          className="btn-suggested-action"
+                          onClick={() => {
+                            if (action.type === 'VIEW_TRADE' || action.bizNo) {
+                              onClose();
+                              document.getElementById('tradeSection')?.scrollIntoView({ behavior: 'smooth' });
+                            } else {
+                              sendMessage(action.label || action.bizNo);
+                            }
+                          }}
+                        >
+                          {action.label || `查看业务 · ${action.bizNo}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </article>
+          );
+        })}
+
+        {busy && (
+          <div className="customer-typing-indicator" role="status">
+            <span className="dot" /><span className="dot" /><span className="dot" />
+            <small>客服正在回复中...</small>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {error && (
+        <div className="customer-error" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => setError('')}>✕</button>
+        </div>
+      )}
+
+      {/* Action shortcuts */}
+      <div className="customer-shortcuts">
+        {!isHuman && !isQueued && (
+          <button
+            type="button"
+            className="btn-shortcut"
+            disabled={busy || !user}
+            onClick={() => requestHandoff('用户主动要求人工接管')}
+          >
+            👨‍💼 转人工
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn-shortcut"
+          disabled={busy}
+          onClick={startNewSession}
+        >
+          🔄 新会话
+        </button>
+      </div>
+
+      {/* Input bar - NOT disabled during human handoff! */}
+      <form onSubmit={handleSend} className="customer-input-area">
+        <label className="customer-sr-only" htmlFor="customer-input">
+          输入消息
+        </label>
+        <textarea
+          ref={inputRef}
+          id="customer-input"
+          maxLength={2000}
+          disabled={!user || busy}
+          value={inputContent}
+          onChange={(e) => setInputContent(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          placeholder={
+            !user
+              ? '请先在页面顶部登录账号'
+              : isHuman
+              ? '人工客服已接入，请在此输入沟通内容（按 Enter 发送）...'
+              : isQueued
+              ? '正在排队，您可提前输入咨询问题（按 Enter 发送）...'
+              : '输入您的问题（按 Enter 发送，Shift+Enter 换行）...'
+          }
+        />
+        <button
+          type="submit"
+          className="customer-send-btn"
+          disabled={!user || busy || !inputContent.trim()}
+        >
+          发送
+        </button>
+      </form>
+    </section>
+  );
 };

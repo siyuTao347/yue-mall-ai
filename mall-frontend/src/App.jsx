@@ -16,6 +16,7 @@ import { ToastViewport } from './components/ui/UiFeedback';
 import { TradeWorkbench } from './components/trade/TradeWorkbench';
 import { AdminConsole } from './components/admin/AdminConsole';
 import { CustomerServiceLauncher } from './components/customer/CustomerServiceLauncher';
+import { CustomerRealtimeProvider } from './context/CustomerRealtimeContext';
 
 import { useStoreRoute } from './hooks/useStoreRoute';
 import { UserOrdersPage } from './pages/orders/UserOrdersPage';
@@ -148,9 +149,11 @@ const MainContent = () => {
 export default function App() {
   return (
     <AppProvider>
-      <MainContent />
-      <AuthModal />
-      <ToastViewport />
+      <CustomerRealtimeProvider>
+        <MainContent />
+        <AuthModal />
+        <ToastViewport />
+      </CustomerRealtimeProvider>
     </AppProvider>
   );
 }

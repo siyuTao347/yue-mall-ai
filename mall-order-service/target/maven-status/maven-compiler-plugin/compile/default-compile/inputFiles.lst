@@ -119,6 +119,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/PaymentCallbackVerifier.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/web/InternalAccessFilter.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/payment/mock/MockUnionPayStrategy.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/service/CustomerAfterSaleCommandServiceImpl.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/payment/mapper/ChannelCashReceiptMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/payment/domain/ChannelSettlementOrder.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/controller/TccOrderController.java

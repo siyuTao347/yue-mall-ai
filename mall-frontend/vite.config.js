@@ -8,6 +8,11 @@ export default defineConfig({
     port: 3000,
     host: true,
     proxy: {
+      '/api/agent/realtime/ws': {
+        target: process.env.VITE_GATEWAY_URL || 'http://localhost:8080',
+        changeOrigin: true,
+        ws: true
+      },
       '/api': {
         target: process.env.VITE_GATEWAY_URL || 'http://localhost:8080',
         changeOrigin: true
