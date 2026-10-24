@@ -11,7 +11,7 @@ public class RecipientResolver {
 
     private static final Logger log = LoggerFactory.getLogger(RecipientResolver.class);
 
-    @DubboReference(timeout = 3000, retries = 0, check = false, url = "${DUBBO_ORDER_SERVICE_URL:dubbo://127.0.0.1:20880}")
+    @DubboReference(timeout = 3000, retries = 0, check = false, url = "${DUBBO_ORDER_SERVICE_URL:}")
     private AgentOrderQueryDubboService orderQueryDubboService;
 
     public Long resolveOrderRecipient(String orderNo) {

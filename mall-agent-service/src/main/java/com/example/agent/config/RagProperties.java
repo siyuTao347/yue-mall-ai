@@ -24,7 +24,8 @@ public class RagProperties {
         private String provider = "MOCK";
         private String model = "mock-hash-v1";
         private int dim = 1536;
-        private int batchSize = 32;
+        /** 单次 HTTP 请求上限；Qwen 文本向量模型最多 20 条。 */
+        private int batchSize = 20;
         private int timeoutMs = 8000;
         private String baseUrl = "";
         private String apiKey = "";

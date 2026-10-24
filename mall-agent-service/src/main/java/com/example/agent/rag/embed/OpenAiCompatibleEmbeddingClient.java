@@ -25,8 +25,19 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
     private final RestClient restClient;
 
     public OpenAiCompatibleEmbeddingClient(RagProperties.Embedding props, ObjectMapper objectMapper) {
+        this(props, objectMapper, createRestClient(props));
+    }
+
+    OpenAiCompatibleEmbeddingClient(RagProperties.Embedding props, ObjectMapper objectMapper, RestClient restClient) {
+        if (props.getBatchSize() <= 0) {
+            throw new IllegalArgumentException("rag.embedding.batch-size must be positive");
+        }
         this.props = props;
         this.objectMapper = objectMapper;
+        this.restClient = restClient;
+    }
+
+    private static RestClient createRestClient(RagProperties.Embedding props) {
         if (props.getApiKey() == null || props.getApiKey().isBlank()) {
             throw new IllegalArgumentException(
                     "RAG_EMBEDDING_API_KEY is required when rag.embedding.provider=OPENAI_COMPATIBLE");
@@ -37,7 +48,7 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
         if (props.getApiKey() != null && !props.getApiKey().isBlank()) {
             builder.defaultHeader("Authorization", "Bearer " + props.getApiKey());
         }
-        this.restClient = builder.build();
+        return builder.build();
     }
 
     private static SimpleClientHttpRequestFactory requestFactory(int timeoutMs) {
@@ -57,6 +68,20 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
         if (texts == null || texts.isEmpty()) {
             return new BatchResult(List.of(), 0);
         }
+        List<float[]> vectors = new ArrayList<>(texts.size());
+        int tokens = 0;
+        boolean allUsageKnown = true;
+        // Callers may submit larger logical batches; provider limits apply to each HTTP request.
+        for (int from = 0; from < texts.size(); from += props.getBatchSize()) {
+            BatchResult part = requestBatch(texts.subList(from, Math.min(from + props.getBatchSize(), texts.size())));
+            vectors.addAll(part.vectors());
+            if (part.tokens() == null) allUsageKnown = false;
+            else tokens += part.tokens();
+        }
+        return new BatchResult(List.copyOf(vectors), allUsageKnown ? Integer.valueOf(tokens) : null);
+    }
+
+    private BatchResult requestBatch(List<String> texts) {
         Map<String, Object> body = Map.of(
                 "model", props.getModel(),
                 "input", texts,

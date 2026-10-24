@@ -28,6 +28,7 @@ import com.example.item.mapper.PaymentOrderMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -76,7 +77,7 @@ public class TradeOrchestrationCommandService {
             TradeOrchestrationProperties properties,
             RiskClient riskClient,
             PaymentCallbackProperties paymentCallbackProperties,
-            com.example.item.payment.application.PaymentApplicationService paymentApplicationService
+            @Lazy com.example.item.payment.application.PaymentApplicationService paymentApplicationService
     ) {
         this.orderMapper = orderMapper;
         this.paymentMapper = paymentMapper;

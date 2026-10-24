@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: mall-order-service
+  main:
+    allow-circular-references: true
   cloud:
     nacos:
       discovery:

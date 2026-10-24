@@ -1,0 +1,16 @@
+[
+  {"query": "把我近期购买的全部订单列出来。", "expectedIntent": "ORDER_SEARCH"},
+  {"query": "我购买的那笔订单当前处于什么状态？", "expectedIntent": "ORDER_STATUS"},
+  {"query": "请按先后顺序展示这笔订单每次状态变化的时间。", "expectedIntent": "ORDER_TIMELINE"},
+  {"query": "我卖出的这笔订单，结算款现在到哪一步了？", "expectedIntent": "SETTLEMENT"},
+  {"query": "之前提交的那张售后单，现在处理到哪个环节了？", "expectedIntent": "AFTER_SALE_PROGRESS"},
+  {"query": "收到不能使用的卡密，申请售后应该准备什么材料？", "expectedIntent": "AFTER_SALE_GUIDE"},
+  {"query": "请一起查询这笔订单和它关联的售后单各自的当前状态。", "expectedIntent": "AFTER_SALE_STATUS_COMBINED"},
+  {"query": "哪些类型的商品不允许在你们平台交易？", "expectedIntent": "PLATFORM_RULE"},
+  {"query": "卖家通常要经过多长的结算周期才能收到货款？", "expectedIntent": "SETTLEMENT_RULE"},
+  {"query": "平台对账户余额提到银行卡有哪些条件限制？", "expectedIntent": "WITHDRAW_RULE"},
+  {"query": "在平台办理实名认证，要提交什么身份证明材料？", "expectedIntent": "ACCOUNT_RULE"},
+  {"query": "卖家的服务态度很差，我要正式投诉这位卖家。", "expectedIntent": "COMPLAINT"},
+  {"query": "请安排一位真人客服接待我。", "expectedIntent": "HUMAN_HELP"},
+  {"query": "太阳系中哪颗行星的体积最大？", "expectedIntent": "OTHER"}
+]

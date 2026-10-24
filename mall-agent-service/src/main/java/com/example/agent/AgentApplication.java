@@ -11,6 +11,11 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 @ConfigurationPropertiesScan
 @MapperScan("com.example.agent.mapper")
 public class AgentApplication {
+    static {
+        System.setProperty("dubbo.network.interface.ignored", "utun.*");
+        System.setProperty("dubbo.network.interface.preferred", "en0");
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(AgentApplication.class, args);
     }

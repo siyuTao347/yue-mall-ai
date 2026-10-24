@@ -27,9 +27,9 @@ public class CustomerRunner {
     private static final ExecutorService STAGE_EXECUTOR=Executors.newVirtualThreadPerTaskExecutor();
     private static final ConcurrentHashMap<String, Run> RUN_REGISTRY=new ConcurrentHashMap<>();
     private record IndexedResult(int index,ObjectNode result) {}
-    @DubboReference(timeout=3000,retries=0,check=false,url="${DUBBO_ORDER_SERVICE_URL:dubbo://127.0.0.1:20880}")
+    @DubboReference(timeout=3000,retries=0,check=false,url="${DUBBO_ORDER_SERVICE_URL:}")
     private AgentOrderQueryDubboService orders;
-    @DubboReference(timeout=3000,retries=0,check=false,url="${DUBBO_ITEM_QUERY_SERVICE_URL:dubbo://127.0.0.1:20880}")
+    @DubboReference(timeout=3000,retries=0,check=false,url="${DUBBO_ITEM_QUERY_SERVICE_URL:}")
     private AgentItemQueryDubboService items;
     private final CustomerStore store;private final CustomerMaster master;private final CustomerProperties props;
     private final CustomerModels models;private final CustomerKnowledgeService knowledge;private final IntentReleaseService releases;

@@ -138,6 +138,7 @@ com/example/item/mapper/DisputeMapper.class
 com/example/item/web/TraceContextFilter.class
 com/example/item/dto/PaymentCallbackResponse.class
 com/example/item/payment/mapper/ChannelSettlementLineMapper.class
+com/example/item/service/CustomerAfterSaleCommandServiceImpl.class
 com/example/item/payment/channel/ChannelPaymentCommands$CloseChannelPayment.class
 com/example/item/payment/domain/ChannelCashReceipt.class
 com/example/item/controller/MockPaymentController.class

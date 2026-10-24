@@ -1,0 +1,1022 @@
+{
+  "metadata": {
+    "started_at": "2026-10-20T16:13:10.092764+00:00",
+    "dataset_sha256": "37126b72fe9bc93f00898e2875fc8f6d0dd40321dd620d8a867bed91598e3e5b",
+    "script_sha256": "0312ac6e714e74695fc594f6836ae040193dec2bed17a48c63464f794bff054e",
+    "dataset_case_count": 200,
+    "selected_ids": [
+      "INT-001",
+      "INT-002",
+      "INT-003",
+      "INT-004",
+      "INT-005",
+      "INT-006",
+      "INT-007",
+      "INT-008",
+      "INT-009",
+      "INT-010",
+      "INT-011",
+      "INT-012",
+      "INT-013",
+      "INT-014",
+      "INT-015",
+      "INT-016",
+      "INT-017",
+      "INT-018",
+      "INT-019",
+      "INT-020",
+      "INT-021",
+      "INT-022",
+      "INT-023",
+      "INT-024",
+      "INT-025",
+      "INT-026",
+      "INT-027",
+      "INT-028",
+      "INT-029",
+      "INT-030",
+      "INT-031",
+      "INT-032",
+      "INT-033",
+      "INT-034",
+      "INT-035",
+      "INT-036",
+      "INT-037",
+      "INT-038",
+      "INT-039",
+      "INT-040",
+      "INT-041",
+      "INT-042",
+      "INT-043",
+      "INT-044",
+      "INT-045",
+      "INT-046",
+      "INT-047",
+      "INT-048",
+      "INT-049",
+      "INT-050",
+      "INT-051",
+      "INT-052",
+      "INT-053",
+      "INT-054",
+      "INT-055",
+      "INT-056",
+      "INT-057",
+      "INT-058",
+      "INT-059",
+      "INT-060",
+      "INT-061",
+      "INT-062",
+      "INT-063",
+      "INT-064",
+      "INT-065",
+      "INT-066",
+      "INT-067",
+      "INT-068",
+      "INT-069",
+      "INT-070",
+      "INT-071",
+      "INT-072",
+      "INT-073",
+      "INT-074",
+      "INT-075",
+      "INT-076",
+      "INT-077",
+      "INT-078",
+      "INT-079",
+      "INT-080",
+      "INT-081",
+      "INT-082",
+      "INT-083",
+      "INT-084",
+      "INT-085",
+      "INT-086",
+      "INT-087",
+      "INT-088",
+      "INT-089",
+      "INT-090",
+      "INT-091",
+      "INT-092",
+      "INT-093",
+      "INT-094",
+      "INT-095",
+      "INT-096",
+      "INT-097",
+      "INT-098",
+      "INT-099",
+      "INT-100",
+      "INT-101",
+      "INT-102",
+      "INT-103",
+      "INT-104",
+      "INT-105",
+      "INT-106",
+      "INT-107",
+      "INT-108",
+      "INT-109",
+      "INT-110",
+      "INT-111",
+      "INT-112",
+      "INT-113",
+      "INT-114",
+      "INT-115",
+      "INT-116",
+      "INT-117",
+      "INT-118",
+      "INT-119",
+      "INT-120",
+      "INT-121",
+      "INT-122",
+      "INT-123",
+      "INT-124",
+      "INT-125",
+      "INT-126",
+      "INT-127",
+      "INT-128",
+      "INT-129",
+      "INT-130",
+      "INT-131",
+      "INT-132",
+      "INT-133",
+      "INT-134",
+      "INT-135",
+      "INT-136",
+      "INT-137",
+      "INT-138",
+      "INT-139",
+      "INT-140",
+      "INT-141",
+      "INT-142",
+      "INT-143",
+      "INT-144",
+      "INT-145",
+      "INT-146",
+      "INT-147",
+      "INT-148",
+      "INT-149",
+      "INT-150",
+      "INT-151",
+      "INT-152",
+      "INT-153",
+      "INT-154",
+      "INT-155",
+      "INT-156",
+      "INT-157",
+      "INT-158",
+      "INT-159",
+      "INT-160",
+      "INT-161",
+      "INT-162",
+      "INT-163",
+      "INT-164",
+      "INT-165",
+      "INT-166",
+      "INT-167",
+      "INT-168",
+      "INT-169",
+      "INT-170",
+      "INT-171",
+      "INT-172",
+      "INT-173",
+      "INT-174",
+      "INT-175",
+      "INT-176",
+      "INT-177",
+      "INT-178",
+      "INT-179",
+      "INT-180",
+      "INT-181",
+      "INT-182",
+      "INT-183",
+      "INT-184",
+      "INT-185",
+      "INT-186",
+      "INT-187",
+      "INT-188",
+      "INT-189",
+      "INT-190",
+      "INT-191",
+      "INT-192",
+      "INT-193",
+      "INT-194",
+      "INT-195",
+      "INT-196",
+      "INT-197",
+      "INT-198",
+      "INT-199",
+      "INT-200"
+    ],
+    "base_url": "http://localhost:8080",
+    "mode": "RECOGNITION_ONLY",
+    "capabilities": {
+      "contractVersion": 1,
+      "mode": "RECOGNITION_ONLY",
+      "businessExecution": false,
+      "contextMode": "EXPLICIT_FIXTURE",
+      "provider": "DASHSCOPE",
+      "masterModel": "qwen3.8-flash",
+      "mock": false,
+      "ragEnabled": true,
+      "implementationSha256": "1a616967b8cf284e646e101772445e3019e7bb97dc781352da4b7113ccff0738"
+    },
+    "provided_fixture_names": [
+      "DISPUTE_A",
+      "DISPUTE_B",
+      "ITEM_A",
+      "ITEM_B",
+      "ORDER_A",
+      "ORDER_B"
+    ],
+    "timeout_seconds": 120
+  },
+  "finished_at": "2026-10-20T16:23:32.016010+00:00",
+  "selected": 200,
+  "evaluated": 193,
+  "exact_matches": 185,
+  "accuracy_on_evaluated": 0.958549,
+  "coverage": 0.965,
+  "matches_over_selected": 0.925,
+  "status_counts": {
+    "EVALUATED": 193,
+    "ERROR": 7
+  },
+  "error_groups": {
+    "422 AGENT_OUTPUT_INVALID: 重写问题包含无依据业务编号": 2,
+    "422 AGENT_OUTPUT_INVALID: 业务编号没有原句或活跃实体依据：itemId": 2,
+    "422 AGENT_OUTPUT_INVALID: 意图结构不正确": 2,
+    "422 AGENT_OUTPUT_INVALID: 数据格式不正确": 1
+  },
+  "by_difficulty": {
+    "easy": {
+      "selected": 40,
+      "evaluated": 40,
+      "exact_matches": 39,
+      "accuracy_on_evaluated": 0.975,
+      "coverage": 1.0,
+      "matches_over_selected": 0.975
+    },
+    "medium": {
+      "selected": 80,
+      "evaluated": 78,
+      "exact_matches": 78,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 0.975,
+      "matches_over_selected": 0.975
+    },
+    "hard": {
+      "selected": 80,
+      "evaluated": 75,
+      "exact_matches": 68,
+      "accuracy_on_evaluated": 0.906667,
+      "coverage": 0.9375,
+      "matches_over_selected": 0.85
+    }
+  },
+  "by_source": {
+    "CONTEXT_RESUME": {
+      "selected": 4,
+      "evaluated": 4,
+      "exact_matches": 4,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "ESCALATION_RULE": {
+      "selected": 15,
+      "evaluated": 15,
+      "exact_matches": 9,
+      "accuracy_on_evaluated": 0.6,
+      "coverage": 1.0,
+      "matches_over_selected": 0.6
+    },
+    "L1_RULE": {
+      "selected": 14,
+      "evaluated": 14,
+      "exact_matches": 14,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "L2_RAG": {
+      "selected": 13,
+      "evaluated": 13,
+      "exact_matches": 12,
+      "accuracy_on_evaluated": 0.923077,
+      "coverage": 1.0,
+      "matches_over_selected": 0.923077
+    },
+    "L3_LLM": {
+      "selected": 147,
+      "evaluated": 147,
+      "exact_matches": 146,
+      "accuracy_on_evaluated": 0.993197,
+      "coverage": 1.0,
+      "matches_over_selected": 0.993197
+    }
+  },
+  "by_tag": {
+    "account_boundary": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "account_rule": {
+      "selected": 7,
+      "evaluated": 7,
+      "exact_matches": 6,
+      "accuracy_on_evaluated": 0.857143,
+      "coverage": 1.0,
+      "matches_over_selected": 0.857143
+    },
+    "after_sale_rule": {
+      "selected": 6,
+      "evaluated": 6,
+      "exact_matches": 6,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "ambiguous": {
+      "selected": 2,
+      "evaluated": 2,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 0.5,
+      "coverage": 1.0,
+      "matches_over_selected": 0.5
+    },
+    "combined": {
+      "selected": 5,
+      "evaluated": 4,
+      "exact_matches": 4,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 0.8,
+      "matches_over_selected": 0.8
+    },
+    "comparison": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "complaint": {
+      "selected": 5,
+      "evaluated": 5,
+      "exact_matches": 5,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "conditional": {
+      "selected": 6,
+      "evaluated": 6,
+      "exact_matches": 6,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "conditional_dependency": {
+      "selected": 2,
+      "evaluated": 2,
+      "exact_matches": 2,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "context": {
+      "selected": 30,
+      "evaluated": 28,
+      "exact_matches": 28,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 0.933333,
+      "matches_over_selected": 0.933333
+    },
+    "contrast": {
+      "selected": 16,
+      "evaluated": 14,
+      "exact_matches": 14,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 0.875,
+      "matches_over_selected": 0.875
+    },
+    "cross_entity": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "dependent": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "dispute": {
+      "selected": 6,
+      "evaluated": 6,
+      "exact_matches": 6,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "dispute_boundary": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "escalation": {
+      "selected": 8,
+      "evaluated": 8,
+      "exact_matches": 8,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "escalation_boundary": {
+      "selected": 4,
+      "evaluated": 4,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 0.25,
+      "coverage": 1.0,
+      "matches_over_selected": 0.25
+    },
+    "escalation_priority": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "greeting": {
+      "selected": 4,
+      "evaluated": 4,
+      "exact_matches": 4,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "high_risk": {
+      "selected": 2,
+      "evaluated": 2,
+      "exact_matches": 2,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "identity": {
+      "selected": 5,
+      "evaluated": 5,
+      "exact_matches": 5,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "implicit": {
+      "selected": 2,
+      "evaluated": 2,
+      "exact_matches": 2,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "independent": {
+      "selected": 7,
+      "evaluated": 7,
+      "exact_matches": 7,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "injection": {
+      "selected": 5,
+      "evaluated": 5,
+      "exact_matches": 5,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "keyword_trap": {
+      "selected": 4,
+      "evaluated": 4,
+      "exact_matches": 2,
+      "accuracy_on_evaluated": 0.5,
+      "coverage": 1.0,
+      "matches_over_selected": 0.5
+    },
+    "memory_delete": {
+      "selected": 4,
+      "evaluated": 4,
+      "exact_matches": 4,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "memory_read": {
+      "selected": 6,
+      "evaluated": 6,
+      "exact_matches": 6,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "missing_slot": {
+      "selected": 5,
+      "evaluated": 5,
+      "exact_matches": 5,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "mixed_priority": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "multi_intent": {
+      "selected": 30,
+      "evaluated": 28,
+      "exact_matches": 28,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 0.933333,
+      "matches_over_selected": 0.933333
+    },
+    "multi_turn": {
+      "selected": 30,
+      "evaluated": 28,
+      "exact_matches": 28,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 0.933333,
+      "matches_over_selected": 0.933333
+    },
+    "near_intents": {
+      "selected": 5,
+      "evaluated": 4,
+      "exact_matches": 4,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 0.8,
+      "matches_over_selected": 0.8
+    },
+    "negation": {
+      "selected": 14,
+      "evaluated": 14,
+      "exact_matches": 11,
+      "accuracy_on_evaluated": 0.785714,
+      "coverage": 1.0,
+      "matches_over_selected": 0.785714
+    },
+    "noise": {
+      "selected": 5,
+      "evaluated": 5,
+      "exact_matches": 5,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "order_list": {
+      "selected": 6,
+      "evaluated": 6,
+      "exact_matches": 6,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "order_status": {
+      "selected": 9,
+      "evaluated": 9,
+      "exact_matches": 9,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "out_of_domain": {
+      "selected": 10,
+      "evaluated": 10,
+      "exact_matches": 8,
+      "accuracy_on_evaluated": 0.8,
+      "coverage": 1.0,
+      "matches_over_selected": 0.8
+    },
+    "paraphrase": {
+      "selected": 27,
+      "evaluated": 27,
+      "exact_matches": 27,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "platform_rule": {
+      "selected": 8,
+      "evaluated": 8,
+      "exact_matches": 7,
+      "accuracy_on_evaluated": 0.875,
+      "coverage": 1.0,
+      "matches_over_selected": 0.875
+    },
+    "product": {
+      "selected": 7,
+      "evaluated": 7,
+      "exact_matches": 7,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "product_boundary": {
+      "selected": 1,
+      "evaluated": 0,
+      "exact_matches": 0,
+      "accuracy_on_evaluated": null,
+      "coverage": 0.0,
+      "matches_over_selected": 0.0
+    },
+    "purchase_limit": {
+      "selected": 7,
+      "evaluated": 6,
+      "exact_matches": 6,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 0.857143,
+      "matches_over_selected": 0.857143
+    },
+    "purchase_limit_boundary": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "purchase_process": {
+      "selected": 6,
+      "evaluated": 6,
+      "exact_matches": 6,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "quotation": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 0,
+      "accuracy_on_evaluated": 0.0,
+      "coverage": 1.0,
+      "matches_over_selected": 0.0
+    },
+    "repeated_intent": {
+      "selected": 5,
+      "evaluated": 5,
+      "exact_matches": 5,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "same_entity": {
+      "selected": 1,
+      "evaluated": 0,
+      "exact_matches": 0,
+      "accuracy_on_evaluated": null,
+      "coverage": 0.0,
+      "matches_over_selected": 0.0
+    },
+    "settlement_fact": {
+      "selected": 7,
+      "evaluated": 7,
+      "exact_matches": 7,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "settlement_rule": {
+      "selected": 7,
+      "evaluated": 7,
+      "exact_matches": 7,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "timeline": {
+      "selected": 7,
+      "evaluated": 6,
+      "exact_matches": 6,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 0.857143,
+      "matches_over_selected": 0.857143
+    },
+    "typo": {
+      "selected": 2,
+      "evaluated": 2,
+      "exact_matches": 2,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "unrelated_entities": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "withdraw_boundary": {
+      "selected": 1,
+      "evaluated": 1,
+      "exact_matches": 1,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    },
+    "withdraw_rule": {
+      "selected": 7,
+      "evaluated": 7,
+      "exact_matches": 7,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 1.0,
+      "matches_over_selected": 1.0
+    }
+  },
+  "by_context_mode": {
+    "single_turn": {
+      "selected": 170,
+      "evaluated": 165,
+      "exact_matches": 157,
+      "accuracy_on_evaluated": 0.951515,
+      "coverage": 0.970588,
+      "matches_over_selected": 0.923529
+    },
+    "context_fixture": {
+      "selected": 30,
+      "evaluated": 28,
+      "exact_matches": 28,
+      "accuracy_on_evaluated": 1.0,
+      "coverage": 0.933333,
+      "matches_over_selected": 0.933333
+    }
+  },
+  "per_intent_on_evaluated": {
+    "ACCOUNT_RULE": {
+      "support": 9,
+      "predicted": 8,
+      "tp": 8,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "recall": 0.888889,
+      "f1": 0.941176
+    },
+    "AFTER_SALE_GUIDE": {
+      "support": 11,
+      "predicted": 10,
+      "tp": 10,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "recall": 0.909091,
+      "f1": 0.952381
+    },
+    "AFTER_SALE_PROGRESS": {
+      "support": 14,
+      "predicted": 14,
+      "tp": 14,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "AFTER_SALE_STATUS_COMBINED": {
+      "support": 5,
+      "predicted": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "BOT_IDENTITY": {
+      "support": 5,
+      "predicted": 5,
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "COMPLAINT": {
+      "support": 4,
+      "predicted": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "GREETING": {
+      "support": 4,
+      "predicted": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "HUMAN_HELP": {
+      "support": 9,
+      "predicted": 15,
+      "tp": 9,
+      "fp": 6,
+      "fn": 0,
+      "precision": 0.6,
+      "recall": 1.0,
+      "f1": 0.75
+    },
+    "MEMORY_FORGET": {
+      "support": 4,
+      "predicted": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "MEMORY_QUERY": {
+      "support": 6,
+      "predicted": 6,
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "ORDER_SEARCH": {
+      "support": 12,
+      "predicted": 12,
+      "tp": 12,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "ORDER_STATUS": {
+      "support": 27,
+      "predicted": 26,
+      "tp": 25,
+      "fp": 1,
+      "fn": 2,
+      "precision": 0.961538,
+      "recall": 0.925926,
+      "f1": 0.943396
+    },
+    "ORDER_TIMELINE": {
+      "support": 13,
+      "predicted": 13,
+      "tp": 13,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "OTHER": {
+      "support": 12,
+      "predicted": 9,
+      "tp": 9,
+      "fp": 0,
+      "fn": 3,
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1": 0.857143
+    },
+    "PLATFORM_RULE": {
+      "support": 13,
+      "predicted": 12,
+      "tp": 12,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "recall": 0.923077,
+      "f1": 0.96
+    },
+    "PRE_SALE_LIMIT": {
+      "support": 11,
+      "predicted": 11,
+      "tp": 11,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "PRE_SALE_PROCESS": {
+      "support": 8,
+      "predicted": 8,
+      "tp": 8,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "PRE_SALE_PRODUCT": {
+      "support": 14,
+      "predicted": 14,
+      "tp": 14,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "SETTLEMENT": {
+      "support": 17,
+      "predicted": 17,
+      "tp": 17,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "SETTLEMENT_RULE": {
+      "support": 10,
+      "predicted": 11,
+      "tp": 10,
+      "fp": 1,
+      "fn": 0,
+      "precision": 0.909091,
+      "recall": 1.0,
+      "f1": 0.952381
+    },
+    "WITHDRAW_RULE": {
+      "support": 16,
+      "predicted": 16,
+      "tp": 16,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    }
+  },
+  "micro_precision": 0.964286,
+  "micro_recall": 0.964286,
+  "micro_f1": 0.964286,
+  "macro_f1": 0.969356,
+  "slot_match": {
+    "scored": 78,
+    "matched": 68,
+    "accuracy": 0.871795
+  },
+  "source_match": {
+    "scored": 11,
+    "matched": 11,
+    "accuracy": 1.0
+  },
+  "fallback_reasons": {
+    "INTENT_LOW_SCORE_OR_MARGIN": 104,
+    "CONTEXT_MULTI_INTENT_OR_ESCALATION": 43
+  },
+  "recognition_releases": [
+    {
+      "embeddingModel": "qwen3.7-text-embedding",
+      "manifestHash": "a998a04c9316970ae628733ff414e5008fde0be3c8764d31b5c577498e167680",
+      "releaseNo": "IR958f898f29b64e319d7ce03a5de2bf07"
+    }
+  ],
+  "backend_configs": [
+    {
+      "masterModel": "qwen3.8-flash",
+      "mock": false,
+      "provider": "DASHSCOPE",
+      "ragEnabled": true
+    }
+  ],
+  "implementation_sha256": [
+    "1a616967b8cf284e646e101772445e3019e7bb97dc781352da4b7113ccff0738"
+  ],
+  "mock_detected": false,
+  "warnings": [
+    "存在跳过、异常或未执行；有效样本准确率不能代表完整选定集。",
+    "本次仅测意图识别与槽位解析；上下文由显式夹具提供，不代表完整客服业务链路成绩。"
+  ]
+}

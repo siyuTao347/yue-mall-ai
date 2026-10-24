@@ -7,24 +7,26 @@ spring:
   # 主数据源：MySQL db_agent（RAG 元数据权威源，MyBatis-Plus 使用）
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${AGENT_MYSQL_URL:jdbc:mysql://127.0.0.1:3306/db_agent?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai}
+    url: ${AGENT_MYSQL_URL:jdbc:mysql://100.121.74.115:3306/db_agent?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai}
     username: ${AGENT_MYSQL_USERNAME:root}
-    password: ${AGENT_MYSQL_PASSWORD:}
+    password: ${AGENT_MYSQL_PASSWORD:root}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
-      connection-timeout: 3000
+      connection-timeout: 5000
   data:
     redis:
-      host: ${REDIS_HOST:127.0.0.1}
+      host: ${REDIS_HOST:100.121.74.115}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      connect-timeout: 200ms
-      timeout: 200ms
+      password: ${REDIS_PASSWORD:tsy347}
+      connect-timeout: 2000ms
+      timeout: 2000ms
   cloud:
     nacos:
       discovery:
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
@@ -36,9 +38,9 @@ rag:
   pgvector:
     datasource:
       driver-class-name: org.postgresql.Driver
-      jdbc-url: jdbc:postgresql://${AGENT_PGVECTOR_HOST:127.0.0.1}:${AGENT_PGVECTOR_PORT:5432}/${AGENT_PGVECTOR_DATABASE:postgres}?ApplicationName=mall-agent-rag&connectTimeout=3&socketTimeout=10
+      jdbc-url: jdbc:postgresql://${AGENT_PGVECTOR_HOST:100.121.74.115}:${AGENT_PGVECTOR_PORT:5432}/${AGENT_PGVECTOR_DATABASE:postgres}?ApplicationName=mall-agent-rag&connectTimeout=3&socketTimeout=10
       username: ${AGENT_PGVECTOR_USERNAME:root}
-      password: ${PGVECTOR_PASSWORD:}
+      password: ${PGVECTOR_PASSWORD:root}
       maximum-pool-size: 8
       minimum-idle: 2
       connection-timeout: 10000
@@ -53,7 +55,7 @@ rag:
     provider: ${RAG_EMBEDDING_PROVIDER:OPENAI_COMPATIBLE}     # MOCK | OPENAI_COMPATIBLE
     model: ${RAG_EMBEDDING_MODEL:qwen3.7-text-embedding}
     dim: ${RAG_EMBEDDING_DIM:1536}
-    batch-size: 32
+    batch-size: ${RAG_EMBEDDING_BATCH_SIZE:20}
     timeout-ms: 8000
     max-text-chars: 8000
     base-url: ${RAG_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
@@ -117,7 +119,7 @@ dubbo:
     service-discovery:
       migration: FORCE_INTERFACE
   registry:
-    address: ${DUBBO_REGISTRY_ADDRESS:nacos://127.0.0.1:8848}
+    address: ${DUBBO_REGISTRY_ADDRESS:nacos://100.121.74.115:8848/}
   protocol:
     name: dubbo
     port: -1

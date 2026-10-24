@@ -53,4 +53,66 @@ class CustomerMasterTest {
         assertEquals(1,output.path("intents").size());
         assertEquals("ORDER_STATUS",output.path("intents").get(0).path("code").asText());
     }
+
+    @Test void productSlotRepresentationsAreCanonicalizedWithoutMutatingModelOutput() {
+        String question="商品 ITEM-5842 的适用区服是什么？";
+        for(var value:java.util.List.of(TextNode.valueOf("ITEM-5842"),TextNode.valueOf("prod-5842"),
+                TextNode.valueOf(" 5842 "),IntNode.valueOf(5842))) {
+            var original=productOutput(question,value);
+            String before=write(original);
+            var normalized=CustomerMaster.normalizeModelSlots(original);
+            assertDoesNotThrow(()->CustomerMaster.validateModel(normalized,question));
+            assertEquals("5842",normalized.path("intents").get(0).path("slots").path("itemId").asText());
+            assertTrue(normalized.path("intents").get(0).path("slots").path("itemId").isTextual());
+            assertEquals(before,write(original));
+        }
+    }
+
+    @Test void productNormalizationNeverAcceptsInventedPartialOrUnrelatedNumbers() {
+        String question="商品 ITEM-5842 的适用区服是什么？";
+        for(var value:java.util.List.of(TextNode.valueOf("ITEM-9999"),TextNode.valueOf("584"),
+                TextNode.valueOf("null"),TextNode.valueOf("5842abc"),DoubleNode.valueOf(5842.0),
+                TextNode.valueOf(""),IntNode.valueOf(-5842))) {
+            var normalized=CustomerMaster.normalizeModelSlots(productOutput(question,value));
+            assertThrows(RuntimeException.class,()->CustomerMaster.validateModel(normalized,question));
+        }
+        String amount="如果账户余额有 5842 元，能全部提现吗？";
+        var ungrounded=CustomerMaster.normalizeModelSlots(productOutput(amount,IntNode.valueOf(5842)));
+        assertThrows(RuntimeException.class,()->CustomerMaster.validateModel(ungrounded,amount));
+        String longer="商品 ITEM-58420 有货吗？";
+        var partial=CustomerMaster.normalizeModelSlots(productOutput(longer,TextNode.valueOf("ITEM-5842")));
+        assertThrows(RuntimeException.class,()->CustomerMaster.validateModel(partial,longer));
+    }
+
+    @Test void productContextMustBeRecentAndNullIsValidForGeneralQuestions() {
+        String question="这个还有库存吗？";
+        var output=CustomerMaster.normalizeModelSlots(productOutput(question,TextNode.valueOf("ITEM-5842")));
+        var context=object().put("turnNo",4).put("activeFocusTurn",3);
+        context.set("activeFocus",object().put("itemId","5842"));
+        assertDoesNotThrow(()->CustomerMaster.validateModel(output,question,context));
+        context.put("turnNo",7);
+        assertThrows(RuntimeException.class,()->CustomerMaster.validateModel(output,question,context));
+        String general="账户余额提现最低需要多少金额？";
+        var noItem=productOutput(general,NullNode.getInstance());
+        ((ObjectNode)noItem.path("intents").get(0)).put("code","WITHDRAW_RULE");
+        assertDoesNotThrow(()->CustomerMaster.validateModel(CustomerMaster.normalizeModelSlots(noItem),general));
+    }
+
+    @Test void masterPromptCoversRuntimeCatalogAndDefinesCanonicalProductSlots() {
+        String prompt=new CustomerPromptRegistry().render("master-planner-v3",java.util.Map.of(
+            "maxIntents",2,"rollingSummary","","activeEntitiesJson","{}","pendingIntentsJson","[]",
+            "recentMessagesJson","[]","userQuestion","商品查询"));
+        for(String code:IntentCatalog.ROUTES.keySet())assertTrue(prompt.contains(code),code);
+        assertTrue(prompt.contains("不保留 ITEM-/PROD- 前缀"));
+        assertTrue(prompt.contains("JSON null"));
+    }
+
+    private static ObjectNode productOutput(String question,com.fasterxml.jackson.databind.JsonNode value) {
+        var slots=object().putNull("orderNo").putNull("disputeNo");
+        slots.set("itemId",value);
+        var intent=object().put("code","PRE_SALE_PRODUCT").put("confidence",.95)
+            .put("questionFragment",question).put("rewrittenQuestion",question);
+        intent.set("slots",slots);
+        return object().set("intents",array().add(intent));
+    }
 }

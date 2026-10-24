@@ -18,8 +18,9 @@ public class EmbeddingClientConfig {
     public EmbeddingClient embeddingClient(RagProperties ragProperties, ObjectMapper objectMapper) {
         RagProperties.Embedding embedding = ragProperties.getEmbedding();
         if ("OPENAI_COMPATIBLE".equalsIgnoreCase(embedding.getProvider())) {
-            if (embedding.getBaseUrl() == null || embedding.getBaseUrl().isBlank()) {
-                log.warn("[RAG] provider=OPENAI_COMPATIBLE 但 rag.embedding.base-url 为空，降级为 Mock 向量");
+            if (embedding.getBaseUrl() == null || embedding.getBaseUrl().isBlank()
+                    || embedding.getApiKey() == null || embedding.getApiKey().isBlank()) {
+                log.warn("[RAG] provider=OPENAI_COMPATIBLE 但未配置 base-url 或 api-key，降级为 Mock 向量");
             } else {
                 log.info("[RAG] 使用 OpenAI 兼容 Embedding: model={}, dim={}, baseUrl={}",
                         embedding.getModel(), embedding.getDim(), embedding.getBaseUrl());

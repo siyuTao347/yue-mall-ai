@@ -20,6 +20,7 @@ import com.example.item.service.TradeOrchestrationService;
 import com.example.item.service.TradeStatusLogService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -54,7 +55,7 @@ public class PaymentConfirmationService {
             PaymentFinancialEventMapper financialEventMapper,
             PaymentRefundOrderMapper refundOrderMapper,
             PaymentStrategyRegistry strategyRegistry,
-            TradeOrchestrationService orchestrationService,
+            @Lazy TradeOrchestrationService orchestrationService,
             TradeStatusLogService statusLogService,
             TransactionTemplate transactionTemplate
     ) {

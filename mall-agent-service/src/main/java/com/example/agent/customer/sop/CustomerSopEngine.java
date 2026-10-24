@@ -30,7 +30,7 @@ public class CustomerSopEngine {
     private final RichMessageAssembler cardAssembler;
     private final CustomerConversationService conversationService;
 
-    @DubboReference(timeout = 5000, retries = 0, check = false, url = "${DUBBO_ORDER_SERVICE_URL:dubbo://127.0.0.1:20880}")
+    @DubboReference(timeout = 5000, retries = 0, check = false, url = "${DUBBO_ORDER_SERVICE_URL:}")
     private CustomerAfterSaleCommandDubboService afterSaleCommandService;
 
     public CustomerSopEngine(CustomerDatabase db,

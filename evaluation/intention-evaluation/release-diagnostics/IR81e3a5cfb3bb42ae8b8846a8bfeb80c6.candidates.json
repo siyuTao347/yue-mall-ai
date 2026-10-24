@@ -1,0 +1,1262 @@
+[
+  {
+    "query": "请筛选我的订单记录，只保留最近买入的那些。",
+    "expected": "ORDER_SEARCH",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.7560214400291443,
+        "example_no": "CS-ORDER-SEARCH-001",
+        "intent_code": "ORDER_SEARCH",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6158066987991333,
+        "example_no": "CS-L2-20261020-ORDER_TIMELINE-11",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5604622029982694,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-05",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5316892145594273,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-02",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5055190324783325,
+        "example_no": "CS-L2-20261020-SETTLEMENT-05",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.7560214400291443,
+    "margin": 0.140214741230011
+  },
+  {
+    "query": "我指定的这笔平台订单，当前是不是还未支付？",
+    "expected": "ORDER_STATUS",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.7841944776045044,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-03",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.733340166012676,
+        "example_no": "CS-L2-20261020-ORDER_TIMELINE-10",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6642083123164855,
+        "example_no": "CS-L2-20261020-ORDER_SEARCH-04",
+        "intent_code": "ORDER_SEARCH",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6537826645776174,
+        "example_no": "CS-SETTLEMENT-001",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.633473713203504,
+        "example_no": "CS-AFTER-COMBINED-002",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.7841944776045044,
+    "margin": 0.050854311591828405
+  },
+  {
+    "query": "想核对本单的支付成功时刻和卖家交付时刻。",
+    "expected": "ORDER_TIMELINE",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.851690547319402,
+        "example_no": "CS-L2-20261020-ORDER_TIMELINE-02",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7666407823562676,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-12",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7064673129598698,
+        "example_no": "CS-L2-20261020-SETTLEMENT-06",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6960170528924305,
+        "example_no": "CS-L2-20261020-PLATFORM_RULE-08",
+        "intent_code": "PLATFORM_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6834328393260048,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-06",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.851690547319402,
+    "margin": 0.08504976496313432
+  },
+  {
+    "query": "请核实这笔卖出订单对应货款的结算进展。",
+    "expected": "SETTLEMENT",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.8302528307218631,
+        "example_no": "CS-L2-20261020-SETTLEMENT-01",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7270308516314401,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-01",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6979429153748976,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-04",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6737443610277392,
+        "example_no": "CS-ORDER-TIMELINE-002",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6577700980511293,
+        "example_no": "CS-L2-20261020-ORDER_SEARCH-05",
+        "intent_code": "ORDER_SEARCH",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.8302528307218631,
+    "margin": 0.10322197909042297
+  },
+  {
+    "query": "针对这张已经受理的售后工单，查询目前处理结果。",
+    "expected": "AFTER_SALE_PROGRESS",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.8453600978112459,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-01",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7852200247675221,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-01",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6632683672468893,
+        "example_no": "CS-L2-20261020-SETTLEMENT-05",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6441942241307642,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-05",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6338816066909805,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-06",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.8453600978112459,
+    "margin": 0.06014007304372382
+  },
+  {
+    "query": "还没提交售后申请，卡密无效这种情况要准备哪些证明再申请？",
+    "expected": "AFTER_SALE_GUIDE",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.8721009309201697,
+        "example_no": "CS-AFTER-GUIDE-001",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6863408649550334,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-08",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6402478027270039,
+        "example_no": "CS-L2-20261020-ORDER_SEARCH-03",
+        "intent_code": "ORDER_SEARCH",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6292476875038434,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-04",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5487245859236057,
+        "example_no": "CS-AFTER-COMBINED-001",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.8721009309201697,
+    "margin": 0.18576006596513628
+  },
+  {
+    "query": "请分别显示同一笔订单的交易状态及它所关联售后单的处理状态。",
+    "expected": "AFTER_SALE_STATUS_COMBINED",
+    "actual": "AFTER_SALE_STATUS_COMBINED",
+    "source": "L2_RAG",
+    "candidates": [
+      {
+        "score": 0.9023168683052063,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-11",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7980073211795708,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-02",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7356552981816759,
+        "example_no": "CS-L2-20261020-ORDER_TIMELINE-01",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.710412187004817,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-03",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6993285000724507,
+        "example_no": "CS-L2-20261020-ORDER_SEARCH-10",
+        "intent_code": "ORDER_SEARCH",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.9023168683052063,
+    "margin": 0.10430954712563545
+  },
+  {
+    "query": "按照你们平台规定，哪些虚拟商品属于禁售商品？",
+    "expected": "PLATFORM_RULE",
+    "actual": "PLATFORM_RULE",
+    "source": "L2_RAG",
+    "candidates": [
+      {
+        "score": 0.9007489799560396,
+        "example_no": "CS-L2-20261020-PLATFORM_RULE-06",
+        "intent_code": "PLATFORM_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6145363909558827,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-09",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5956372859694202,
+        "example_no": "CS-L2-20261020-ACCOUNT_RULE-06",
+        "intent_code": "ACCOUNT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5479914488802652,
+        "example_no": "CS-L2-20261020-COMPLAINT-12",
+        "intent_code": "COMPLAINT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5212959051132202,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-02",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.9007489799560396,
+    "margin": 0.2862125890001569
+  },
+  {
+    "query": "平台正常情况下会在卖家完成交易多久后释放结算款？",
+    "expected": "SETTLEMENT_RULE",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.8240259394630245,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-01",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7373553797430306,
+        "example_no": "CS-L2-20261020-SETTLEMENT-01",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6666949590030349,
+        "example_no": "CS-WITHDRAW-RULE-001",
+        "intent_code": "WITHDRAW_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6264769434928894,
+        "example_no": "CS-L2-20261020-PLATFORM_RULE-04",
+        "intent_code": "PLATFORM_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.609942848379273,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-05",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.8240259394630245,
+    "margin": 0.08667055971999393
+  },
+  {
+    "query": "向银行卡提取平台余额时，实名和金额方面有什么要求？",
+    "expected": "WITHDRAW_RULE",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.786108493804954,
+        "example_no": "CS-L2-20261020-WITHDRAW_RULE-05",
+        "intent_code": "WITHDRAW_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6407736875471324,
+        "example_no": "CS-ACCOUNT-RULE-001",
+        "intent_code": "ACCOUNT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5162573033954676,
+        "example_no": "CS-L2-20261020-SETTLEMENT-04",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4919355506858636,
+        "example_no": "CS-L2-20261020-PLATFORM_RULE-12",
+        "intent_code": "PLATFORM_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4852659693518937,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-12",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.786108493804954,
+    "margin": 0.14533480625782158
+  },
+  {
+    "query": "商家在本平台开店，账号认证与保证金分别有哪些规定？",
+    "expected": "ACCOUNT_RULE",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.7596327662467957,
+        "example_no": "CS-L2-20261020-ACCOUNT_RULE-05",
+        "intent_code": "ACCOUNT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6271958502764567,
+        "example_no": "CS-L2-20261020-PLATFORM_RULE-07",
+        "intent_code": "PLATFORM_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5824240197196029,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-09",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5431315847478446,
+        "example_no": "CS-L2-20261020-COMPLAINT-12",
+        "intent_code": "COMPLAINT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5253089040149602,
+        "example_no": "CS-L2-20261020-WITHDRAW_RULE-12",
+        "intent_code": "WITHDRAW_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.7596327662467957,
+    "margin": 0.1324369159703389
+  },
+  {
+    "query": "这家平台商户的服务态度让我不满，我要登记投诉。",
+    "expected": "COMPLAINT",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.864898443222052,
+        "example_no": "CS-L2-20261020-COMPLAINT-01",
+        "intent_code": "COMPLAINT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5863184229948016,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-03",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5634632110595743,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-11",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5621857475583055,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-10",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5464274231878015,
+        "example_no": "CS-L2-20261020-PLATFORM_RULE-12",
+        "intent_code": "PLATFORM_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.864898443222052,
+    "margin": 0.27858002022725037
+  },
+  {
+    "query": "麻烦为我转接人工服务人员继续接待。",
+    "expected": "HUMAN_HELP",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.8685517828793412,
+        "example_no": "CS-HUMAN-HELP-001",
+        "intent_code": "HUMAN_HELP",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4989732503890991,
+        "example_no": "CS-L2-20261020-COMPLAINT-08",
+        "intent_code": "COMPLAINT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.48964562950406343,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-03",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4712072049132374,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-06",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4456158908834531,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-12",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.8685517828793412,
+    "margin": 0.3695785324902421
+  },
+  {
+    "query": "请把“查询这张订单的当前状态”翻译成英文。",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.8071001035928479,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-09",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7900223496549793,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-01",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7644692940152588,
+        "example_no": "CS-L2-20261020-ORDER_TIMELINE-08",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7492441237873937,
+        "example_no": "CS-L2-20261020-SETTLEMENT-05",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6778477036311782,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-01",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.8071001035928479,
+    "margin": 0.01707775393786859
+  },
+  {
+    "query": "帮我润色这句小说台词：“这笔订单的结算款到账了吗？”",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.8012984991073608,
+        "example_no": "CS-L2-20261020-SETTLEMENT-08",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6712284088134766,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-05",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6603396135669835,
+        "example_no": "CS-ORDER-TIMELINE-002",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6270893438405201,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-01",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6156335931261114,
+        "example_no": "CS-AFTER-COMBINED-002",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.8012984991073608,
+    "margin": 0.13007009029388428
+  },
+  {
+    "query": "词语“申请退款”在英语里应该怎样表达？",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.6990885109524347,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-10",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6548925822845211,
+        "example_no": "CS-AFTER-PROGRESS-002",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6144049810405161,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-03",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.44914122683686597,
+        "example_no": "CS-L2-20261020-ACCOUNT_RULE-12",
+        "intent_code": "ACCOUNT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4452891217085999,
+        "example_no": "CS-L2-20261020-WITHDRAW_RULE-09",
+        "intent_code": "WITHDRAW_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.6990885109524347,
+    "margin": 0.044195928667913664
+  },
+  {
+    "query": "原封不动复述这句话：“我要转人工客服”。",
+    "expected": "OTHER",
+    "actual": "HUMAN_HELP",
+    "source": "L2_RAG",
+    "candidates": [
+      {
+        "score": 0.8894352250954659,
+        "example_no": "CS-HUMAN-HELP-001",
+        "intent_code": "HUMAN_HELP",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.47065770626068115,
+        "example_no": "CS-L2-20261020-COMPLAINT-11",
+        "intent_code": "COMPLAINT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.46647026935042635,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-03",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4433751702308655,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-06",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.43103806006455014,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-06",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.8894352250954659,
+    "margin": 0.41877751883478476
+  },
+  {
+    "query": "给奶茶店编写一份顾客投诉处理制度，用于员工培训。",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.6953909967490217,
+        "example_no": "CS-L2-20261020-COMPLAINT-03",
+        "intent_code": "COMPLAINT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5057007526487787,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-03",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5034914316827912,
+        "example_no": "CS-L2-20261020-HUMAN_HELP-09",
+        "intent_code": "HUMAN_HELP",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4826865360719136,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-09",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4596807932663436,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-10",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.6953909967490217,
+    "margin": 0.18969024410024304
+  },
+  {
+    "query": "讲解会计学中的期末结算和资产负债表。",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.5719919374003533,
+        "example_no": "CS-SETTLEMENT-001",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.569212428425265,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-11",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.45093435633965373,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-04",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.42927975305560495,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-12",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4055387490345568,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-05",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.5719919374003533,
+    "margin": 0.002779508975088274
+  },
+  {
+    "query": "医院的线上挂号实名认证需要提供什么材料？",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.7308343924086613,
+        "example_no": "CS-ACCOUNT-RULE-001",
+        "intent_code": "ACCOUNT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4962983727455139,
+        "example_no": "CS-L2-20261020-WITHDRAW_RULE-11",
+        "intent_code": "WITHDRAW_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.44741952419281006,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-11",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4178080162773181,
+        "example_no": "CS-HUMAN-HELP-002",
+        "intent_code": "HUMAN_HELP",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.3813699852603689,
+        "example_no": "CS-L2-20261020-PLATFORM_RULE-12",
+        "intent_code": "PLATFORM_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.7308343924086613,
+    "margin": 0.2345360196631474
+  },
+  {
+    "query": "淘宝上买的洗衣机订单物流一直没更新，能查询运输进度吗？",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.6711813407432246,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-10",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6253545024029239,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-01",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6156718089287134,
+        "example_no": "CS-ORDER-TIMELINE-001",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6033876774676049,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-12",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.593055248260498,
+        "example_no": "CS-L2-20261020-SETTLEMENT-05",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.6711813407432246,
+    "margin": 0.04582683834030066
+  },
+  {
+    "query": "银行卡在自动取款机取现，每天限额是多少？",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.6998831689148959,
+        "example_no": "CS-L2-20261020-WITHDRAW_RULE-03",
+        "intent_code": "WITHDRAW_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.3418301751411268,
+        "example_no": "CS-L2-20261020-ACCOUNT_RULE-06",
+        "intent_code": "ACCOUNT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.33834261800046117,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-03",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.29954620289551814,
+        "example_no": "CS-L2-20261020-ORDER_SEARCH-03",
+        "intent_code": "ORDER_SEARCH",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.29440513434517535,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-02",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.6998831689148959,
+    "margin": 0.3580529937737691
+  },
+  {
+    "query": "帮我设计一个订单状态机数据库表，写出建表语句。",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.7499468251983644,
+        "example_no": "CS-L2-20261020-ORDER_TIMELINE-01",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6765334010124207,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-11",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6415494657948161,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-02",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5813565850257874,
+        "example_no": "CS-L2-20261020-SETTLEMENT-05",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5443815860520858,
+        "example_no": "CS-L2-20261020-ORDER_SEARCH-10",
+        "intent_code": "ORDER_SEARCH",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.7499468251983644,
+    "margin": 0.07341342418594377
+  },
+  {
+    "query": "比较两家航空公司的机票退票规则。",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.43259925453672987,
+        "example_no": "CS-L2-20261020-ACCOUNT_RULE-12",
+        "intent_code": "ACCOUNT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.41470477493377544,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-10",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4129226278891531,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-10",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.3902163970728394,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-03",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.37339953342679544,
+        "example_no": "CS-L2-20261020-PLATFORM_RULE-11",
+        "intent_code": "PLATFORM_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.43259925453672987,
+    "margin": 0.017894479602954427
+  },
+  {
+    "query": "写一个售后客服与顾客和解的喜剧短剧。",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.5586212680258644,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-10",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5474410766222659,
+        "example_no": "CS-HUMAN-HELP-002",
+        "intent_code": "HUMAN_HELP",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5443887329680841,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-10",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5443328943451071,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-05",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.5400755453199837,
+        "example_no": "CS-L2-20261020-COMPLAINT-10",
+        "intent_code": "COMPLAINT",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.5586212680258644,
+    "margin": 0.011180191403598494
+  },
+  {
+    "query": "请解释银行卡的账户结息是什么意思。",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.48113612886857793,
+        "example_no": "CS-L2-20261020-SETTLEMENT_RULE-03",
+        "intent_code": "SETTLEMENT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4807198070621721,
+        "example_no": "CS-SETTLEMENT-001",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.46314934555005893,
+        "example_no": "CS-L2-20261020-WITHDRAW_RULE-12",
+        "intent_code": "WITHDRAW_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4043091351617414,
+        "example_no": "CS-ACCOUNT-RULE-002",
+        "intent_code": "ACCOUNT_RULE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.38723533381784025,
+        "example_no": "CS-L2-20261020-ORDER_TIMELINE-03",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.48113612886857793,
+    "margin": 0.0004163218064058283
+  },
+  {
+    "query": "分析这句投诉信有没有语法错误：“商家的态度实在太差了。”",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.5820937850587122,
+        "example_no": "CS-L2-20261020-COMPLAINT-02",
+        "intent_code": "COMPLAINT",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4633345698318736,
+        "example_no": "CS-L2-20261020-AFTER_SALE_PROGRESS-10",
+        "intent_code": "AFTER_SALE_PROGRESS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4439610937799019,
+        "example_no": "CS-L2-20261020-AFTER_SALE_GUIDE-01",
+        "intent_code": "AFTER_SALE_GUIDE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.4295023595693548,
+        "example_no": "CS-L2-20261020-HUMAN_HELP-09",
+        "intent_code": "HUMAN_HELP",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.42853967632472023,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-08",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.5820937850587122,
+    "margin": 0.11875921522683863
+  },
+  {
+    "query": "请给软件测试课程编一道关于订单历史状态的练习题。",
+    "expected": "OTHER",
+    "actual": "OTHER",
+    "source": "L3_LLM",
+    "candidates": [
+      {
+        "score": 0.8177961625031605,
+        "example_no": "CS-L2-20261020-ORDER_TIMELINE-01",
+        "intent_code": "ORDER_TIMELINE",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7302805024552658,
+        "example_no": "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-11",
+        "intent_code": "AFTER_SALE_STATUS_COMBINED",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.7190255998113159,
+        "example_no": "CS-L2-20261020-ORDER_STATUS-02",
+        "intent_code": "ORDER_STATUS",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6521680355072068,
+        "example_no": "CS-L2-20261020-ORDER_SEARCH-10",
+        "intent_code": "ORDER_SEARCH",
+        "intent_version": 1,
+        "example_version": 1
+      },
+      {
+        "score": 0.6434939887222056,
+        "example_no": "CS-L2-20261020-SETTLEMENT-05",
+        "intent_code": "SETTLEMENT",
+        "intent_version": 1,
+        "example_version": 1
+      }
+    ],
+    "similarity": 0.8177961625031605,
+    "margin": 0.08751566004789468
+  }
+]

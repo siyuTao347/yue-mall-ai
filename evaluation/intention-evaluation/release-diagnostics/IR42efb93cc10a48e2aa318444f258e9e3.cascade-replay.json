@@ -1,0 +1,721 @@
+{
+  "evaluationMode" : "L2_THEN_L3",
+  "businessExecution" : false,
+  "includesL1AndEscalation" : false,
+  "classificationModel" : "qwen3.8-flash",
+  "mockL3" : false,
+  "totalCount" : 14,
+  "evaluatedCount" : 14,
+  "correctCount" : 14,
+  "errorCount" : 0,
+  "l2AcceptedCount" : 9,
+  "l2CorrectCount" : 9,
+  "l2WrongAcceptedCount" : 0,
+  "l3FallbackCount" : 5,
+  "l3CorrectCount" : 5,
+  "passed" : true,
+  "l2Coverage" : 0.6428571428571429,
+  "businessL2Coverage" : 0.6923076923076923,
+  "l2Precision" : 1.0,
+  "finalAccuracy" : 1.0,
+  "releaseNo" : "IR42efb93cc10a48e2aa318444f258e9e3",
+  "mode" : "READ_ONLY_REPLAY_WITH_LIVE_L3",
+  "releaseStateChanged" : false,
+  "evaluations" : [ {
+    "query" : "把我近期购买的全部订单列出来。",
+    "expected" : "ORDER_SEARCH",
+    "l2Actual" : "ORDER_SEARCH",
+    "l2Accepted" : true,
+    "source" : "L2_RAG",
+    "status" : "EVALUATED",
+    "similarity" : 0.9072066656104789,
+    "runnerUpScore" : 0.6780149128419313,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "candidates" : [ {
+      "score" : 0.9072066656104789,
+      "example_no" : "CS-ORDER-SEARCH-001",
+      "intent_code" : "ORDER_SEARCH",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6780149128419313,
+      "example_no" : "CS-L2-20261020-ORDER_TIMELINE-11",
+      "intent_code" : "ORDER_TIMELINE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6077323789756169,
+      "example_no" : "CS-ORDER-STATUS-001",
+      "intent_code" : "ORDER_STATUS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5967755735881586,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-01",
+      "intent_code" : "AFTER_SALE_STATUS_COMBINED",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5700904643427812,
+      "example_no" : "CS-L2-20261020-SETTLEMENT-05",
+      "intent_code" : "SETTLEMENT",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "ORDER_SEARCH",
+    "actualIntents" : [ "ORDER_SEARCH" ],
+    "actual" : "ORDER_SEARCH",
+    "passed" : true,
+    "l3InputTokens" : 0,
+    "l3OutputTokens" : 0,
+    "l3ElapsedMs" : 0
+  }, {
+    "query" : "我购买的那笔订单当前处于什么状态？",
+    "expected" : "ORDER_STATUS",
+    "l2Actual" : "ORDER_STATUS",
+    "l2Accepted" : true,
+    "source" : "L2_RAG",
+    "status" : "EVALUATED",
+    "similarity" : 0.8865937854824697,
+    "runnerUpScore" : 0.8293800063049797,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "candidates" : [ {
+      "score" : 0.8865937854824697,
+      "example_no" : "CS-L2-20261020-ORDER_STATUS-02",
+      "intent_code" : "ORDER_STATUS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.8293800063049797,
+      "example_no" : "CS-AFTER-COMBINED-002",
+      "intent_code" : "AFTER_SALE_STATUS_COMBINED",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.8081144804886308,
+      "example_no" : "CS-L2-20261020-ORDER_TIMELINE-08",
+      "intent_code" : "ORDER_TIMELINE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7459294351381414,
+      "example_no" : "CS-L2-20261020-SETTLEMENT-05",
+      "intent_code" : "SETTLEMENT",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7288644531030871,
+      "example_no" : "CS-AFTER-PROGRESS-002",
+      "intent_code" : "AFTER_SALE_PROGRESS",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "ORDER_STATUS",
+    "actualIntents" : [ "ORDER_STATUS" ],
+    "actual" : "ORDER_STATUS",
+    "passed" : true,
+    "l3InputTokens" : 0,
+    "l3OutputTokens" : 0,
+    "l3ElapsedMs" : 0
+  }, {
+    "query" : "请按先后顺序展示这笔订单每次状态变化的时间。",
+    "expected" : "ORDER_TIMELINE",
+    "l2Actual" : "ORDER_TIMELINE",
+    "l2Accepted" : true,
+    "source" : "L2_RAG",
+    "status" : "EVALUATED",
+    "similarity" : 0.8898314901834891,
+    "runnerUpScore" : 0.7757681340894859,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "candidates" : [ {
+      "score" : 0.8898314901834891,
+      "example_no" : "CS-L2-20261020-ORDER_TIMELINE-01",
+      "intent_code" : "ORDER_TIMELINE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7757681340894859,
+      "example_no" : "CS-ORDER-STATUS-001",
+      "intent_code" : "ORDER_STATUS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7405661499162941,
+      "example_no" : "CS-AFTER-COMBINED-002",
+      "intent_code" : "AFTER_SALE_STATUS_COMBINED",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7204931807811977,
+      "example_no" : "CS-L2-20261020-SETTLEMENT-05",
+      "intent_code" : "SETTLEMENT",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6756370470307509,
+      "example_no" : "CS-ORDER-SEARCH-001",
+      "intent_code" : "ORDER_SEARCH",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "ORDER_TIMELINE",
+    "actualIntents" : [ "ORDER_TIMELINE" ],
+    "actual" : "ORDER_TIMELINE",
+    "passed" : true,
+    "l3InputTokens" : 0,
+    "l3OutputTokens" : 0,
+    "l3ElapsedMs" : 0
+  }, {
+    "query" : "我卖出的这笔订单，结算款现在到哪一步了？",
+    "expected" : "SETTLEMENT",
+    "l2Actual" : "OTHER",
+    "l2Accepted" : false,
+    "source" : "L3_LLM",
+    "status" : "EVALUATED",
+    "similarity" : 0.8152355221335048,
+    "runnerUpScore" : 0.767979204654699,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "fallbackReason" : "INTENT_LOW_SCORE_OR_MARGIN",
+    "candidates" : [ {
+      "score" : 0.8152355221335048,
+      "example_no" : "CS-L2-20261020-SETTLEMENT-01",
+      "intent_code" : "SETTLEMENT",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.767979204654699,
+      "example_no" : "CS-L2-20261020-SETTLEMENT_RULE-01",
+      "intent_code" : "SETTLEMENT_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7156152725219778,
+      "example_no" : "CS-L2-20261020-ORDER_STATUS-10",
+      "intent_code" : "ORDER_STATUS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.704523044555017,
+      "example_no" : "CS-AFTER-COMBINED-002",
+      "intent_code" : "AFTER_SALE_STATUS_COMBINED",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6680229506519975,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_PROGRESS-03",
+      "intent_code" : "AFTER_SALE_PROGRESS",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "SETTLEMENT",
+    "mockL3" : false,
+    "actualIntents" : [ "SETTLEMENT" ],
+    "actual" : "SETTLEMENT",
+    "passed" : true,
+    "l3InputTokens" : 1441,
+    "l3OutputTokens" : 152,
+    "l3ElapsedMs" : 2510
+  }, {
+    "query" : "之前提交的那张售后单，现在处理到哪个环节了？",
+    "expected" : "AFTER_SALE_PROGRESS",
+    "l2Actual" : "AFTER_SALE_PROGRESS",
+    "l2Accepted" : true,
+    "source" : "L2_RAG",
+    "status" : "EVALUATED",
+    "similarity" : 0.8898566696090534,
+    "runnerUpScore" : 0.7521124110255367,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "candidates" : [ {
+      "score" : 0.8898566696090534,
+      "example_no" : "CS-AFTER-PROGRESS-001",
+      "intent_code" : "AFTER_SALE_PROGRESS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7521124110255367,
+      "example_no" : "CS-AFTER-COMBINED-001",
+      "intent_code" : "AFTER_SALE_STATUS_COMBINED",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7133554261942592,
+      "example_no" : "CS-ORDER-STATUS-001",
+      "intent_code" : "ORDER_STATUS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.69295682588091,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_GUIDE-06",
+      "intent_code" : "AFTER_SALE_GUIDE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6811422908646554,
+      "example_no" : "CS-L2-20261020-ORDER_TIMELINE-08",
+      "intent_code" : "ORDER_TIMELINE",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "AFTER_SALE_PROGRESS",
+    "actualIntents" : [ "AFTER_SALE_PROGRESS" ],
+    "actual" : "AFTER_SALE_PROGRESS",
+    "passed" : true,
+    "l3InputTokens" : 0,
+    "l3OutputTokens" : 0,
+    "l3ElapsedMs" : 0
+  }, {
+    "query" : "收到不能使用的卡密，申请售后应该准备什么材料？",
+    "expected" : "AFTER_SALE_GUIDE",
+    "l2Actual" : "OTHER",
+    "l2Accepted" : false,
+    "source" : "L3_LLM",
+    "status" : "EVALUATED",
+    "similarity" : 0.8617911595639935,
+    "runnerUpScore" : 0.7041536149887089,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "fallbackReason" : "INTENT_LOW_SCORE_OR_MARGIN",
+    "candidates" : [ {
+      "score" : 0.8617911595639935,
+      "example_no" : "CS-AFTER-GUIDE-001",
+      "intent_code" : "AFTER_SALE_GUIDE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7041536149887089,
+      "example_no" : "CS-L2-20261020-ORDER_STATUS-08",
+      "intent_code" : "ORDER_STATUS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6621931191259458,
+      "example_no" : "CS-L2-20261020-ORDER_SEARCH-03",
+      "intent_code" : "ORDER_SEARCH",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5963741896375542,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_PROGRESS-04",
+      "intent_code" : "AFTER_SALE_PROGRESS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5407889163023889,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-05",
+      "intent_code" : "AFTER_SALE_STATUS_COMBINED",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "AFTER_SALE_GUIDE",
+    "mockL3" : false,
+    "actualIntents" : [ "AFTER_SALE_GUIDE" ],
+    "actual" : "AFTER_SALE_GUIDE",
+    "passed" : true,
+    "l3InputTokens" : 1441,
+    "l3OutputTokens" : 161,
+    "l3ElapsedMs" : 2281
+  }, {
+    "query" : "请一起查询这笔订单和它关联的售后单各自的当前状态。",
+    "expected" : "AFTER_SALE_STATUS_COMBINED",
+    "l2Actual" : "AFTER_SALE_STATUS_COMBINED",
+    "l2Accepted" : true,
+    "source" : "L2_RAG",
+    "status" : "EVALUATED",
+    "similarity" : 0.9596484899520874,
+    "runnerUpScore" : 0.7552821636199951,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "candidates" : [ {
+      "score" : 0.9596484899520874,
+      "example_no" : "CS-AFTER-COMBINED-001",
+      "intent_code" : "AFTER_SALE_STATUS_COMBINED",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7552821636199951,
+      "example_no" : "CS-L2-20261020-ORDER_TIMELINE-08",
+      "intent_code" : "ORDER_TIMELINE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7517131495048412,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_PROGRESS-01",
+      "intent_code" : "AFTER_SALE_PROGRESS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7440571258119189,
+      "example_no" : "CS-L2-20261020-ORDER_STATUS-02",
+      "intent_code" : "ORDER_STATUS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.7196760773658752,
+      "example_no" : "CS-L2-20261020-SETTLEMENT-05",
+      "intent_code" : "SETTLEMENT",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "AFTER_SALE_STATUS_COMBINED",
+    "actualIntents" : [ "AFTER_SALE_STATUS_COMBINED" ],
+    "actual" : "AFTER_SALE_STATUS_COMBINED",
+    "passed" : true,
+    "l3InputTokens" : 0,
+    "l3OutputTokens" : 0,
+    "l3ElapsedMs" : 0
+  }, {
+    "query" : "哪些类型的商品不允许在你们平台交易？",
+    "expected" : "PLATFORM_RULE",
+    "l2Actual" : "PLATFORM_RULE",
+    "l2Accepted" : true,
+    "source" : "L2_RAG",
+    "status" : "EVALUATED",
+    "similarity" : 0.9121102857754064,
+    "runnerUpScore" : 0.6756544314519967,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "candidates" : [ {
+      "score" : 0.9121102857754064,
+      "example_no" : "CS-PLATFORM-RULE-001",
+      "intent_code" : "PLATFORM_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6756544314519967,
+      "example_no" : "CS-L2-20261020-ACCOUNT_RULE-06",
+      "intent_code" : "ACCOUNT_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5649001430004915,
+      "example_no" : "CS-L2-20261020-COMPLAINT-12",
+      "intent_code" : "COMPLAINT",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5397328620910244,
+      "example_no" : "CS-L2-20261020-SETTLEMENT_RULE-02",
+      "intent_code" : "SETTLEMENT_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5208737899956212,
+      "example_no" : "CS-L2-20261020-WITHDRAW_RULE-10",
+      "intent_code" : "WITHDRAW_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "PLATFORM_RULE",
+    "actualIntents" : [ "PLATFORM_RULE" ],
+    "actual" : "PLATFORM_RULE",
+    "passed" : true,
+    "l3InputTokens" : 0,
+    "l3OutputTokens" : 0,
+    "l3ElapsedMs" : 0
+  }, {
+    "query" : "卖家通常要经过多长的结算周期才能收到货款？",
+    "expected" : "SETTLEMENT_RULE",
+    "l2Actual" : "OTHER",
+    "l2Accepted" : false,
+    "source" : "L3_LLM",
+    "status" : "EVALUATED",
+    "similarity" : 0.8586982832011506,
+    "runnerUpScore" : 0.6886640826459091,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "fallbackReason" : "INTENT_LOW_SCORE_OR_MARGIN",
+    "candidates" : [ {
+      "score" : 0.8586982832011506,
+      "example_no" : "CS-L2-20261020-SETTLEMENT_RULE-04",
+      "intent_code" : "SETTLEMENT_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6886640826459091,
+      "example_no" : "CS-L2-20261020-SETTLEMENT-01",
+      "intent_code" : "SETTLEMENT",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6030342578887983,
+      "example_no" : "CS-WITHDRAW-RULE-001",
+      "intent_code" : "WITHDRAW_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5737574105352745,
+      "example_no" : "CS-L2-20261020-PLATFORM_RULE-08",
+      "intent_code" : "PLATFORM_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5585622524358195,
+      "example_no" : "CS-ORDER-STATUS-002",
+      "intent_code" : "ORDER_STATUS",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "SETTLEMENT_RULE",
+    "mockL3" : false,
+    "actualIntents" : [ "SETTLEMENT_RULE" ],
+    "actual" : "SETTLEMENT_RULE",
+    "passed" : true,
+    "l3InputTokens" : 1439,
+    "l3OutputTokens" : 91,
+    "l3ElapsedMs" : 1779
+  }, {
+    "query" : "平台对账户余额提到银行卡有哪些条件限制？",
+    "expected" : "WITHDRAW_RULE",
+    "l2Actual" : "WITHDRAW_RULE",
+    "l2Accepted" : true,
+    "source" : "L2_RAG",
+    "status" : "EVALUATED",
+    "similarity" : 0.8854675352058669,
+    "runnerUpScore" : 0.6535542011261033,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "candidates" : [ {
+      "score" : 0.8854675352058669,
+      "example_no" : "CS-L2-20261020-WITHDRAW_RULE-10",
+      "intent_code" : "WITHDRAW_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6535542011261033,
+      "example_no" : "CS-L2-20261020-ACCOUNT_RULE-06",
+      "intent_code" : "ACCOUNT_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.619044955287423,
+      "example_no" : "CS-L2-20261020-SETTLEMENT-04",
+      "intent_code" : "SETTLEMENT",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5538889169693032,
+      "example_no" : "CS-L2-20261020-SETTLEMENT_RULE-05",
+      "intent_code" : "SETTLEMENT_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5435714397685949,
+      "example_no" : "CS-L2-20261020-PLATFORM_RULE-11",
+      "intent_code" : "PLATFORM_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "WITHDRAW_RULE",
+    "actualIntents" : [ "WITHDRAW_RULE" ],
+    "actual" : "WITHDRAW_RULE",
+    "passed" : true,
+    "l3InputTokens" : 0,
+    "l3OutputTokens" : 0,
+    "l3ElapsedMs" : 0
+  }, {
+    "query" : "在平台办理实名认证，要提交什么身份证明材料？",
+    "expected" : "ACCOUNT_RULE",
+    "l2Actual" : "ACCOUNT_RULE",
+    "l2Accepted" : true,
+    "source" : "L2_RAG",
+    "status" : "EVALUATED",
+    "similarity" : 0.9354027432683467,
+    "runnerUpScore" : 0.6085925102233887,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "candidates" : [ {
+      "score" : 0.9354027432683467,
+      "example_no" : "CS-ACCOUNT-RULE-001",
+      "intent_code" : "ACCOUNT_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.6085925102233887,
+      "example_no" : "CS-L2-20261020-WITHDRAW_RULE-11",
+      "intent_code" : "WITHDRAW_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5999349594154989,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_GUIDE-03",
+      "intent_code" : "AFTER_SALE_GUIDE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.4991431832824249,
+      "example_no" : "CS-L2-20261020-PLATFORM_RULE-12",
+      "intent_code" : "PLATFORM_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.4364577065842662,
+      "example_no" : "CS-L2-20261020-COMPLAINT-04",
+      "intent_code" : "COMPLAINT",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "ACCOUNT_RULE",
+    "actualIntents" : [ "ACCOUNT_RULE" ],
+    "actual" : "ACCOUNT_RULE",
+    "passed" : true,
+    "l3InputTokens" : 0,
+    "l3OutputTokens" : 0,
+    "l3ElapsedMs" : 0
+  }, {
+    "query" : "卖家的服务态度很差，我要正式投诉这位卖家。",
+    "expected" : "COMPLAINT",
+    "l2Actual" : "OTHER",
+    "l2Accepted" : false,
+    "source" : "L3_LLM",
+    "status" : "EVALUATED",
+    "similarity" : 0.8554370489456044,
+    "runnerUpScore" : 0.601300120353703,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "fallbackReason" : "INTENT_LOW_SCORE_OR_MARGIN",
+    "candidates" : [ {
+      "score" : 0.8554370489456044,
+      "example_no" : "CS-COMPLAINT-001",
+      "intent_code" : "COMPLAINT",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.601300120353703,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_GUIDE-07",
+      "intent_code" : "AFTER_SALE_GUIDE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.517982690454562,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_PROGRESS-05",
+      "intent_code" : "AFTER_SALE_PROGRESS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5171753013975849,
+      "example_no" : "CS-L2-20261020-SETTLEMENT_RULE-10",
+      "intent_code" : "SETTLEMENT_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.5043612568270806,
+      "example_no" : "CS-L2-20261020-HUMAN_HELP-09",
+      "intent_code" : "HUMAN_HELP",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "COMPLAINT",
+    "mockL3" : false,
+    "actualIntents" : [ "COMPLAINT" ],
+    "actual" : "COMPLAINT",
+    "passed" : true,
+    "l3InputTokens" : 1436,
+    "l3OutputTokens" : 88,
+    "l3ElapsedMs" : 1688
+  }, {
+    "query" : "请安排一位真人客服接待我。",
+    "expected" : "HUMAN_HELP",
+    "l2Actual" : "HUMAN_HELP",
+    "l2Accepted" : true,
+    "source" : "L2_RAG",
+    "status" : "EVALUATED",
+    "similarity" : 0.9268756567130193,
+    "runnerUpScore" : 0.4839881774162529,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "candidates" : [ {
+      "score" : 0.9268756567130193,
+      "example_no" : "CS-HUMAN-HELP-002",
+      "intent_code" : "HUMAN_HELP",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.4839881774162529,
+      "example_no" : "CS-L2-20261020-COMPLAINT-11",
+      "intent_code" : "COMPLAINT",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.4593991451918562,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_STATUS_COMBINED-06",
+      "intent_code" : "AFTER_SALE_STATUS_COMBINED",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.45330822705549634,
+      "example_no" : "CS-L2-20261020-AFTER_SALE_PROGRESS-11",
+      "intent_code" : "AFTER_SALE_PROGRESS",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.44334262917634026,
+      "example_no" : "CS-ORDER-STATUS-002",
+      "intent_code" : "ORDER_STATUS",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "HUMAN_HELP",
+    "actualIntents" : [ "HUMAN_HELP" ],
+    "actual" : "HUMAN_HELP",
+    "passed" : true,
+    "l3InputTokens" : 0,
+    "l3OutputTokens" : 0,
+    "l3ElapsedMs" : 0
+  }, {
+    "query" : "太阳系中哪颗行星的体积最大？",
+    "expected" : "OTHER",
+    "l2Actual" : "OTHER",
+    "l2Accepted" : false,
+    "source" : "L3_LLM",
+    "status" : "EVALUATED",
+    "similarity" : 0.29941324595134033,
+    "runnerUpScore" : 0.2713684141635915,
+    "threshold" : 0.88,
+    "minMargin" : 0.05,
+    "fallbackReason" : "INTENT_LOW_SCORE_OR_MARGIN",
+    "candidates" : [ {
+      "score" : 0.29941324595134033,
+      "example_no" : "CS-L2-20261020-WITHDRAW_RULE-03",
+      "intent_code" : "WITHDRAW_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.2713684141635915,
+      "example_no" : "CS-L2-20261020-PLATFORM_RULE-01",
+      "intent_code" : "PLATFORM_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.2628577273232433,
+      "example_no" : "CS-L2-20261020-SETTLEMENT_RULE-03",
+      "intent_code" : "SETTLEMENT_RULE",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.2521408721166599,
+      "example_no" : "CS-L2-20261020-COMPLAINT-04",
+      "intent_code" : "COMPLAINT",
+      "intent_version" : 1,
+      "example_version" : 1
+    }, {
+      "score" : 0.24027437029633747,
+      "example_no" : "CS-ORDER-SEARCH-001",
+      "intent_code" : "ORDER_SEARCH",
+      "intent_version" : 1,
+      "example_version" : 1
+    } ],
+    "topCandidateIntent" : "WITHDRAW_RULE",
+    "mockL3" : false,
+    "actualIntents" : [ "OTHER" ],
+    "actual" : "OTHER",
+    "passed" : true,
+    "l3InputTokens" : 1433,
+    "l3OutputTokens" : 142,
+    "l3ElapsedMs" : 2009
+  } ]
+}

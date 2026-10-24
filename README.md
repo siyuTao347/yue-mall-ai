@@ -1,285 +1,290 @@
-# 虚拟资产 C2C 交易平台
+# 虚拟资产 C2C 交易平台与客服 Agent
 
-基于 Java 微服务与 React 的虚拟资产交易项目，覆盖商品发布、担保交易、卡密交付、支付与对账、售后仲裁、风控处置，以及智能客服与人工协同。
+面向卡密、虚拟道具等商品的微服务交易平台，将商品管理、秒杀下单、担保交易、支付对账、售后风控与客服 Agent 连接起来。用户可以在交易页面购买和查询订单，也可以通过客服会话查询业务进度、了解平台规则、补充问题信息或申请人工服务。
 
-后端通过 Spring Cloud Gateway 提供统一 HTTP/WebSocket 入口，服务间使用 Dubbo；客服服务结合 Spring AI Alibaba Graph、RAG 和结构化用户记忆完成对话与业务查询。
+后端采用 Java 21、Spring Boot、Spring Cloud Alibaba 与 Dubbo；客服基于 Spring AI Alibaba Graph 编排，通过受限业务工具和 RAG 获取回答依据；前端采用 React 与 Vite。
 
-> 更新日期：2026-10-19。本文按当前源码整理，包括最新的实时人工接管、主动触达、SOP 和卡片组件。新增客服协同能力仍处于开发联调阶段，部分功能有模板或本地兜底实现；具体边界见“当前实现边界”。支付渠道均为 Mock，仓库不包含一键部署的基础设施编排。
+本文按 **2026-10-24 当前源码**整理，介绍已实现功能、运行方式和仓库内已有评测记录。
 
-## 1. 功能与当前状态
+## 已实现功能
 
-| 领域 | 当前源码包含的能力 | 说明 |
-| --- | --- | --- |
-| 用户与商家 | 注册登录、商家申请与审核、账户、保证金、提现 | 用户、商家、资金服务位于 `mall-user-service` |
-| 商品与库存 | 商品发布审核、商品查询、卡密导入、库存预留、秒杀 | 支持虚拟商品与数字交付场景 |
-| 担保交易 | 订单创建、支付确认、交付、收货确认、超时处理、结算、评价 | 配有交易编排、重试与对账相关代码 |
-| 支付与对账 | 银联/银行卡、微信、支付宝、数字人民币四种 Mock 支付策略；支付尝试、通知、退款、账单核对、差异处理 | 已有后端代码、支付弹窗和对账控制台；不连接真实支付渠道 |
-| 风控 | 风险规则、事件、决策、案件、跨服务处置命令及重试 | 管理入口为 `/api/admin/risk/**` |
-| 智能客服 | 多层意图识别、多意图处理、订单/售后/商品查询、规则问答、SSE、反馈与运行追踪 | 业务事实查询使用受限 Dubbo 接口 |
-| RAG 知识库 | 文档管理、切分、索引任务、向量/关键词/混合检索、引用及评估 | MySQL 保存元数据，PostgreSQL + pgvector 保存向量 |
-| 用户长期记忆 | 结构化偏好提取、异步写入、跨会话召回、修改与删除 | Java + MySQL 实现；用户级读写默认关闭 |
-| 实时人工协同 | WS 票据、消息与事件存储、同步接口、排队/认领/转派/结束、客服工作台 | 已有初版实现，新旧转接链路仍需统一 |
-| 坐席辅助 | 回复建议、会话总结接口及工作台面板 | 当前返回模板内容，尚未接入真实模型生成和事实核验 |
-| 主动触达 | 签名 Webhook、事件 Inbox、业务通知、会话绑定 | 初版支持物流延误、退款成功和售后状态变更通知 |
-| SOP 与富媒体 | 售后表单流程、任务提交、售后命令接口；商品、时间线、表单、评分、转接状态、流程进度卡 | 当前 SOP 为固定售后流程，尚非完整通用工作流引擎 |
-
-## 2. 技术栈
-
-版本来自当前 `pom.xml`、前端 `package.json` 和评估依赖文件。
-
-| 部分 | 技术 |
+| 模块 | 功能 |
 | --- | --- |
-| Java 与应用框架 | Java 21、Spring Boot 3.5.6 |
-| 微服务 | Spring Cloud 2025.0.0、Spring Cloud Alibaba 2025.0.0.0、Nacos、Dubbo 3.3.0 |
-| 网关与实时通信 | Spring Cloud Gateway WebFlux、Spring MVC WebSocket、SSE |
-| 数据访问 | MySQL 8、MyBatis-Plus 3.5.12、JdbcTemplate、Redis |
-| 消息与事务 | RocketMQ Spring Boot Starter 2.3.1、RocketMQ 客户端版本管理 5.3.0、Seata |
-| 定时任务 | XXL-Job 2.4.0、Spring 定时任务及模块内 Worker |
-| AI / RAG | Spring AI Alibaba 1.1.0.0、Spring AI 1.1.0、DashScope、PostgreSQL + pgvector |
-| 前端 | React 19、Vite 8、JavaScript / JSX、Oxlint |
-| 离线评估 | Python、RAGAS 0.2.x |
+| 用户与商家 | 注册登录、JWT 身份认证、商家申请与审核、账户资金、提现、积分 |
+| 商品与资产 | 商品浏览、筛选、上下架与审核，卡密批量导入、加密存储、资产预留与交付 |
+| 下单与交易 | Redis 秒杀预扣与异步创单、Seata TCC 下单、担保订单、支付、交付、确认、结算、退款与评价 |
+| 支付与对账 | 银行卡／银联、微信、支付宝、数字人民币四类 Mock 渠道，支付尝试、退款、渠道账单、到账核对、差异处理 |
+| 售后与风控 | 售后申请、协商记录、交付证据、平台仲裁；风险规则、案件、证据、处置命令与执行回执 |
+| 客服 Agent | 三层意图识别、槽位校验与澄清、多意图分阶段执行、分层记忆、业务事实查询、知识问答、SSE 输出 |
+| 人工客服 | 转接申请、排队、坐席认领、转派、结束服务、会话历史与坐席消息 |
+| 知识与意图库管理 | 文档编辑、切片预览、异步索引、检索测试；意图库快照构建、校验、启用与撤销 |
+| 观测与评测 | 请求追踪、审计日志、业务状态日志、Agent Run／工具调用记录、意图评测与 RAG 离线评估 |
 
-前端当前以 `.js` / `.jsx` 为主，没有独立的 TypeScript 应用配置。客服记忆没有引入 Mem0 SDK 或独立 Python 微服务；Python 用于离线 RAG 评估。
+## 系统架构
 
-## 3. 仓库结构与服务端口
+```mermaid
+flowchart TB
+    UI["React 用户端 / 商家端 / 管理端"] --> GW["Gateway :8080"]
+    GW --> USER["User :8081"]
+    GW --> ITEM["Item :8082"]
+    GW --> ORDER["Order :8083"]
+    GW --> RISK["Risk :8084"]
+    GW --> AGENT["Agent :8085"]
 
-```text
-mall-parent/
-├── mall-api/                  # 共享 RPC 契约、DTO、上下文与公共能力
-├── mall-gateway-service/      # 统一入口、路由、认证、限流
-├── mall-user-service/         # 用户、商家、账户、资金、提现
-├── mall-item-service/         # 商品、库存、卡密、秒杀
-├── mall-order-service/        # 订单、支付、交付、售后、结算、对账
-├── mall-risk-service/         # 风险评估、案件和处置命令
-├── mall-agent-service/        # 智能客服、RAG、记忆、人工协同、SOP
-├── mall-frontend/             # 交易界面与管理工作台
-├── doc/
-│   ├── init/                 # 初始业务与架构设计
-│   ├── agent/                # Agent / RAG / 记忆 / 协同设计
-│   ├── reconciliation/       # 多渠道支付与对账设计
-│   ├── sql/                  # 分阶段建表和增量迁移
-│   └── data/                 # MySQL 演示数据与 RAG 知识文档
-├── scripts/                  # RAG 导入、工程规范扫描
-├── evaluation/               # 离线评估脚本与数据
-├── db.sql                    # 用户、商品、订单的基础 schema
-└── pom.xml                   # Maven 多模块父工程
+    ORDER -->|"Dubbo：资产与库存"| ITEM
+    ORDER -->|"Dubbo：资金"| USER
+    ORDER -->|"风险评估"| RISK
+    AGENT -->|"Dubbo：订单、售后、时间线"| ORDER
+    AGENT -->|"Dubbo：公开商品信息"| ITEM
+
+    ITEM -->|"事务消息"| MQ["RocketMQ"]
+    MQ -->|"异步创单"| ORDER
+    AGENT --> MODEL["Chat / Embedding 服务"]
+    AGENT --> PG["PostgreSQL + pgvector"]
+    AGENT --> MYSQL["MySQL：会话、记忆、知识元数据"]
+    USER --> DB["各业务服务独立 MySQL 库"]
+    ITEM --> DB
+    ORDER --> DB
+    RISK --> DB
 ```
 
-| 模块 | HTTP 端口 | Dubbo 端口 | 数据库/职责 |
-| --- | ---: | ---: | --- |
-| Gateway | 8080 | — | 前端与外部 API 入口 |
-| User | 8081 | 20881 | `db_user` |
-| Item | 8082 | 20882 | `db_item` |
-| Order | 8083 | 20880 | `db_order` |
-| Risk | 8084 | 20884 | `db_risk` |
-| Agent | 8085 | 消费方，配置为 `-1` | `db_agent` 与 pgvector |
-| Frontend | 3000 | — | Vite 开发服务器 |
+Nacos 提供服务注册与发现，Dubbo 承载服务间 RPC；Redis 用于缓存、秒杀库存、请求防重与运行控制；Seata 协调 TCC 下单；XXL-JOB 承载订单维护、对账和风控相关任务。
 
-Order 与 Risk 的 XXL-Job 执行器默认端口分别为 9999、9998。上述值是仓库开发配置，实际以各模块配置及环境覆盖为准。
+### 服务与目录
 
-## 4. 架构与主要调用关系
+| 模块 | HTTP 端口 | Dubbo 端口 | 职责 / 数据库 |
+| --- | --- | --- | --- |
+| `mall-api` | — | — | 公共 DTO、RPC 接口、业务枚举与通用组件 |
+| `mall-gateway-service` | 8080 | — | 路由、JWT 校验、身份传递、限流、请求追踪 |
+| `mall-user-service` | 8081 | 20881 | 用户、商家、账户资金、提现、积分；`db_user` |
+| `mall-item-service` | 8082 | 20882 | 商品、卡密、库存、秒杀；`db_item` |
+| `mall-order-service` | 8083 | 20880 | 订单、支付、交付、售后、结算与对账；`db_order` |
+| `mall-risk-service` | 8084 | 20884 | 风险规则、案件与处置；`db_risk` |
+| `mall-agent-service` | 8085 | 消费端 | 客服、记忆、知识检索与意图库；`db_agent`、pgvector |
+| `mall-frontend` | 3000 | — | 用户交易界面、商家与管理工作台 |
+| `evaluation` | — | — | 意图识别与 RAG 评测数据、脚本、报告 |
+| `doc/sql`、`doc/data` | — | — | 数据库初始化、增量迁移与演示数据 |
+
+Order、Risk 的 XXL-JOB 执行器默认端口分别为 `9999`、`9998`。
+
+### 技术栈
+
+| 层次 | 当前依赖 |
+| --- | --- |
+| Java 与应用框架 | Java 21、Spring Boot 3.5.6 |
+| 微服务 | Spring Cloud 2025.0.0、Spring Cloud Alibaba 2025.0.0.0、Dubbo 3.3.0、Nacos |
+| 数据访问 | MySQL、MyBatis-Plus 3.5.12、Redis、PostgreSQL / pgvector |
+| 消息、事务与调度 | RocketMQ Spring Boot Starter 2.3.1、Seata、XXL-JOB 2.4.0 |
+| Agent | Spring AI Alibaba Graph / DashScope 1.1.0.0、Spring AI 1.1.0 |
+| 前端 | React 19、Vite 8、JavaScript / JSX、Oxlint |
+| 评测 | Python 3、RAGAS 0.2.x |
+
+具体版本以根目录及各模块的 `pom.xml`、前端 `package.json` 为准。
+
+## 交易后端实现
+
+### 秒杀异步下单
+
+秒杀链路位于 Item 和 Order 服务：
+
+1. 使用用户与商品维度的 Redis 防重标记限制重复提交，Lua 脚本原子检查并预扣秒杀库存。
+2. 发送 RocketMQ 事务消息，在商品服务的本地事务中扣减 MySQL 库存并写入 `t_mq_transaction_log`。
+3. Broker 回查时读取事务日志，决定提交、回滚或继续等待。
+4. 订单消费者异步创建订单，通过订单号唯一约束处理重复消息；普通消费异常交由 MQ 重试。
+5. 发送事务消息抛出异常时，回补本次 Redis 预扣并清理防重标记。
+
+请求受理后返回订单号，前端可继续查询结果。相关实现见 [秒杀服务](mall-item-service/src/main/java/com/example/item/provider/SeckillServiceImpl.java)、[事务监听器](mall-item-service/src/main/java/com/example/item/listener/SeckillTransactionListener.java) 与 [订单消费者](mall-order-service/src/main/java/com/example/item/listener/SeckillOrderConsumer.java)。
+
+### TCC 下单
+
+`/api/order/createTcc` 提供 Seata 全局事务下单入口：Order 调用 Item 的 Try 预留库存并创建本地订单，由全局事务结果驱动 Confirm 确认或 Cancel 释放库存。
+
+库存分支通过 `t_tcc_action_log` 记录事务状态，执行重复调用检查、空回滚处理与防悬挂判断。接口支持 `mockException` 参数，用于触发回滚路径。
+
+相关实现见 [下单编排](mall-order-service/src/main/java/com/example/item/service/OrderServiceImpl.java) 与 [库存 TCC 分支](mall-item-service/src/main/java/com/example/item/provider/ItemDubboServiceImpl.java)。
+
+### 担保交易与六维状态
+
+担保交易使用 `TradeOrder` 及独立的业务编排，分别维护六个状态维度：
+
+| 状态维度 | 表达的业务含义 |
+| --- | --- |
+| 订单 | 待支付、已支付、已交付、确认、结算、退款、取消等订单阶段 |
+| 支付 | 初始化、支付中、成功、失败、超时、迟到成功 |
+| 交付 | 待交付、已交付、已查看、已确认 |
+| 资金托管 | 未托管、冻结、待结算、待退款、已结算、已退款 |
+| 售后 | 无售后、申请、协商、仲裁、申诉、已解决 |
+| 风控 | 正常、人工复核、冻结、受限、拒绝 |
+
+业务操作执行身份、状态与跨维度前置校验，例如资金冻结后交付、存在售后争议时阻断结算，并记录状态流转日志。卡密自动交付与人工交付使用不同的业务处理分支。
+
+担保交易还实现了取消、支付超时关闭、自动确认、结算、交付超时处理、售后举证、平台仲裁与评价。Agent 通过查询接口读取这些状态和时间线，形成可追溯的客服回答依据。
+
+### Mock 支付、对账与风控
+
+- **支付**：采用渠道策略与注册工厂，统一管理支付尝试、回调确认、退款及 Mock 渠道账。四种支付方式均使用项目内的 Mock 渠道实现。
+- **回调校验**：校验签名、金额、时间戳及 nonce，结合业务状态处理重复回调。
+- **对账**：记录对账任务、账单、差异与修复操作，提供管理端查询和差异处置入口。
+- **风控**：结合规则与业务指标生成风险结果、案件和证据，通过处置命令、消息和回执联动用户、商品及订单服务。
+- **审计与观测**：记录关键操作、请求 Trace、慢 SQL 与服务指标，供管理端及运行排查使用。
+
+## 客服 Agent 实现
+
+### Graph 执行流程
 
 ```mermaid
 flowchart LR
-    Browser[React 交易界面与管理工作台] --> Gateway[Gateway :8080]
-    Gateway --> User[User :8081]
-    Gateway --> Item[Item :8082]
-    Gateway --> Order[Order :8083]
-    Gateway --> Risk[Risk :8084]
-    Gateway --> Agent[Agent :8085]
-    Order -. Dubbo .-> User
-    Order -. Dubbo .-> Item
-    Agent -. 商品查询 .-> Item
-    Agent -. 订单查询与售后命令 .-> Order
-    User --> MySQL[(MySQL)]
-    Item --> MySQL
-    Order --> MySQL
-    Risk --> MySQL
-    Agent --> AgentDB[(MySQL db_agent)]
-    Agent --> Vector[(PostgreSQL + pgvector)]
-    Gateway --> Redis[(Redis)]
-    Agent --> Redis
+    A["输入检查"] --> B["加载会话上下文"]
+    B --> C["Master：意图识别"]
+    C --> D["按意图召回记忆"]
+    D --> E["槽位解析与澄清"]
+    E --> F["分阶段任务调度"]
+    F --> G["业务工具 / 知识检索"]
+    G --> H["Response：汇总回答"]
+    H --> I["输出校验"]
 ```
 
-- **交易链路**：前端 → Gateway → 订单服务，订单服务通过 Dubbo 协调商品、资金等业务；RocketMQ 和编排任务参与异步处理。
-- **AI 对话**：用户输入 → 规则/意图库/模型识别 → 领域查询与知识检索 → 输出校验 → SSE 回复及运行记录。
-- **人工协同**：票据签发 → WebSocket 握手 → 会话订阅/消息发送 → 消息、公开事件和 Outbox；REST 提供快照与增量同步入口。
-- **主动触达**：业务 Webhook → 验签及事件 Inbox → 接收人解析 → 业务通知及会话绑定。
-- **SOP**：售后流程实例 → 动态表单 → 任务提交 → 订单服务售后命令 → 等待人工审核。
+Graph 由 [CustomerRunner](mall-agent-service/src/main/java/com/example/agent/customer/CustomerRunner.java) 编译执行。每次请求记录 Run、节点路径、识别来源、工具调用、检索证据、耗时及模型用量；前端通过 SSE 展示处理阶段和回答内容。
 
-Nacos 用于注册发现；Seata、RocketMQ 和 XXL-Job 需要按启用的业务场景单独部署。图示展示主要依赖，不代表新增协同模块已完成多实例可靠性验收。
+### 三层意图识别与业务路由
 
-## 5. CustomerAgent 与人工协同
+意图目录包含 **21 类客服意图**，识别结果路由到订单、售后、规则、投诉与人工升级、售前、记忆 **6 类业务处理节点**，另有模板回复和兜底分支。
 
-### 智能问答和知识检索
-
-客服 Graph 已包含意图识别、上下文处理、多意图分阶段执行、知识检索、业务查询、回答合成与输出护栏。典型场景包括订单状态、订单时间线、售后进度、平台规则和售前商品咨询。
-
-用户消息保留普通 HTTP 与 SSE 两种入口。意图库通过发布版本管理；管理端可查看 Run、工具调用、反馈和评估证据。订单时间线来自订单状态日志，不能直接视为真实快递轨迹。
-
-### 人工接管和坐席工作台
-
-新增的协同代码位于 `customer/conversation`、`realtime`、`handoff`、`copilot`、`delivery` 等包。会话引入 `BOT / QUEUED / HUMAN / NONE` 服务模式及 `control_epoch` 字段。
-
-- 用户端增加全局 `CustomerRealtimeProvider`、WebSocket 客户端和富消息渲染。
-- 管理端“客服接待工作台”包含队列、认领、聊天、转派、结束服务和 Copilot 面板。
-- 技能路由代码包含 `SENIOR_SUPPORT`、`AFTER_SALE`、`SALES`、`GENERAL_SUPPORT`；HIGH/URGENT 和特定风险词优先匹配资深组。
-- 当前路由判断主要是 Java 固定规则，不能把数据库规则表理解为已完成动态规则发布引擎。
-
-### 主动事件、SOP 和卡片
-
-主动事件入口为 `/api/agent/integrations/{source}/events`，当前读取 `X-Event-Timestamp`、`X-Event-Nonce`、`X-Event-Signature`，使用 HMAC-SHA256 校验。通知处理已使用 Inbox、业务去重记录和业务会话绑定表。
-
-SOP 当前提供创建实例、列出本人实例和提交任务接口，主要演示“收集售后原因 → 调用售后申请接口 → 等待人工审核”。前端已有商品橱窗、订单时间线、动态表单、评分、人工状态及流程进度组件，消息支持 `cards` 结构。
-
-### 跨会话记忆
-
-记忆采用 MySQL 结构化偏好、Outbox/Worker 异步捕获和受控召回。全局配置默认允许该模块运行，但每个用户的 `read_enabled`、`write_enabled` 默认均为 `0`，需要通过设置接口开启。
-
-主要接口：
-
-| 方法 | 路径 |
-| --- | --- |
-| GET / PUT | `/api/agent/memory/settings` |
-| GET | `/api/agent/memories` |
-| PATCH / DELETE | `/api/agent/memories/{memoryNo}` |
-| DELETE | `/api/agent/memories` |
-| GET | `/api/agent/memory/operations/{operationNo}` |
-
-设计依据见 [长期记忆设计](doc/agent/customerServiceAgent/mem0_long_term_memory_design.md)。文档名称中的 Mem0 不表示运行时使用了 Mem0。
-
-### 当前实现边界
-
-以下是当前源码中可直接确认的状态，也是继续完善协同功能时需要关注的部分：
-
-| 能力 | 当前边界 |
-| --- | --- |
-| 新旧转接衔接 | 新的 `CustomerHandoffService` 与旧 `CustomerStore.handoff/process` 并存；AI 触发转接、旧管理接口与新工作台尚未全部走同一套状态管理 |
-| Copilot | 建议和总结为固定模板，没有调用模型完成真实总结，也没有为模板中的“已核实”提供事实核验；仅用于界面联调 |
-| 主动触达 | 接收人查询失败仍有固定用户兜底，Webhook 使用代码内开发密钥；处理使用临时虚拟线程，未完成持久化失败任务恢复、乱序控制和用户频控闭环 |
-| SOP | 节点推进主要由代码固定；下游失败存在本地服务单号兜底，不能据此认定真实售后单已创建；售后命令幂等目前使用进程内缓存 |
-| 富媒体动作 | 已有组件和部分动作处理，但服务端卡片绑定校验、完整 Schema 校验和全部动作闭环仍需完善 |
-| 实时可靠性 | 已有事件存储、同步接口和 Outbox 发布代码；跨实例 Redis 订阅、周期补漏及运行时调度仍需完善和验证。Agent 当前入口未显式启用 Spring 调度，不能仅因方法带 `@Scheduled` 就认为 Dispatcher 已运行 |
-| 权限与接入 | 新增快照/同步、Copilot、工作流和卡片接口的资源归属校验尚不完整；WS Origin 当前放开，部分路径仍有开发身份兜底，不能当作已完成生产权限隔离 |
-| 功能开关 | 协同设计里的 `customer-service.collaboration.*` 开关尚未接入当前 `CustomerProperties`，不能通过照抄设计配置来关闭相关 Bean |
-
-完整目标、状态机和验收方案见 [实时人工协同、主动触达、SOP 与富媒体设计](doc/agent/customerServiceAgent/live_handoff_outbound_sop_rich_ui_design.md)。该文档保留设计时的基线说明，不能作为当前功能全部完成或测试通过的证明。
-
-## 6. 多渠道 Mock 支付与对账
-
-当前支付策略包含：
-
-| 枚举 | 显示方式 |
-| --- | --- |
-| `UNIONPAY_BANK` | 银行卡 / 银联 |
-| `WECHAT_PAY` | 微信支付 |
-| `ALIPAY` | 支付宝 |
-| `ECNY` | 数字人民币 |
-
-订单服务中已增加支付策略注册、支付尝试、Mock 渠道记录、通知 Outbox/Inbox、支付确认、账单生成与解析、对账运行和差异处理等代码。前端对应 `PaymentModal` 和 `ReconciliationConsole`。
-
-常用入口包括 `/api/payment/{paymentNo}/methods`、`/api/payment/{paymentNo}/attempts`、`/api/payment/attempts/{attemptNo}/mock-confirm`，以及 `/api/trade/admin/reconciliation/**`、`/api/trade/admin/channel-settlements`。
-
-`PAYMENT_MOCK_ENABLED` 当前用于旧 `/mock-pay` 路径；新增 `/attempts/{attemptNo}/mock-confirm` 尚未接入同一开关，不能将该配置视为所有 Mock 支付入口的总开关。
-
-设计中的 T+1、D+1、D+0 和账单时间属于本项目模拟协议，不表示真实支付产品的统一服务承诺。详见 [多渠道支付与对账设计](doc/reconciliation/multi_channel_mock_payment_reconciliation_design.md)；其中“待开发”说明是历史设计状态，当前是否接通以源码、迁移和实际联调为准。
-
-## 7. 环境和配置
-
-### 开发环境
-
-- JDK 21、Maven。
-- Node.js `20.19+`（20.x）或 `22.12+`，满足当前 Vite/Oxlint 的 engines；以下以前端 pnpm 命令为例。
-- MySQL 8；启动 Agent 还需要 PostgreSQL + pgvector。
-- Nacos、Redis；完整业务联调按需准备 RocketMQ、Seata、XXL-Job Admin。
-- 邮件验证码需要 SMTP 配置；真实模型/Embedding 需要对应服务凭据。
-
-各服务读取自身 `src/main/resources/application.yml`。业务模块与 Agent/Gateway 的默认基础设施地址并不完全一致，启动前需要统一到自己的环境。仓库未提供 Docker Compose，也没有自动数据库迁移启动流程。
-
-### 常用配置项
-
-| 模块 | 配置项 | 用途 |
+| 层级 | 实现方式 | 处理范围 |
 | --- | --- | --- |
-| 业务服务 | `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` | 覆盖相应服务数据库 |
-| 服务发现 | `SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR`、`DUBBO_REGISTRY_ADDRESS` | Nacos 发现与 Dubbo 注册；Gateway/Agent 另支持 `NACOS_SERVER_ADDR` |
-| Redis | `SPRING_DATA_REDIS_HOST/PORT/PASSWORD` | Spring 通用覆盖；部分模块另支持 `REDIS_HOST/PORT/PASSWORD` |
-| Gateway | `JWT_SECRET`、`FRONTEND_ORIGIN` | JWT 校验和浏览器跨域来源，需与登录签发配置一致 |
-| Agent MySQL | `AGENT_MYSQL_URL/USERNAME/PASSWORD` | `db_agent` 数据源 |
-| Agent 向量库 | `AGENT_PGVECTOR_HOST/PORT/DATABASE/USERNAME`、`PGVECTOR_PASSWORD` | PostgreSQL / pgvector 连接 |
-| 客服模型 | `CUSTOMER_SERVICE_PROVIDER`、`CUSTOMER_SERVICE_API_KEY`、`CUSTOMER_SERVICE_BASE_URL` | `MOCK` 或 `DASHSCOPE` |
-| 客服模型名称 | `CUSTOMER_SERVICE_MASTER_MODEL`、`CUSTOMER_SERVICE_RESPONSE_MODEL` | 意图识别与回复模型 |
-| Embedding | `RAG_EMBEDDING_PROVIDER/API_KEY/BASE_URL/MODEL/DIM` | `MOCK` 或 `OPENAI_COMPATIBLE`，维度需匹配向量表 |
-| Agent 业务查询 | `DUBBO_ORDER_SERVICE_URL`、`DUBBO_ITEM_QUERY_SERVICE_URL` | 当前查询消费者的直连 URL 覆盖 |
-| 订单支付 | `PAYMENT_CALLBACK_SECRET`、`PAYMENT_MOCK_ENABLED` | 支付回调密钥与旧 `mock-pay` 开关，该开关默认关闭 |
-| XXL-Job | `XXL_JOB_ADMIN_ADDRESSES`、`XXL_JOB_EXECUTOR_PORT` | 执行器调度地址和端口，按服务分别配置 |
-| 前端 | `VITE_GATEWAY_URL`、`VITE_API_BASE_URL` | 开发代理目标、浏览器 API 基地址 |
+| L1 规则 | 正则与确定性规则 | 问候、身份询问、偏好查询与删除等明确表达 |
+| L2 向量意图库 | 对启用版本的示例向量检索，结合相似度阈值与候选分差判断 | 满足接收条件的单意图问题 |
+| L3 LLM | 结构化输出、问题拆分、槽位提取与执行阶段规划 | L2 回退、复杂多意图及上下文依赖问题 |
 
-表中的 `A/B/C` 表示多个独立环境变量，例如 `AGENT_MYSQL_URL`、`AGENT_MYSQL_USERNAME`、`AGENT_MYSQL_PASSWORD`，不是单个带斜杠的变量名。
+识别流程还包含人工升级规则和待补槽任务恢复，评测中分别记录为 `ESCALATION_RULE`、`CONTEXT_RESUME`。识别后校验业务编号的来源、格式、问题片段与槽位关系；缺少必要信息时返回澄清，补充信息后继续原任务。
 
-注意：Agent 当前商品查询直连默认值也指向 `20880`，而 Item 默认 Dubbo 端口为 `20882`。按默认本地端口启动时，应显式设置：
+L2 使用独立发布快照。构建时保存意图、示例和向量，校验时执行 **L2 → L3 最终意图匹配**，分别统计 L2 接收比例、接收准确率、L3 回退数及最终结果；启用操作切换在线活动版本。
 
-```bash
-export DUBBO_ORDER_SERVICE_URL=dubbo://127.0.0.1:20880
-export DUBBO_ITEM_QUERY_SERVICE_URL=dubbo://127.0.0.1:20882
-```
+### 多意图分阶段执行
 
-本地只验证模型流程时，分别关闭真实聊天模型和真实 Embedding：
+Master 为拆分后的任务生成 `executionStage`。调度器按阶段顺序执行，同阶段任务通过 `CompletableFuture` 并行处理；上一阶段返回的业务事实写入后续任务上下文，参与实体定位与槽位补全。
+
+例如，“先查最近订单，再看这笔订单的售后进度”可以先取得订单信息，再将确认的订单实体传给下一阶段。最终按任务顺序收集结果，由 Response 汇总，并受到整次请求预算和工具超时控制。
+
+### 分层记忆与上下文管理
+
+| 层级 | 当前实现 |
+| --- | --- |
+| 近期消息 | 最多保留最近 8 条消息，结合单条长度与总字符预算裁剪上下文 |
+| 滚动摘要 | 异步维护规则化会话摘要，将此前对话中的关键信息压缩后传入模型 |
+| 结构化会话状态 | 保存订单、售后单、商品实体、当前焦点、实体关系与待处理意图，支持指代解析和补槽 |
+| 跨会话偏好 | 自研 MySQL 记忆存储，以 Outbox 和异步 Worker 提取、合并用户品类及交付偏好，按当前意图筛选召回 |
+
+长期记忆提供用户级读写开关、版本与 epoch 校验、有效期及删除操作。异步提取在数据库事务外执行，合并时检查版本与任务租约；回答阶段再次校验记忆状态。订单当前状态等业务事实通过工具实时获取。
+
+用户级记忆读写默认关闭，可通过 `GET / PUT /api/agent/memory/settings` 查看或修改；`/api/agent/memories` 提供记忆查询、修改和删除入口。
+
+### 业务工具与回答约束
+
+- **订单与售后工具**：通过 Dubbo 查询本人订单、订单详情、状态时间线、售后进度和交付证据摘要；服务端校验订单买卖双方归属。
+- **商品工具**：读取对外可见的商品信息，为售前问题提供业务事实。
+- **工具白名单**：按处理节点约束可调用工具与知识文档类型，执行工具调用次数和超时限制。
+- **输出校验**：对结构化输出、业务编号、敏感内容和回答依据执行检查，记录错误或降级原因。
+- **人工服务**：支持转接申请、队列、认领、转派和结束；会话服务模式区分 BOT、QUEUED、HUMAN，并维护控制版本。AI 结果入库时检查当前服务模式，人工接管中的结果转为内部草稿。
+
+### RAG 知识问答
+
+知识管理以 MySQL 保存文档、切片、版本和索引任务，以 PostgreSQL / pgvector 保存向量：
+
+1. 按 Markdown 结构生成父子切片，支持切片预览、文档编辑和重新索引。
+2. 异步生成子块向量，按文档版本与索引状态管理可检索内容。
+3. 客服检索支持向量、关键词及混合模式；混合模式通过 RRF 融合候选，再回溯父块构造回答上下文。
+4. 按 PUBLIC 可见性、文档类型和启用版本过滤结果，记录文档、切片与检索日志。
+5. 管理端提供索引任务查询、切片树和检索测试界面。
+
+商品知识语料位于 [doc/data/RAG](doc/data/RAG/README.md)，包含 18 份演示 Markdown 文档。
+
+## 本地运行
+
+### 环境准备
+
+| 依赖 | 用途 |
+| --- | --- |
+| JDK 21、Maven | 后端编译与运行 |
+| Node.js、pnpm 或 npm | React / Vite 前端 |
+| MySQL、Redis、Nacos | 业务存储、缓存与服务发现 |
+| RocketMQ、Seata | 消息链路与 TCC 事务 |
+| PostgreSQL + pgvector | Agent 知识与意图向量检索，当前向量维度为 1536 |
+| XXL-JOB Admin | 订单、对账与风控任务调度 |
+| Python 3 | 离线评测脚本 |
+
+### 数据库初始化
+
+在目标数据库执行对应脚本。下表按基础表、增量迁移、演示数据的依赖顺序列出；已有数据库按实际 schema 补齐迁移。部分脚本含非幂等 `ALTER TABLE`，执行前核对已存在的列与索引。
+
+**交易与风控：**
+
+| 顺序 | 位置 / 文件 |
+| --- | --- |
+| 1 | 根目录 [db.sql](db.sql)：用户、商品、订单基础表 |
+| 2 | [doc/sql/init](doc/sql/init)：`stage1_schema.sql` → `stage1_trade_consistency_migration.sql` → `stage1_payment_callback_security_migration.sql` |
+| 3 | 同目录：`stage2_schema.sql` → `stage2_batch2_query_performance_migration.sql` → `stage2_batch3_operation_closure_migration.sql` |
+| 4 | 同目录：`seata_undo_log_migration.sql`，按脚本指定的业务库执行 |
+| 5 | [doc/sql/reconciliation](doc/sql/reconciliation)：`v1_payment_attempt_and_mock_channel.sql` → `v2_payment_refund_and_fund_suspense.sql` → `v3_channel_settlement_and_reconciliation.sql` |
+| 6 | 按需导入 [MySQL 演示数据](doc/data/MySQL) 与 `doc/sql/reconciliation/v4_mock_demo_fixtures.sql` |
+
+**Agent 与 RAG：**
+
+以下客服脚本统一位于 [doc/sql/agent/customerServiceAgent](doc/sql/agent/customerServiceAgent)，MySQL 与 PostgreSQL 脚本分别执行。
+
+| 顺序 | 脚本 |
+| --- | --- |
+| 1 | [RAG 基础表](doc/sql/rag)：`stage3_rag_schema.sql`、`stage3_rag_pgvector_schema.sql` |
+| 2 | `stage3_customer_service_agent_schema.sql`、`stage3_customer_service_agent_pgvector_migration.sql` |
+| 3 | `stage3_customer_service_intent_mysql_migration.sql`、`stage3_customer_service_intent_pgvector_migration.sql` |
+| 4 | `stage3_customer_service_intent_release_mysql_migration.sql`、`stage3_customer_service_intent_release_pgvector_migration.sql` |
+| 5 | `stage3_customer_service_runtime_mysql_migration.sql`、`customer_agent_v2_mysql_migration.sql`、`customer_agent_v2_pgvector_migration.sql` |
+| 6 | `stage3_customer_service_memory_mysql_migration.sql` |
+| 7 | `stage3_customer_service_live_handoff_outbound_sop_migration.sql`：当前会话与客服协同相关表及字段 |
+| 8 | `stage3_customer_service_intent_examples_expand_20261020.sql`：13 类默认 L2 业务意图的补充训练示例 |
+
+客服协同迁移在上一级 `doc/sql/agent` 也有同名文件，选用表中目录的版本执行一次即可。完成 MySQL 意图示例导入后，通过发布功能生成版本向量。
+
+PostgreSQL 配置见 [RAG 数据库说明](doc/sql/rag/stage3_rag_database_setup.md)。
+
+### 服务配置
+
+各服务读取自身 `src/main/resources/application.yml`。将数据库、Nacos、Redis、RocketMQ、Seata 和 XXL-JOB 地址配置为实际环境；使用环境变量或 IDE 运行配置覆盖连接信息。
+
+| 配置范围 | 常用环境变量 |
+| --- | --- |
+| 业务 MySQL | `SPRING_DATASOURCE_URL`、`SPRING_DATASOURCE_USERNAME`、`SPRING_DATASOURCE_PASSWORD`，按服务指定数据库 |
+| Nacos / Dubbo | `SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR`、`SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR`、`DUBBO_REGISTRY_ADDRESS` |
+| Redis | `SPRING_DATA_REDIS_HOST`、`SPRING_DATA_REDIS_PORT`、`SPRING_DATA_REDIS_PASSWORD`；Agent / Gateway 等也提供 `REDIS_*` 占位变量 |
+| RocketMQ | `ROCKETMQ_NAME_SERVER` |
+| 网关 | `JWT_SECRET`、`FRONTEND_ORIGIN` |
+| Agent MySQL | `AGENT_MYSQL_URL`、`AGENT_MYSQL_USERNAME`、`AGENT_MYSQL_PASSWORD` |
+| Agent PostgreSQL | `AGENT_PGVECTOR_HOST`、`AGENT_PGVECTOR_PORT`、`AGENT_PGVECTOR_DATABASE`、`AGENT_PGVECTOR_USERNAME`、`PGVECTOR_PASSWORD` |
+| Chat 模型 | `CUSTOMER_SERVICE_PROVIDER`、`CUSTOMER_SERVICE_API_KEY`、`CUSTOMER_SERVICE_BASE_URL`、`CUSTOMER_SERVICE_MASTER_MODEL`、`CUSTOMER_SERVICE_RESPONSE_MODEL` |
+| Embedding | `RAG_EMBEDDING_PROVIDER`、`RAG_EMBEDDING_API_KEY`、`RAG_EMBEDDING_BASE_URL`、`RAG_EMBEDDING_MODEL`、`RAG_EMBEDDING_DIM`、`RAG_EMBEDDING_BATCH_SIZE` |
+| 调度 | `XXL_JOB_ADMIN_ADDRESSES`、`XXL_JOB_EXECUTOR_PORT` |
+| 前端 | `VITE_GATEWAY_URL`、`VITE_API_BASE_URL` |
+
+Chat 与 Embedding 独立配置。真实客服使用 `CUSTOMER_SERVICE_PROVIDER=DASHSCOPE`，向量服务使用 `RAG_EMBEDDING_PROVIDER=OPENAI_COMPATIBLE`，并分别提供密钥与模型名称。当前向量表和发布校验使用 1536 维，Embedding 输出需与其一致。
+
+本地 Mock 模式配置：
 
 ```bash
 export CUSTOMER_SERVICE_PROVIDER=MOCK
 export RAG_EMBEDDING_PROVIDER=MOCK
 ```
 
-客服模型默认是 MOCK，Embedding 默认是 OPENAI_COMPATIBLE，二者互不联动。MOCK 模式仍需要数据库、Redis 等依赖，并不代表离线内存演示；真实商品/订单查询仍需要对应 Dubbo 提供方。`customer-eval` profile 会将客服 provider 设为 DASHSCOPE，使用前配置模型凭据。
+Mock 模式用于流程演示，仍需准备数据库、Redis 等依赖。Agent 默认通过注册中心发现业务服务，也支持 `DUBBO_ORDER_SERVICE_URL` 和 `DUBBO_ITEM_QUERY_SERVICE_URL` 指定直连地址。
 
-## 8. 数据库准备
+### 构建与启动
 
-DDL 和演示数据需要手工按依赖执行。以下是脚本导航，不是可无条件重复执行的安装命令；已部署环境应核对已有字段、索引和数据，只补未执行的迁移。
-
-### 业务基础与支付对账
-
-| 顺序 | 脚本位置 | 内容 |
-| --- | --- | --- |
-| 1 | [db.sql](db.sql) | 创建 `db_item`、`db_order`、`db_user` 基础表 |
-| 2 | [doc/sql/init](doc/sql/init) 中的 `stage1_schema.sql` | 商家、担保交易、资金与售后等扩展 |
-| 3 | 同目录 `stage1_trade_consistency_migration.sql`、`stage1_payment_callback_security_migration.sql` | 交易一致性、回调安全增量 |
-| 4 | 同目录 `stage2_schema.sql`、`stage2_batch2_query_performance_migration.sql`、`stage2_batch3_operation_closure_migration.sql` | `db_risk`、风险标记、查询与运营闭环扩展 |
-| 5 | 同目录 `seata_undo_log_migration.sql` | Seata 所需表，按脚本适用库执行 |
-| 6 | [doc/sql/reconciliation](doc/sql/reconciliation) 的 `v1` → `v2` → `v3` | 支付尝试与渠道、退款与待处理资金、结算与对账 |
-| 7 | `v4_mock_demo_fixtures.sql`；[doc/data/MySQL](doc/data/MySQL) 的演示数据 | 按需要导入演示配置/数据，先核对是否与已有数据冲突 |
-
-部分阶段脚本包含重叠字段/索引，执行前逐项核对，不能把所有 SQL 拼接后反复执行。`v2` 对账迁移同时涉及 `db_order` 和 `db_user`。
-
-[MySQL 演示说明](doc/data/MySQL/README.md) 包含账号和数据口径，但其中部分路径尚为旧目录写法：实际业务迁移在 `doc/sql/init/`，演示数据在 `doc/data/MySQL/`，以当前文件树为准。
-
-### Agent / RAG
-
-| 顺序 | 脚本/目录 | 说明 |
-| --- | --- | --- |
-| 1 | [doc/sql/rag](doc/sql/rag) 的 `stage3_rag_schema.sql`、`stage3_rag_pgvector_schema.sql` | MySQL 知识元数据与 PostgreSQL 向量表，分别在对应数据库执行 |
-| 2 | [客服 SQL 目录](doc/sql/agent/customerServiceAgent) 的 `stage3_customer_service_agent_schema.sql`、`stage3_customer_service_agent_pgvector_migration.sql` | 会话/消息/Run/转接基础表与知识可见性 |
-| 3 | `stage3_customer_service_intent_*`、`stage3_customer_service_intent_release_*` | 先意图编辑数据，再发布快照，MySQL/PG 分别迁移 |
-| 4 | `stage3_customer_service_runtime_mysql_migration.sql`、`customer_agent_v2_mysql_migration.sql`、`customer_agent_v2_pgvector_migration.sql` | 运行租约、关键词索引与后续优化 |
-| 5 | `stage3_customer_service_memory_mysql_migration.sql` | 用户偏好、设置、Outbox 和运行证据字段 |
-| 6 | [stage3_customer_service_live_handoff_outbound_sop_migration.sql](doc/sql/agent/customerServiceAgent/stage3_customer_service_live_handoff_outbound_sop_migration.sql) | 实时消息、坐席、事件、工作流和卡片表；依赖已有客服和记忆 schema |
-
-同名协同迁移还存在于 `doc/sql/agent/` 下，两份当前 SQL 主体等价，**只能选一份执行**。本文统一链接 `customerServiceAgent` 目录中的版本；脚本含非幂等 `ALTER TABLE`，再次执行会产生重复列/索引问题。
-
-协同迁移初始化了技能组和路由样例，但不等于已经配置好真实坐席、业务事件源或全部 SOP 定义。迁移也不等于完成历史消息序号回填和上线验收。最新代码已引用新增字段和表，不能仅执行旧客服 schema 后直接运行新版本。
-
-向量库连接与导入说明见 [RAG 数据库配置](doc/sql/rag/stage3_rag_database_setup.md)、[RAG 知识数据](doc/data/RAG/README.md)。切换 Embedding 模型或维度后需要核对索引并重新生成向量。
-
-## 9. 构建和启动
-
-### 后端
-
-先完成基础设施、数据库和环境配置，再在仓库根目录安装模块依赖：
+在仓库根目录安装后端模块依赖：
 
 ```bash
 mvn -DskipTests install
 ```
 
-该命令跳过测试，适合首次准备本地依赖，不代表测试通过。业务服务按 User / Item → Order → Risk → Agent 的依赖关系启动，再启动 Gateway；以下命令分别在独立终端执行：
+分别在独立终端启动服务，或在 IDE 中运行对应的 `*Application` 类：
 
 ```bash
 mvn -pl mall-user-service org.springframework.boot:spring-boot-maven-plugin:3.5.6:run
@@ -290,9 +295,7 @@ mvn -pl mall-agent-service org.springframework.boot:spring-boot-maven-plugin:3.5
 mvn -pl mall-gateway-service org.springframework.boot:spring-boot-maven-plugin:3.5.6:run
 ```
 
-运行单个服务时不加 `-am`，避免把父 POM/公共 API 模块一同作为应用启动。也可以在 IDE 中运行各模块的 `*Application` 类。只验证部分功能时，仍须启动其数据库、注册中心与实际使用的 RPC/消息依赖。
-
-### 前端
+启动前端：
 
 ```bash
 cd mall-frontend
@@ -300,85 +303,118 @@ pnpm install
 pnpm dev
 ```
 
-仓库同时保留 pnpm 与 npm 锁文件，以上以 pnpm 为例；同一次开发使用一种包管理器即可。也可通过已安装的 Corepack 调用 `corepack pnpm`。
+访问 [http://localhost:3000](http://localhost:3000)。Vite 默认将 `/api` 转发到 `http://localhost:8080`，并为客服 WebSocket 路径配置代理。
 
-默认打开 [本地前端](http://localhost:3000)。Vite 将 `/api` 转发到 `VITE_GATEWAY_URL`，默认 [本地网关](http://localhost:8080)，并为 `/api/agent/realtime/ws` 配置 WebSocket 代理。浏览器 API 基地址由 `VITE_API_BASE_URL` 控制，通常保持同源代理即可。
+登录后，用户端提供商品、订单和客服入口；管理端提供运营审核、对账差异、风控案件、知识库以及客服管理工作台。
+
+## 启用 L2 意图库
+
+1. 配置真实 Chat 和 Embedding 服务，保持 `customer-service.rag-enabled=true`。
+2. 在管理后台进入 **智能客服 → 意图库发布 → 构建完整意图库版本**。
+3. 提交独立评估问句，构建意图快照与向量。仓库提供 [基础发布校验集](evaluation/intention-evaluation/l2_release_evaluations.json)。
+4. 刷新查看 `BUILDING → VALIDATING → READY` 状态；构建或校验失败时，详情报告显示失败阶段和原因。
+5. 对 READY 版本点击 **启用此版本**，切换在线 L2。
+
+`READY` 表示校验通过、可以启用；实际在线版本由活动指针决定。也可以使用管理员 JWT 调用启用接口：
 
 ```bash
+export INTENT_EVAL_ADMIN_TOKEN='<管理员登录返回的 JWT>'
+RELEASE_NO='<状态为 READY 的版本编号>'
+
+curl -X POST "http://localhost:8080/api/admin/agent/intent-releases/${RELEASE_NO}/activate" \
+  -H "Authorization: Bearer ${INTENT_EVAL_ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+在 `db_agent` 查询当前活动版本：
+
+```sql
+SELECT scene, active_release_no
+FROM t_customer_service_intent_active_release
+WHERE scene = 'CUSTOMER_SERVICE';
+```
+
+发布校验集应覆盖本次启用的业务意图与 OTHER 负例。200 条正式评测集用于评估识别效果，与训练示例分开使用。完整操作说明见 [L2 构建与启用](evaluation/intention-evaluation/L2_PUBLISH.md)。
+
+## 评测与验证
+
+### 意图识别评测
+
+[evaluate_intents.py](evaluation/intention-evaluation/evaluate_intents.py) 调用管理员识别接口 `/api/admin/agent/intent-evaluation/recognize`，获得意图与槽位后结束。模型由后端配置，脚本使用管理员 JWT；上下文由显式测试夹具提供。
+
+[200 条测试用例](evaluation/intention-evaluation/intent_cases.json) 覆盖 21 类意图，包含简单表达、近邻意图、否定、引用、多意图、上下文指代、缺槽与异常输入；难度分布为 easy 40、medium 80、hard 80。
+
+```bash
+# 离线校验数据集与判分逻辑
+python3 evaluation/intention-evaluation/evaluate_intents.py --validate-only
+python3 evaluation/intention-evaluation/evaluate_intents.py --self-test
+
+# 全量在线识别评测
+export INTENT_EVAL_ADMIN_TOKEN='<管理员登录返回的 JWT>'
+python3 evaluation/intention-evaluation/evaluate_intents.py
+
+# 按案例复测
+python3 evaluation/intention-evaluation/evaluate_intents.py --case-id INT-029
+```
+
+脚本输出逐条结果、汇总指标、错误分组与失败案例，报告保存到 `evaluation/intention-evaluation/outputs/<运行编号>/`。
+
+**仓库已有记录：**[20261020T161310Z-d7a0fe93](evaluation/intention-evaluation/outputs/20261020T161310Z-d7a0fe93/summary.json)，使用 DASHSCOPE、非 Mock 模型及启用的 L2 版本。
+
+| 指标 | 结果 |
+| --- | --- |
+| 选定样本 | 200 条 |
+| 有效分类 / 覆盖率 | 193 / 200，96.50% |
+| 有效样本意图完全匹配率 | 185 / 193，95.85% |
+| 匹配数 / 全部选定样本 | 185 / 200，92.50% |
+| Micro-F1 / Macro-F1 | 0.964286 / 0.969356 |
+| 有槽位判分的样本匹配率 | 68 / 78，87.18% |
+| 异常样本 | 7 条 |
+
+| 识别来源 | 意图完全匹配 / 有效样本 | 匹配率 |
+| --- | --- | --- |
+| 上下文恢复 | 4 / 4 | 100.00% |
+| 人工升级规则 | 9 / 15 | 60.00% |
+| L1 规则 | 14 / 14 | 100.00% |
+| L2 向量意图库 | 12 / 13 | 92.31% |
+| L3 LLM | 146 / 147 | 99.32% |
+
+上述数据对应这一次历史运行，范围是**意图识别与槽位解析**，未执行业务工具和完整客服链路。有效样本指标排除了 7 条异常；各来源准确率仅以该来源有效样本为分母。完整记录保留了模型配置、意图库版本、数据集哈希及错误明细。
+
+### RAG 评估
+
+[evaluation/rag-evaluation](evaluation/rag-evaluation/README.md) 提供检索指标和 RAGAS 评估，统计 Hit@K、MRR、上下文覆盖率、延迟及错误率；配置裁判模型后计算回答忠实度、相关性等指标。数据准备、依赖安装和运行参数见目录说明。
+
+### 工程检查
+
+```bash
+# 后端测试
+mvn test
+
+# Agent 模块及其依赖
+mvn -pl mall-agent-service -am test
+
+# 工程规范扫描
+bash scripts/ci/engineering-standards-scan.sh
+
+# 前端检查与构建（在 mall-frontend 目录执行）
 pnpm lint
 pnpm build
 ```
 
-本 README 的启动步骤未包含自动创建坐席、知识入库或模型密钥配置；这些需要按相关模块说明准备。
+仓库包含交易、支付回调、对账、风控、网关鉴权、Agent 路由、工具约束、记忆、意图库发布及 Embedding 相关测试。
 
-## 10. 主要 API 入口
+## 代码与文档入口
 
-以下列出当前代码中的入口，用于定位模块；完整请求字段以 Controller 和前端 API 适配代码为准。
-
-| 场景 | 入口 |
+| 主题 | 入口 |
 | --- | --- |
-| 交易与订单 | `/api/trade/**`、`/api/order/**` |
-| 支付与支付尝试 | `/api/payment/**` |
-| 对账与差异处理 | `/api/trade/admin/reconciliation/**` |
-| 风险管理 | `/api/admin/risk/**` |
-| 客服会话 | `POST/GET /api/agent/sessions`、`GET /api/agent/sessions/{session}` |
-| AI 消息 | `POST /api/agent/sessions/{session}/messages`、`POST .../messages/stream` |
-| 实时票据/连接 | `POST /api/agent/realtime/tickets`、`GET /api/agent/realtime/ws?ticket=...` |
-| 快照/同步 | `GET /api/agent/sessions/{session}/snapshot`、`GET .../sync` |
-| 新人工转接 | `POST /api/agent/sessions/{session}/handoffs` |
-| 坐席档案/队列 | `/api/staff/agent/me`、`/api/staff/agent/handoffs` |
-| 坐席认领/转派/结束 | `/api/staff/agent/handoffs/{no}/claim`、`.../{no}/transfer`、`.../{no}/resolve` |
-| 坐席发言与辅助 | `/api/staff/agent/sessions/{session}/messages`、`.../copilot/reply-suggestions`、`.../copilot/summaries` |
-| 主动事件 | `POST /api/agent/integrations/{source}/events` |
-| 工作流 | `POST/GET /api/agent/workflows`、`POST /api/agent/workflows/{workflowNo}/tasks/{taskNo}/submit` |
-| 卡片动作 | `POST /api/agent/sessions/{session}/card-actions` |
-| 知识管理 | `/api/admin/agent/knowledge/**` |
-| Agent 运行/意图库管理 | `/api/admin/agent/runs/**`、`/api/admin/agent/intent-releases/**` |
-
-用户和管理员 HTTP 请求使用登录身份；实时握手使用服务端签发的短期票据；外部事件使用专门签名头。新增接口的完整资源权限隔离仍需按第 5 节补齐。
-
-## 11. 测试、评估与开发验证
-
-在仓库根目录执行后端测试：
-
-```bash
-mvn test
-
-# 只测试 Agent 及构建依赖模块
-mvn -pl mall-agent-service -am test
-
-# 支付与对账所在模块
-mvn -pl mall-order-service -am test
-```
-
-已有测试覆盖订单/资金/风控、客服识别与安全、工具使用、记忆模块和多渠道支付对账等。新协同能力仍需补充 WS 经网关联调、跨账号权限、并发认领、断线补发、事件重放和 SOP 重启恢复验证，设计文档中的验收用例不等于已经执行通过。
-
-RAG 离线评估位于 [evaluation/rag-evaluation](evaluation/rag-evaluation/README.md)，需要运行中的 Agent、已导入/索引的知识和管理员令牌。支持确定性检索指标与 RAGAS 质量指标；裁判模型配置不完整时跳过对应 RAGAS 指标。
-
-工程规范扫描：
-
-```bash
-bash scripts/ci/engineering-standards-scan.sh
-```
-
-文档、配置检查与应用测试分开执行。运行真实业务联调前，确认所选数据库包含当前版本迁移，并使用对应环境的配置。
-
-## 12. 文档导航
-
-| 主题 | 文档 |
-| --- | --- |
-| 项目路线 | [三阶段路线图](doc/init/virtual_asset_market_three_phase_roadmap.md) |
-| 交易设计 | [第一阶段交易系统](doc/init/stage1_virtual_asset_trading_design.md) |
-| 风控设计 | [第二阶段风控系统](doc/init/stage2_risk_control_design.md) |
-| 认证与网关 | [身份与上下文](doc/init/enterprise_auth_and_user_context_design.md)、[Gateway 设计](doc/init/spring_cloud_gateway_design.md) |
-| 支付与对账 | [多渠道 Mock 支付与对账](doc/reconciliation/multi_channel_mock_payment_reconciliation_design.md) |
-| Agent 总体 | [阶段三 Agent 设计](doc/agent/stage3_agent_development_design.md) |
-| 客服基础 | [实现说明](doc/agent/customerServiceAgent/implementation.md)、[原始实现设计](doc/agent/customerServiceAgent/implementation_design.md) |
-| 客服协同 | [人工接管、主动触达、SOP 与富媒体](doc/agent/customerServiceAgent/live_handoff_outbound_sop_rich_ui_design.md) |
-| 用户记忆 | [跨会话记忆设计](doc/agent/customerServiceAgent/mem0_long_term_memory_design.md) |
-| RAG | [开发设计](doc/agent/RAG/rag_development_design.md)、[数据库配置](doc/sql/rag/stage3_rag_database_setup.md)、[知识数据](doc/data/RAG/README.md) |
-| 演示数据 | [MySQL 数据说明](doc/data/MySQL/README.md) |
-| 前端 | [前端 README](mall-frontend/README.md) |
-| 工程改进 | [工程规范清单](doc/stage1_and_stage2_improve/engineering_standards_checklist.md) |
-
-设计文档记录架构目标和当时的实现基线，源码与迁移文件记录当前开发内容；新增能力是否可用，需要结合配置、数据准备和实际验证结果判断。
+| 客服识别与路由 | [CustomerMaster](mall-agent-service/src/main/java/com/example/agent/customer/CustomerMaster.java)、[IntentCatalog](mall-agent-service/src/main/java/com/example/agent/customer/IntentCatalog.java) |
+| Graph 与阶段调度 | [CustomerRunner](mall-agent-service/src/main/java/com/example/agent/customer/CustomerRunner.java) |
+| 上下文与长期记忆 | [上下文窗口](mall-agent-service/src/main/java/com/example/agent/customer/CustomerContextWindowBuilder.java)、[记忆模块](mall-agent-service/src/main/java/com/example/agent/customer/memory) |
+| 业务工具权限 | [CustomerToolPolicy](mall-agent-service/src/main/java/com/example/agent/customer/CustomerToolPolicy.java)、[订单事实查询](mall-order-service/src/main/java/com/example/item/service/AgentOrderQueryService.java) |
+| 知识检索 | [CustomerKnowledgeService](mall-agent-service/src/main/java/com/example/agent/customer/CustomerKnowledgeService.java)、[RAG 模块](mall-agent-service/src/main/java/com/example/agent/rag) |
+| 意图库版本管理 | [IntentReleaseService](mall-agent-service/src/main/java/com/example/agent/customer/IntentReleaseService.java)、[发布操作说明](evaluation/intention-evaluation/L2_PUBLISH.md) |
+| 担保交易 | [TradeOrderService](mall-order-service/src/main/java/com/example/item/service/TradeOrderService.java)、[业务状态枚举](mall-api/src/main/java/api/enums) |
+| 支付与对账 | [支付模块](mall-order-service/src/main/java/com/example/item/payment)、[对账模块](mall-order-service/src/main/java/com/example/item/reconciliation) |
+| 初始化与语料 | [SQL 脚本](doc/sql)、[业务演示数据](doc/data/MySQL)、[知识语料](doc/data/RAG) |

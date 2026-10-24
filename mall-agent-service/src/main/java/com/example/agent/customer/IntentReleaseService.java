@@ -7,14 +7,21 @@ import jakarta.annotation.PreDestroy;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionTimedOutException;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.client.RestClientResponseException;
 import static com.example.agent.customer.CustomerJson.*;
 
 @Service
 public class IntentReleaseService {
+    private static final Logger log=LoggerFactory.getLogger(IntentReleaseService.class);
+    private static final int SNAPSHOT_BATCH_SIZE=100;
     public record Evaluation(String query,String expectedIntent) {}
     public record Snapshot(Map<String,Object> header,List<Map<String,Object>> items,List<Map<String,Object>> examples) {
         String no(){return header.get("release_no").toString();}
@@ -24,14 +31,15 @@ public class IntentReleaseService {
     private final CustomerDatabase db;
     private final OnlineEmbedding embedding;
     private final CustomerProperties properties;
+    private final IntentReleaseEvaluator evaluator;
     private final String query;
     private final String fastQuery;
     private record ActivePointer(String releaseNo,long expiresAtNanos) {}
     private volatile ActivePointer activePointer;
     private final Map<String,Snapshot> verifiedSnapshots=Collections.synchronizedMap(new LinkedHashMap<>(8,.75f,true));
     private final ExecutorService builder=new ThreadPoolExecutor(1,1,0,TimeUnit.SECONDS,new ArrayBlockingQueue<>(4),r->{Thread t=new Thread(r,"intent-release-builder");t.setDaemon(true);return t;});
-    public IntentReleaseService(CustomerDatabase db,OnlineEmbedding embedding,CustomerProperties properties) throws Exception {
-        this.db=db;this.embedding=embedding;this.properties=properties;
+    public IntentReleaseService(CustomerDatabase db,OnlineEmbedding embedding,CustomerProperties properties,IntentReleaseEvaluator evaluator) throws Exception {
+        this.db=db;this.embedding=embedding;this.properties=properties;this.evaluator=evaluator;
         query=new ClassPathResource("customer/intent-search.sql").getContentAsString(StandardCharsets.UTF_8);
         fastQuery=new ClassPathResource("customer/intent-search-fast.sql").getContentAsString(StandardCharsets.UTF_8);
     }
@@ -107,7 +115,7 @@ public class IntentReleaseService {
     }
     public boolean isActive(String no){return no!=null&&!no.isBlank()&&Objects.equals(activeRelease(),no);}
 
-    private void assertReady(Snapshot s){if(!"READY".equals(s.header.get("status")))throw incomplete();if(embedding.mock()&&!"MOCK".equals(properties.getProvider()))throw incomplete();}
+    private void assertReady(Snapshot s){if(!"READY".equals(s.header.get("status")))throw incomplete();if(!"MOCK".equals(properties.getProvider())&&(embedding.mock()||read(s.header.get("validation_report_json")).path("mockL3").asBoolean()))throw incomplete();}
     ObjectNode search(Snapshot s,float[] vector){
         Map<String,Object> params=new HashMap<>();params.put("expected_examples_json",write(s.examples));params.put("query_vector",VectorFormat.toLiteral(vector));
         params.put("release_no",s.no());params.put("embedding_model",s.model());params.put("expected_example_count",s.count());params.put("expected_intent_count",s.items.size());params.put("intent_top_k",5);
@@ -145,52 +153,140 @@ public class IntentReleaseService {
         if(tests==null || tests.size()<3 || tests.size()>200)throw error(400,"INTENT_EVAL_REQUIRED","请提供 3–200 条独立评估问句，覆盖全部意图及 OTHER 负例");
         for(var t:tests)if(t.query()==null||t.query().isBlank()||t.query().length()>512||!IntentCatalog.ROUTES.containsKey(t.expectedIntent()))throw error(400,"INTENT_EVAL_INVALID","评估问句或意图不正确");
         String no=id("IR");String model=embedding.model();
-        db.tx.executeWithoutResult(status->{
+        // Freezing a complete catalog is an admin operation, not a three-second online query.
+        // Copy the transaction definition so the shared online timeout remains unchanged.
+        TransactionTemplate snapshotTx=new TransactionTemplate(db.tx.getTransactionManager(),db.tx);
+        snapshotTx.setTimeout(30);
+        try { snapshotTx.executeWithoutResult(status->{
             List<Map<String,Object>> items=db.mysql.queryForList("SELECT * FROM t_customer_service_intent WHERE status='ENABLED' ORDER BY intent_code");
             items.removeIf(i->!IntentCatalog.l2(i.get("intent_code").toString())||(!properties.isPreSaleEnabled()&&i.get("intent_code").toString().startsWith("PRE_SALE")));
             Set<String> coverage=new HashSet<>();tests.forEach(t->coverage.add(t.expectedIntent()));
             if(items.size()<2||!coverage.contains("OTHER")||items.stream().anyMatch(i->!coverage.contains(i.get("intent_code"))))throw error(400,"INTENT_EVAL_COVERAGE","评估集必须覆盖全部待发布意图及 OTHER 负例");
-            db.mysql.update("INSERT INTO t_customer_service_intent_release(release_no,embedding_model,created_by) VALUES(?,?,?)",no,model,operator);
-            int total=0;
-            for(var i:items){String code=i.get("intent_code").toString();var examples=db.mysql.queryForList("SELECT * FROM t_customer_service_intent_example WHERE intent_code=? AND status='ENABLED' ORDER BY example_no",code);
+            var sourceExamples=new NamedParameterJdbcTemplate(db.mysql).queryForList(
+                "SELECT * FROM t_customer_service_intent_example WHERE status='ENABLED' AND intent_code IN (:codes) ORDER BY intent_code,example_no",
+                Map.of("codes",items.stream().map(i->i.get("intent_code")).toList()));
+            Map<String,List<Map<String,Object>>> byIntent=new HashMap<>();
+            for(var e:sourceExamples)byIntent.computeIfAbsent(e.get("intent_code").toString(),ignored->new ArrayList<>()).add(e);
+            List<Object[]> itemRows=new ArrayList<>(),exampleRows=new ArrayList<>();
+            for(var i:items){String code=i.get("intent_code").toString();var examples=byIntent.getOrDefault(code,List.of());
                 if(examples.isEmpty()||examples.stream().anyMatch(e->!canonical(e.get("intent_version")).equals(canonical(i.get("intent_version")))))throw incomplete();
                 Object threshold=i.get("similarity_threshold")==null?new BigDecimal("0.8800"):i.get("similarity_threshold");
-                db.mysql.update("INSERT INTO t_customer_service_intent_release_item VALUES(?,?,?,?,?,?,?,?,?)",no,code,i.get("intent_version"),i.get("intent_name"),i.get("description"),i.get("route_node"),i.get("required_slots_json"),threshold,examples.size());
+                itemRows.add(new Object[]{no,code,i.get("intent_version"),i.get("intent_name"),i.get("description"),i.get("route_node"),i.get("required_slots_json"),threshold,examples.size()});
                 for(var e:examples){String normalized=normalize(e.get("example_text").toString());
                     if(!normalized.equals(e.get("normalized_text"))||!hash(normalized).equals(e.get("example_hash")))throw incomplete();
-                    db.mysql.update("INSERT INTO t_customer_service_intent_release_example VALUES(?,?,?,?,?,?,?,?,?)",no,e.get("example_no"),e.get("example_version"),code,e.get("intent_version"),e.get("example_text"),normalized,hash(normalized),hash(model+"|"+normalized));total++;}
+                    exampleRows.add(new Object[]{no,e.get("example_no"),e.get("example_version"),code,e.get("intent_version"),e.get("example_text"),normalized,hash(normalized),hash(model+"|"+normalized)});
+                }
             }
-            db.mysql.update("UPDATE t_customer_service_intent_release SET expected_intent_count=?,expected_example_count=? WHERE release_no=?",items.size(),total,no);
+            db.mysql.update("INSERT INTO t_customer_service_intent_release(release_no,embedding_model,created_by) VALUES(?,?,?)",no,model,operator);
+            insertSnapshotRows("INSERT INTO t_customer_service_intent_release_item(release_no,intent_code,intent_version,intent_name,description,route_node,required_slots_json,similarity_threshold,expected_example_count) VALUES ",itemRows);
+            insertSnapshotRows("INSERT INTO t_customer_service_intent_release_example(release_no,example_no,example_version,intent_code,intent_version,example_text,normalized_text,example_hash,embedding_input_hash) VALUES ",exampleRows);
+            db.mysql.update("UPDATE t_customer_service_intent_release SET expected_intent_count=?,expected_example_count=? WHERE release_no=?",items.size(),exampleRows.size(),no);
             String digest=manifest(snapshot(no));db.mysql.update("UPDATE t_customer_service_intent_release SET manifest_hash=?,status='BUILDING' WHERE release_no=?",digest,no);
-        });
+        }); } catch(TransactionTimedOutException e) {
+            log.warn("Intent release snapshot transaction timed out: releaseNo={}",no);
+            throw error(504,"INTENT_SNAPSHOT_TIMEOUT","保存意图库发布快照超时，已回滚；请检查 MySQL 连接后重试");
+        }
         try{builder.submit(()->build(no,tests));}catch(RejectedExecutionException e){db.mysql.update("UPDATE t_customer_service_intent_release SET status='FAILED' WHERE release_no=?",no);throw error(503,"INTENT_BUILD_BUSY","构建队列已满");}return no;
     }
-    private void build(String no,List<Evaluation> tests){
+    private void insertSnapshotRows(String insert,List<Object[]> rows) {
+        // Use multi-row INSERT explicitly: JDBC batch rewriting is not enabled on every MySQL URL.
+        for(int from=0;from<rows.size();from+=SNAPSHOT_BATCH_SIZE) {
+            List<Object[]> batch=rows.subList(from,Math.min(from+SNAPSHOT_BATCH_SIZE,rows.size()));
+            db.mysql.update(insert+String.join(",",Collections.nCopies(batch.size(),"(?,?,?,?,?,?,?,?,?)")),
+                batch.stream().flatMap(Arrays::stream).toArray());
+        }
+    }
+    void build(String no,List<Evaluation> tests){
+        String stage="SNAPSHOT_VALIDATION";
         try{
             Snapshot s=snapshot(no);validate(s);
+            stage="EVALUATION_INPUT";
+            Set<String> training=new HashSet<>();s.examples.forEach(e->training.add(e.get("normalized_text").toString()));
+            List<String> normalizedTests=tests.stream().map(test->normalize(test.query())).toList();
+            for(String normalized:normalizedTests)if(training.contains(normalized))throw error(400,"INTENT_EVAL_LEAKAGE","评估问句不能与训练示例完全相同");
             String insert="INSERT INTO rag_customer_service_intent_release_embedding(release_no,example_no,example_version,intent_code,intent_version,embedding,embedding_model,embedding_dim,embedding_input_hash) VALUES(?,?,?,?,?,?::vector,?,1536,?) ON CONFLICT(release_no,example_no) DO UPDATE SET embedding=EXCLUDED.embedding,embedding_input_hash=EXCLUDED.embedding_input_hash,updated_time=now()";
             for(int from=0;from<s.examples.size();from+=32){
                 List<Map<String,Object>> examples=s.examples.subList(from,Math.min(from+32,s.examples.size()));
+                stage="EMBEDDING_EXAMPLES";
                 var vectors=embedding.embedBatchWithUsage(examples.stream().map(e->e.get("normalized_text").toString()).toList(),s.model(),1536).vectors();
                 List<Object[]> rows=new ArrayList<>(examples.size());
                 for(int i=0;i<examples.size();i++){var e=examples.get(i);rows.add(new Object[]{no,e.get("example_no"),e.get("example_version"),e.get("intent_code"),e.get("intent_version"),VectorFormat.toLiteral(vectors.get(i)),s.model(),e.get("embedding_input_hash")});}
+                stage="WRITING_VECTORS";
                 db.tx.executeWithoutResult(tx->{var h=db.mysql.queryForMap("SELECT status FROM t_customer_service_intent_release WHERE release_no=? FOR UPDATE",no);if(!"BUILDING".equals(h.get("status")))throw incomplete();db.vector.batchUpdate(insert,rows);});
             }
+            stage="STARTING_VALIDATION";
             if(db.mysql.update("UPDATE t_customer_service_intent_release SET status='VALIDATING' WHERE release_no=? AND status='BUILDING'",no)!=1)throw incomplete();
-            ArrayNode results=array();boolean passed=true;Set<String> training=new HashSet<>();s.examples.forEach(e->training.add(e.get("normalized_text").toString()));
-            List<String> normalizedTests=tests.stream().map(test->normalize(test.query())).toList();
-            for(String normalized:normalizedTests)if(training.contains(normalized))throw error(400,"INTENT_EVAL_LEAKAGE","评估问句不能与训练示例完全相同");
+            ArrayNode results=array();
             List<float[]> testVectors=new ArrayList<>(tests.size());
+            stage="EMBEDDING_EVALUATIONS";
             for(int from=0;from<normalizedTests.size();from+=32)testVectors.addAll(embedding.embedBatchWithUsage(normalizedTests.subList(from,Math.min(from+32,normalizedTests.size())),s.model(),1536).vectors());
+            stage="EVALUATING";
             for(int index=0;index<tests.size();index++){var test=tests.get(index);
-                ObjectNode actual=search(s,testVectors.get(index));boolean ok=test.expectedIntent().equals(actual.path("code").asText());passed &= ok;
-                results.add(object().put("query",redact(test.query())).put("expected",test.expectedIntent()).put("actual",actual.path("code").asText()).put("passed",ok));}
-            ObjectNode report=object().put("passed",passed).put("mockEmbedding",embedding.mock()).put("manifestHash",manifest(s)).put("evaluationHash",hash(write(tests))).put("expectedExampleCount",s.count()).put("embeddingModel",s.model()).put("embeddingDim",1536);report.set("evaluations",results);
+                if(Thread.currentThread().isInterrupted())throw error(504,"AGENT_CANCELLED","发布校验已中断");
+                ObjectNode actual=search(s,testVectors.get(index));
+                results.add(evaluator.evaluate(test,actual));}
+            ObjectNode report=evaluator.summarize(results).put("mockEmbedding",embedding.mock()).put("manifestHash",manifest(s)).put("evaluationHash",hash(write(tests))).put("expectedExampleCount",s.count()).put("embeddingModel",s.model()).put("embeddingDim",1536);report.set("evaluations",results);
+            boolean passed=report.path("passed").asBoolean();
+            report.put("stage","EVALUATING");
+            if(!passed)report.put("errorCode","INTENT_EVALUATION_FAILED").put("error","L2→L3 发布校验存在最终分类不匹配或调用异常，请查看 evaluations");
+            stage="SAVING_REPORT";
             db.mysql.update("UPDATE t_customer_service_intent_release SET status=?,validation_report_json=?,validated_time=now(3) WHERE release_no=? AND status='VALIDATING'",passed?"READY":"FAILED",write(report),no);
-        }catch(Exception e){db.mysql.update("UPDATE t_customer_service_intent_release SET status='FAILED',validation_report_json=? WHERE release_no=? AND status IN ('BUILDING','VALIDATING')",write(Map.of("passed",false,"error","构建或完整性/评估校验失败，请核对数据与依赖后创建新版本")),no);}
+        }catch(Exception e){
+            ObjectNode report=buildFailure(stage,e);
+            log.error("Intent release build failed: releaseNo={}, report={}",no,write(report));
+            db.mysql.update("UPDATE t_customer_service_intent_release SET status='FAILED',validation_report_json=? WHERE release_no=? AND status IN ('BUILDING','VALIDATING')",write(report),no);
+        }
+    }
+
+    static ObjectNode buildFailure(String stage,Exception exception) {
+        ObjectNode report=object().put("passed",false).put("stage",stage)
+            .put("errorCode","INTENT_BUILD_FAILED").put("error","构建失败，请按 stage 和异常类型检查配置及依赖")
+            .put("exceptionType",exception.getClass().getSimpleName());
+        Set<Throwable> seen=Collections.newSetFromMap(new IdentityHashMap<>());
+        for(Throwable cause=exception;cause!=null&&seen.add(cause);cause=cause.getCause()) {
+            report.put("causeType",cause.getClass().getSimpleName());
+            if(cause instanceof com.example.agent.exception.RagApiException r) {
+                report.put("errorCode",r.errorCode()).put("error",diagnosticText(r.getMessage()));
+            } else if(cause instanceof RestClientResponseException http) {
+                report.put("errorCode","INTENT_EMBEDDING_HTTP_ERROR").put("httpStatus",http.getStatusCode().value())
+                    .put("error","Embedding 服务拒绝请求，请检查模型权限、维度和单次批量大小");
+                // Never retain the full response body, headers, request or credentials.
+                try {
+                    String body=http.getResponseBodyAsString();
+                    if(body.length()<=16384) {
+                        JsonNode root=M.readTree(body);
+                        if(root!=null) {
+                            JsonNode detail=root.path("error").isObject()?root.path("error"):root;
+                            for(String key:List.of("code","message"))
+                                if(detail.path(key).isTextual())report.put("provider"+(key.equals("code")?"Code":"Message"),diagnosticText(detail.path(key).asText()));
+                        }
+                    }
+                } catch(Exception ignored) {}
+            } else if(cause instanceof java.net.SocketTimeoutException||cause instanceof java.net.http.HttpTimeoutException) {
+                report.put("errorCode","INTENT_DEPENDENCY_TIMEOUT").put("error","依赖连接或读取超时，请检查网络和服务超时配置");
+            } else if(cause instanceof java.net.ConnectException||cause instanceof java.net.UnknownHostException) {
+                report.put("errorCode","INTENT_DEPENDENCY_UNAVAILABLE").put("error","无法连接依赖服务，请检查 DNS、代理与网络");
+            } else if(cause instanceof com.example.agent.rag.embed.EmbeddingException&&cause.getCause()==null) {
+                report.put("errorCode","INTENT_EMBEDDING_INVALID").put("error",diagnosticText(cause.getMessage()));
+            } else if(cause instanceof java.sql.SQLException sql) {
+                report.put("errorCode","INTENT_DATABASE_ERROR").put("sqlState",sql.getSQLState())
+                    .put("error","数据库操作失败，请按 stage 和 sqlState 检查表结构、权限与连接");
+            }
+        }
+        return report;
+    }
+
+    private static String diagnosticText(String text) {
+        if(text==null)return "";
+        String safe=redact(text)
+            .replaceAll("(?i)([\"']?(?:api[_-]?key|password|token|secret)[\"']?\\s*[:=]\\s*)(?:\"[^\"]*\"|'[^']*'|[^\\s,;]+)","$1[已隐藏]")
+            .replaceAll("(?i)\\bsk-[a-z0-9_-]+","[已隐藏]")
+            .replaceAll("\\beyJ[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+","[已隐藏]")
+            .replaceAll("\\s+"," ").strip();
+        return safe.substring(0,Math.min(safe.length(),500));
     }
     public void activate(String no){Snapshot s=snapshot(no);assertReady(s);validate(s);
-        JsonNode report=read(s.header.get("validation_report_json"));if(!report.path("passed").asBoolean() || (report.path("mockEmbedding").asBoolean()&&!"MOCK".equals(properties.getProvider())))throw incomplete();
+        JsonNode report=read(s.header.get("validation_report_json"));if(!report.path("passed").asBoolean() || ((report.path("mockEmbedding").asBoolean()||report.path("mockL3").asBoolean())&&!"MOCK".equals(properties.getProvider())))throw incomplete();
         search(s,embedding.embed(s.examples.getFirst().get("normalized_text").toString(),s.model(),1536));
         db.tx.executeWithoutResult(tx->{db.mysql.queryForList("SELECT scene FROM t_customer_service_intent_active_release WHERE scene='CUSTOMER_SERVICE' FOR UPDATE");
             var h=db.mysql.queryForMap("SELECT status,manifest_hash FROM t_customer_service_intent_release WHERE release_no=? FOR UPDATE",no);

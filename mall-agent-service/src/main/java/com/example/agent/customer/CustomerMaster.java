@@ -65,17 +65,8 @@ public class CustomerMaster {
             recognition=(pending||contextDependent(question)||human)?IntentReleaseService.fallback("CONTEXT_MULTI_INTENT_OR_ESCALATION"):releases.recognize(question,budget);
             if("L2_RAG".equals(recognition.path("source").asText())){ObjectNode t=task(recognition.path("code").asText(),question,run+":i1",null);t.put("similarity",recognition.path("similarity").asDouble());t.set("requiredSlots",recognition.path("requiredSlots"));intents.add(t);}
             else {
-                JsonNode output=null;
-                if(models.mock())output=mock(question,context);
-                else for(int attempt=0;attempt<2;attempt++){try{output=read(models.classify(question,write(Map.of("history",history,"pending",context)),budget,in,out));validateModel(output,question,context);break;}catch(RuntimeException e){output=null;if(attempt==1)throw e;}}
-                if(output==null)throw error(503,"AGENT_MODEL_EMPTY","暂时无法识别问题");
-                int n=0;for(JsonNode candidate:output.path("intents")){if(n>=props.getMaxIntents())break;String code=candidate.path("code").asText();String fragment=candidate.path("questionFragment").asText(question);
-                    ObjectNode t=task(code,fragment,run+":i"+(++n),candidate.path("confidence").asDouble(0));
-                    t.put("executionStage",candidate.path("executionStage").asInt(1));
-                    if(candidate.path("rewrittenQuestion").isTextual())t.put("rewrittenQuestion",candidate.path("rewrittenQuestion").asText());
-                    // Accept only explicitly grounded fields from the model. Session candidates are handled separately.
-                    candidate.path("slots").fields().forEachRemaining(e->{if(Set.of("orderNo","disputeNo","itemId").contains(e.getKey())&&!e.getValue().isNull()&&(fragment.contains(e.getValue().asText())||contextHasEntity(context,e.getKey(),e.getValue().asText())))((ObjectNode)t.get("slots")).put(e.getKey(),e.getValue().asText());});
-                    intents.add(t);}
+                JsonNode output=classifyValidated(models,question,context,history,budget,in,out);
+                intents.addAll(modelIntents(output,question,run,context,props.getMaxIntents()));
                 String r = output.path("riskLevel").asText("LOW");
                 if (riskRank(r) > riskRank(highestRisk)) highestRisk = r;
                 human |= output.path("needHuman").asBoolean(false) || Set.of("HIGH", "URGENT").contains(r);
@@ -94,6 +85,52 @@ public class CustomerMaster {
         ObjectNode result=object().put("schemaVersion",2).put("originalQuestion",question).put("needHuman",human).put("riskLevel",highestRisk).put("sentiment","NEUTRAL");recognition.put("totalElapsedMs",(System.nanoTime()-recognitionStarted)/1000000).put("chatInputTokens",in.get()-initialInput).put("chatOutputTokens",out.get()-initialOutput);
         result.set("intents",intents);result.set("recognition",recognition);return result;
     }
+    // Shared with release evaluation so L3 retries, schema checks and grounding stay identical.
+    static JsonNode classifyValidated(CustomerModels models,String question,JsonNode context,JsonNode history,
+                                      CustomerBudget budget,AtomicInteger in,AtomicInteger out) {
+        if(models.mock())return mock(question,context);
+        for(int attempt=0;attempt<2;attempt++) {
+            try {
+                JsonNode output=normalizeModelSlots(read(models.classify(question,write(Map.of("history",history,"pending",context)),budget,in,out)));
+                validateModel(output,question,context);
+                return output;
+            } catch(RuntimeException e) {if(attempt==1)throw e;}
+        }
+        throw error(503,"AGENT_MODEL_EMPTY","暂时无法识别问题");
+    }
+    static ArrayNode modelIntents(JsonNode output,String question,String run,JsonNode context,int limit) {
+        ArrayNode intents=array();
+        for(JsonNode candidate:output.path("intents")) {
+            if(intents.size()>=limit)break;
+            String fragment=candidate.path("questionFragment").asText(question);
+            ObjectNode t=task(candidate.path("code").asText(),fragment,run+":i"+(intents.size()+1),candidate.path("confidence").asDouble(0));
+            t.put("executionStage",candidate.path("executionStage").asInt(1));
+            if(candidate.path("rewrittenQuestion").isTextual())t.put("rewrittenQuestion",candidate.path("rewrittenQuestion").asText());
+            candidate.path("slots").fields().forEachRemaining(e->{if(Set.of("orderNo","disputeNo","itemId").contains(e.getKey())&&!e.getValue().isNull()&&(fragment.contains(e.getValue().asText())||contextHasEntity(context,e.getKey(),e.getValue().asText())))((ObjectNode)t.get("slots")).put(e.getKey(),e.getValue().asText());});
+            intents.add(t);
+        }
+        return intents;
+    }
+    /**
+     * Canonicalize representation only. Grounding is still enforced by validateModel:
+     * ITEM-5842 / PROD-5842 / integer 5842 become "5842", but an invented ID stays invalid.
+     */
+    static JsonNode normalizeModelSlots(JsonNode output) {
+        JsonNode normalized=output.deepCopy();
+        for(JsonNode intent:normalized.path("intents")) {
+            if(!(intent.path("slots") instanceof ObjectNode slots))continue;
+            JsonNode value=slots.path("itemId");
+            if(value.isTextual()) {
+                String id=value.asText().strip();
+                if(id.matches("(?i)(?:ITEM-|PROD-)\\d{1,10}"))
+                    slots.put("itemId",id.substring(id.indexOf('-')+1));
+                else if(id.matches("\\d{1,10}"))slots.put("itemId",id);
+            } else if(value.isIntegralNumber()&&value.asText().matches("\\d{1,10}")) {
+                slots.put("itemId",value.asText());
+            }
+        }
+        return normalized;
+    }
     static void validateModel(JsonNode n,String question){validateModel(n,question,MissingNode.getInstance());}
     static void validateModel(JsonNode n,String question,JsonNode context){
         if(n.has("needHuman")&&!n.path("needHuman").isBoolean())throw error(422,"AGENT_OUTPUT_INVALID","升级标记必须为布尔值");
@@ -107,7 +144,19 @@ public class CustomerMaster {
                 for(Pattern pattern:List.of(ORDER,DISPUTE))if(pattern.matcher(rewrite).results().anyMatch(m->!f.contains(m.group())&&!contextHasEntity(context,pattern==ORDER?"orderNo":"disputeNo",m.group())))throw error(422,"AGENT_OUTPUT_INVALID","重写问题包含无依据业务编号");
             }
             if(!i.path("slots").isObject())throw error(422,"AGENT_OUTPUT_INVALID","槽位结构不正确");
-            for(String key:List.of("orderNo","disputeNo","itemId")){JsonNode value=i.path("slots").path(key);if(!value.isMissingNode()&&!value.isNull()&&(!value.isTextual()||value.asText().isBlank()||(!f.contains(value.asText())&&!contextHasEntity(context,key,value.asText()))))throw error(422,"AGENT_OUTPUT_INVALID","业务编号没有原句依据");if("itemId".equals(key)&&!value.isMissingNode()&&!value.isNull()&&ITEM_ID.matcher(f).results().noneMatch(m->itemValue(m).equals(value.asText()))&&!contextHasEntity(context,key,value.asText()))throw error(422,"AGENT_OUTPUT_INVALID","商品编号格式不正确");}}
+            for(String key:List.of("orderNo","disputeNo","itemId")) {
+                JsonNode value=i.path("slots").path(key);
+                if(value.isMissingNode()||value.isNull())continue;
+                if(!value.isTextual()||value.asText().isBlank())
+                    throw error(422,"AGENT_OUTPUT_INVALID","业务编号须为非空字符串或 JSON null："+key);
+                if(!f.contains(value.asText())&&!contextHasEntity(context,key,value.asText()))
+                    throw error(422,"AGENT_OUTPUT_INVALID","业务编号没有原句或活跃实体依据："+key);
+                if("itemId".equals(key)&&(!value.asText().matches("\\d{1,10}")
+                        ||(ITEM_ID.matcher(f).results().noneMatch(m->itemValue(m).equals(value.asText()))
+                           &&!contextHasEntity(context,key,value.asText()))))
+                    throw error(422,"AGENT_OUTPUT_INVALID","商品编号格式不正确：itemId 须为商品标识中的数字字符串，且有原句或活跃实体依据");
+            }
+        }
     }
     static ObjectNode task(String code,String fragment,String id,Double confidence){ObjectNode t=object().put("intentInstanceId",id).put("code",code).put("priority",1).put("executionStage",1).put("questionFragment",fragment).put("rewrittenQuestion",fragment).put("resolutionState","READY");
         if(confidence==null)t.putNull("confidence");else t.put("confidence",confidence);t.putNull("similarity");t.putNull("clarifyQuestion");t.set("slots",object());t.set("slotSources",object());t.set("missingSlots",array());t.set("requiredSlots",node(IntentCatalog.slots(code)));return t;}
