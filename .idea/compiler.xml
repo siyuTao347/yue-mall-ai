@@ -20,6 +20,7 @@
         </processorPath>
         <module name="mall-agent-service" />
         <module name="mall-item-service" />
+        <module name="mall-money-agent-service" />
         <module name="mall-order-service" />
         <module name="mall-user-service" />
         <module name="mall-gateway-service" />
@@ -34,6 +35,7 @@
       <module name="mall-api" options="-parameters" />
       <module name="mall-gateway-service" options="-parameters" />
       <module name="mall-item-service" options="-parameters" />
+      <module name="mall-money-agent-service" options="-parameters" />
       <module name="mall-order-service" options="-parameters" />
       <module name="mall-parent" options="-parameters" />
       <module name="mall-risk-service" options="-parameters" />

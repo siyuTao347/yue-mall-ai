@@ -170,3 +170,4 @@ CREATE TABLE IF NOT EXISTS `t_point_record` (
     UNIQUE KEY `uk_order_type` (`order_no`, `change_type`),
     KEY `idx_user_time` (`user_id`, `create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户积分动账流水表';
+

@@ -151,19 +151,20 @@ class IntentReleaseSnapshotTest {
             jdbc.update("INSERT INTO t_customer_service_intent_active_release VALUES('CUSTOMER_SERVICE','PREVIOUS')");
             for(var entry:IntentCatalog.ROUTES.entrySet()) {
                 String code=entry.getKey();
-                jdbc.update("INSERT INTO t_customer_service_intent VALUES(?,1,?,?,?, ?,NULL,'ENABLED')",
-                    code,code,"test description",entry.getValue(),write(IntentCatalog.slots(code)));
+                String status=Set.of("PAYMENT_ANOMALY","REFUND_ANOMALY","MONEY_CASE_PROGRESS").contains(code)?"DISABLED":"ENABLED";
+                jdbc.update("INSERT INTO t_customer_service_intent VALUES(?,1,?,?,?, ?,NULL,?)",
+                    code,code,"test description",entry.getValue(),write(IntentCatalog.slots(code)),status);
                 // Extra enabled L1/memory/pre-sale rows must not expand the release scope.
                 for(int i=0;i<14;i++) {
                     String text=code+" question "+i,normalized=normalize(text);
-                    jdbc.update("INSERT INTO t_customer_service_intent_example VALUES(?,1,?,1,?,?,?,'ENABLED')",
-                        code+"-"+i,code,text,normalized,hash(normalized));
+                    jdbc.update("INSERT INTO t_customer_service_intent_example VALUES(?,1,?,1,?,?,?,?)",
+                        code+"-"+i,code,text,normalized,hash(normalized),status);
                 }
-                if(IntentCatalog.l2(code)&&!code.startsWith("PRE_SALE"))
+                if(IntentCatalog.l2(code)&&!code.startsWith("PRE_SALE")&&"ENABLED".equals(status))
                     tests.add(new IntentReleaseService.Evaluation("independent "+code,code));
             }
             // Keep only selected sources for the 182-row source-count assertions.
-            jdbc.update("DELETE FROM t_customer_service_intent_example WHERE intent_code IN ('GREETING','BOT_IDENTITY','OTHER','MEMORY_QUERY','MEMORY_FORGET','PRE_SALE_PRODUCT','PRE_SALE_PROCESS','PRE_SALE_LIMIT')");
+            jdbc.update("DELETE FROM t_customer_service_intent_example WHERE intent_code IN ('GREETING','BOT_IDENTITY','OTHER','MEMORY_QUERY','MEMORY_FORGET','PRE_SALE_PRODUCT','PRE_SALE_PROCESS','PRE_SALE_LIMIT','PAYMENT_ANOMALY','REFUND_ANOMALY','MONEY_CASE_PROGRESS')");
             tests.add(new IntentReleaseService.Evaluation("unrelated topic","OTHER"));
             when(embedding.model()).thenReturn("model-a");
             service=new ObservingService(db,embedding);

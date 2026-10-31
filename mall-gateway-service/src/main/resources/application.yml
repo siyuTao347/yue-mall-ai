@@ -48,6 +48,13 @@ spring:
               metadata:
                 connect-timeout: 3000
                 response-timeout: 95000
+            - id: mall-money-agent-route
+              uri: lb://mall-money-agent-service
+              predicates:
+                - Path=/api/admin/money-agent/**
+              metadata:
+                connect-timeout: 3000
+                response-timeout: 30000
           globalcors:
             cors-configurations:
               '[/**]':
@@ -105,6 +112,7 @@ mall:
         - "ANY:/api/audit/**"
         - "ANY:/api/admin/risk/**"
         - "ANY:/api/admin/agent/**"
+        - "ANY:/api/admin/money-agent/**"
         - "POST:/api/seckill/preheat"
         - "POST:/api/user/point/mockReward"
     network:

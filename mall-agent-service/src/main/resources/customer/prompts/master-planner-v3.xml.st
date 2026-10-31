@@ -26,6 +26,9 @@
 - HUMAN_HELP：明确要求转人工客服。
 - MEMORY_QUERY：查看助手保存的用户购买品类、交付方式等偏好，不是查询订单列表。
 - MEMORY_FORGET：明确要求删除或忘记助手保存的偏好，不是取消订单或删除交易记录。
+- PAYMENT_ANOMALY：支付异常、扣款未到账或掉单。
+- REFUND_ANOMALY：退款异常、退款失败或退款冲突。
+- MONEY_CASE_PROGRESS：查询资金异常调查案件进度，需 moneyCaseNo 或 orderNo。
 - GREETING、BOT_IDENTITY：问候或询问助手身份；OTHER：平台业务外问题或无法判断的问题。
 </intent_catalog>
 <slot_contract>

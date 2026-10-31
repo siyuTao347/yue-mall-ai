@@ -12,6 +12,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/dto/MissingFundFlowDTO.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/listener/OrderPaidPointConsumer.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/UserRiskCommandHandler.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/FundBusinessRefMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/dto/MerchantListQuery.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/FundService.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/dto/RegisterDTO.java
@@ -51,7 +52,9 @@
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/MerchantAudit.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/FundReconciliationService.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/dto/MerchantSummaryDTO.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/FundBusinessRef.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/MerchantMapper.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/provider/MoneyFundQueryDubboServiceImpl.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/UserService.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/MerchantDepositMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/EmailService.java

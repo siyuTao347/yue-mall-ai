@@ -37,13 +37,22 @@ public class FundService {
     private final FundFlowMapper flowMapper;
     private final UserAccountMapper accountMapper;
     private final PlatformAccountMapper platformMapper;
+    private final com.example.user.mapper.FundBusinessRefMapper businessRefMapper;
 
     public FundService(FundTransactionMapper transactionMapper, FundFlowMapper flowMapper,
                        UserAccountMapper accountMapper, PlatformAccountMapper platformMapper) {
+        this(transactionMapper, flowMapper, accountMapper, platformMapper, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public FundService(FundTransactionMapper transactionMapper, FundFlowMapper flowMapper,
+                       UserAccountMapper accountMapper, PlatformAccountMapper platformMapper,
+                       com.example.user.mapper.FundBusinessRefMapper businessRefMapper) {
         this.transactionMapper = transactionMapper;
         this.flowMapper = flowMapper;
         this.accountMapper = accountMapper;
         this.platformMapper = platformMapper;
+        this.businessRefMapper = businessRefMapper;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -87,10 +96,24 @@ public class FundService {
                                                     BigDecimal amount, String idempotencyKey) {
         String key = (idempotencyKey == null || idempotencyKey.isBlank())
                 ? FUND_REFUND_CHANNEL_KEY + nullToEmpty(refundNo) : idempotencyKey;
+        FundTransaction existing = transactionMapper.selectOne(new LambdaQueryWrapper<FundTransaction>()
+                .eq(FundTransaction::getIdempotencyKey, key));
+        if (existing != null) {
+            String checkError = checkAndBackfillRefConflict(existing.getTransactionNo(), attemptNo, refundNo);
+            if (checkError != null) {
+                return FundOperationResult.fail(checkError);
+            }
+        }
         return execute("REFUND_TO_CHANNEL", orderNo, null, null, null, amount, key, tx -> {
             requireSuccess(platformMapper.debitEscrow(amount), "托管资金不足");
             flow(tx, "PLATFORM", null, "ESCROW", "DEBIT", amount, null, "渠道原路退款，扣减平台托管");
             flow(tx, "EXTERNAL", null, "EXTERNAL_CHANNEL", "CREDIT", amount, null, "原路退回外部渠道");
+            if (attemptNo != null && !attemptNo.isBlank()) {
+                saveBusinessRef(tx.getTransactionNo(), "ATTEMPT", attemptNo, "TRANSACTION_BIND");
+            }
+            if (refundNo != null && !refundNo.isBlank()) {
+                saveBusinessRef(tx.getTransactionNo(), "REFUND", refundNo, "TRANSACTION_BIND");
+            }
         });
     }
 
@@ -98,10 +121,21 @@ public class FundService {
     public FundOperationResult creditPaymentSuspense(String attemptNo, BigDecimal amount, String idempotencyKey) {
         String key = (idempotencyKey == null || idempotencyKey.isBlank())
                 ? FUND_SUSPENSE_CREDIT_KEY + nullToEmpty(attemptNo) : idempotencyKey;
+        FundTransaction existing = transactionMapper.selectOne(new LambdaQueryWrapper<FundTransaction>()
+                .eq(FundTransaction::getIdempotencyKey, key));
+        if (existing != null) {
+            String checkError = checkAndBackfillRefConflict(existing.getTransactionNo(), attemptNo, null);
+            if (checkError != null) {
+                return FundOperationResult.fail(checkError);
+            }
+        }
         return execute("SUSPENSE_CREDIT", null, null, null, null, amount, key, tx -> {
             requireSuccess(platformMapper.creditPaymentSuspense(amount), "平台异常资金挂账记账失败");
             flow(tx, "PLATFORM", null, "PAYMENT_SUSPENSE", "CREDIT", amount, null, "异常款项挂账入账");
             flow(tx, "EXTERNAL", null, "EXTERNAL_CHANNEL", "DEBIT", amount, null, "外部渠道收款挂账");
+            if (attemptNo != null && !attemptNo.isBlank()) {
+                saveBusinessRef(tx.getTransactionNo(), "ATTEMPT", attemptNo, "TRANSACTION_BIND");
+            }
         });
     }
 
@@ -110,10 +144,24 @@ public class FundService {
                                                     String idempotencyKey) {
         String key = (idempotencyKey == null || idempotencyKey.isBlank())
                 ? FUND_SUSPENSE_REFUND_KEY + nullToEmpty(refundNo) : idempotencyKey;
+        FundTransaction existing = transactionMapper.selectOne(new LambdaQueryWrapper<FundTransaction>()
+                .eq(FundTransaction::getIdempotencyKey, key));
+        if (existing != null) {
+            String checkError = checkAndBackfillRefConflict(existing.getTransactionNo(), attemptNo, refundNo);
+            if (checkError != null) {
+                return FundOperationResult.fail(checkError);
+            }
+        }
         return execute("SUSPENSE_REFUND", null, null, null, null, amount, key, tx -> {
             requireSuccess(platformMapper.debitPaymentSuspense(amount), "平台异常挂账待退余额不足");
             flow(tx, "PLATFORM", null, "PAYMENT_SUSPENSE", "DEBIT", amount, null, "异常挂账资金原路退款释放");
             flow(tx, "EXTERNAL", null, "EXTERNAL_CHANNEL", "CREDIT", amount, null, "挂账资金退回外部渠道");
+            if (attemptNo != null && !attemptNo.isBlank()) {
+                saveBusinessRef(tx.getTransactionNo(), "ATTEMPT", attemptNo, "TRANSACTION_BIND");
+            }
+            if (refundNo != null && !refundNo.isBlank()) {
+                saveBusinessRef(tx.getTransactionNo(), "REFUND", refundNo, "TRANSACTION_BIND");
+            }
         });
     }
 
@@ -288,6 +336,12 @@ public class FundService {
             if (!isSameIdempotentRequest(existing, businessType, orderNo, withdrawNo, userId, merchantId, amount)) {
                 return FundOperationResult.fail("幂等请求参数不一致");
             }
+            if (orderNo != null && !orderNo.isBlank()) {
+                saveBusinessRef(existing.getTransactionNo(), "ORDER", orderNo, "TRANSACTION_BIND");
+            }
+            if (withdrawNo != null && !withdrawNo.isBlank()) {
+                saveBusinessRef(existing.getTransactionNo(), "OPERATION", withdrawNo, "TRANSACTION_BIND");
+            }
             return FundOperationResult.success(existing.getTransactionNo());
         }
 
@@ -312,10 +366,93 @@ public class FundService {
                     userId, merchantId, amount)) {
                 return FundOperationResult.fail("幂等请求参数不一致");
             }
+            if (orderNo != null && !orderNo.isBlank()) {
+                saveBusinessRef(winner.getTransactionNo(), "ORDER", orderNo, "TRANSACTION_BIND");
+            }
+            if (withdrawNo != null && !withdrawNo.isBlank()) {
+                saveBusinessRef(winner.getTransactionNo(), "OPERATION", withdrawNo, "TRANSACTION_BIND");
+            }
             return FundOperationResult.success(winner.getTransactionNo());
+        }
+        if (orderNo != null && !orderNo.isBlank()) {
+            saveBusinessRef(transaction.getTransactionNo(), "ORDER", orderNo, "TRANSACTION_BIND");
+        }
+        if (withdrawNo != null && !withdrawNo.isBlank()) {
+            saveBusinessRef(transaction.getTransactionNo(), "OPERATION", withdrawNo, "TRANSACTION_BIND");
         }
         action.apply(transaction);
         return FundOperationResult.success(transaction.getTransactionNo());
+    }
+
+    public void saveBusinessRef(String txNo, String refType, String refNo, String linkOrigin) {
+        if (businessRefMapper == null || txNo == null || refType == null || refNo == null || refNo.isBlank()) {
+            return;
+        }
+        com.example.user.entity.FundBusinessRef ref = com.example.user.entity.FundBusinessRef.builder()
+                .transactionNo(txNo)
+                .refType(refType)
+                .refNo(refNo)
+                .linkOrigin(linkOrigin != null ? linkOrigin : "TRANSACTION_BIND")
+                .createdAt(LocalDateTime.now())
+                .build();
+        try {
+            businessRefMapper.insert(ref);
+        } catch (org.springframework.dao.DuplicateKeyException ignored) {
+            // 唯一键防重幂等
+        }
+    }
+
+    private String checkAndBackfillRefConflict(String txNo, String attemptNo, String refundNo) {
+        if (businessRefMapper == null || txNo == null) return null;
+        List<com.example.user.entity.FundBusinessRef> refs = businessRefMapper.selectByTransactionNos(List.of(txNo));
+        boolean hasAttempt = false;
+        boolean hasRefund = false;
+        if (refs != null) {
+            for (com.example.user.entity.FundBusinessRef ref : refs) {
+                if ("ATTEMPT".equalsIgnoreCase(ref.getRefType())) {
+                    hasAttempt = true;
+                    if (attemptNo != null && !attemptNo.isBlank() && !attemptNo.equals(ref.getRefNo())) {
+                        return "幂等请求业务引用冲突: attemptNo 不一致";
+                    }
+                } else if ("REFUND".equalsIgnoreCase(ref.getRefType())) {
+                    hasRefund = true;
+                    if (refundNo != null && !refundNo.isBlank() && !refundNo.equals(ref.getRefNo())) {
+                        return "幂等请求业务引用冲突: refundNo 不一致";
+                    }
+                }
+            }
+        }
+        // 如果原本缺失业务引用（如升级前数据重放），在当前事务内安全补齐
+        if (!hasAttempt && attemptNo != null && !attemptNo.isBlank()) {
+            saveBusinessRef(txNo, "ATTEMPT", attemptNo, "TRANSACTION_BIND");
+        }
+        if (!hasRefund && refundNo != null && !refundNo.isBlank()) {
+            saveBusinessRef(txNo, "REFUND", refundNo, "TRANSACTION_BIND");
+        }
+        return null;
+    }
+
+    public void backfillLegacyReferencesIfMissing(FundTransaction tx) {
+        if (businessRefMapper == null || tx == null || tx.getIdempotencyKey() == null) {
+            return;
+        }
+        String key = tx.getIdempotencyKey();
+        if (key.startsWith(FUND_SUSPENSE_CREDIT_KEY)) {
+            String attemptNo = key.substring(FUND_SUSPENSE_CREDIT_KEY.length());
+            saveBusinessRef(tx.getTransactionNo(), "ATTEMPT", attemptNo, "IDEMPOTENT_KEY");
+        } else if (key.startsWith(FUND_SUSPENSE_REFUND_KEY)) {
+            String refundNo = key.substring(FUND_SUSPENSE_REFUND_KEY.length());
+            saveBusinessRef(tx.getTransactionNo(), "REFUND", refundNo, "IDEMPOTENT_KEY");
+        } else if (key.startsWith(FUND_REFUND_CHANNEL_KEY)) {
+            String refundNo = key.substring(FUND_REFUND_CHANNEL_KEY.length());
+            saveBusinessRef(tx.getTransactionNo(), "REFUND", refundNo, "IDEMPOTENT_KEY");
+        } else if (key.startsWith(FUND_FREEZE_KEY)) {
+            String orderNo = key.substring(FUND_FREEZE_KEY.length());
+            saveBusinessRef(tx.getTransactionNo(), "ORDER", orderNo, "IDEMPOTENT_KEY");
+        } else if (key.startsWith(FUND_REFUND_KEY)) {
+            String orderNo = key.substring(FUND_REFUND_KEY.length());
+            saveBusinessRef(tx.getTransactionNo(), "ORDER", orderNo, "IDEMPOTENT_KEY");
+        }
     }
 
     private boolean isSameIdempotentRequest(FundTransaction existing, String businessType, String orderNo,

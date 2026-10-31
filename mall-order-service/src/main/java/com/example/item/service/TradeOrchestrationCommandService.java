@@ -395,8 +395,11 @@ public class TradeOrchestrationCommandService {
             String attemptNo = payment.getSuccessfulAttemptNo();
             String refundNo = "RF_" + context.orderNo();
             try {
-                paymentApplicationService.processChannelRefund(context.orderNo(), context.orderAmount(),
+                String realRefundNo = paymentApplicationService.processChannelRefund(context.orderNo(), context.orderAmount(),
                         context.reason() != null ? context.reason() : "订单退款");
+                if (realRefundNo != null && !realRefundNo.isBlank()) {
+                    refundNo = realRefundNo;
+                }
             } catch (Exception e) {
                 log.warn("Channel refund execution logged warning: {}", e.getMessage());
             }

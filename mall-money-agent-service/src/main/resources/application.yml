@@ -1,0 +1,54 @@
+server:
+  port: ${MONEY_AGENT_PORT:8086}
+
+spring:
+  application:
+    name: mall-money-agent-service
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${MONEY_MYSQL_URL:jdbc:mysql://100.121.74.115:3306/db_money_agent?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=UTC}
+    username: ${MONEY_MYSQL_USERNAME:root}
+    password: ${MONEY_MYSQL_PASSWORD:root}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+  sql:
+    init:
+      mode: never
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+dubbo:
+  application:
+    name: mall-money-agent-service
+    qos-enable: false
+  protocol:
+    name: dubbo
+    port: -1
+  registry:
+    address: nacos://${NACOS_SERVER_ADDR:100.121.74.115:8848}
+    check: false
+  consumer:
+    check: false
+    timeout: 5000
+    retries: 0
+
+money-agent:
+  enabled: true
+  accept-new-cases: true
+  worker-enabled: false
+  model-mode: MOCK
+  max-plan-rounds: 3
+  max-tool-calls: 10
+  max-source-rpc-calls: 30
+  max-pages-per-source: 5
+  task-lease-seconds: 30
+  task-heartbeat-seconds: 5
+  worker-concurrency: 4
+  model-timeout-ms: 15000
+  a2a-path: /internal/a2a/money
+  source-time-zone: Asia/Shanghai
+  repair-enabled: false
