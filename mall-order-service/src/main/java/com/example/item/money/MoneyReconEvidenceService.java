@@ -63,10 +63,12 @@ public class MoneyReconEvidenceService {
                 ? fileMapper.selectById(run.getFileId())
                 : null;
 
-        boolean windowClosed = run != null &&
-                ("SUCCESS".equalsIgnoreCase(run.getExecutionStatus()) || "COMPLETED".equalsIgnoreCase(run.getExecutionStatus()))
-                && (task == null || task.getWindowEnd() == null || LocalDateTime.now().isAfter(task.getWindowEnd()))
-                && (file == null || "PARSED".equalsIgnoreCase(file.getStatus()));
+        boolean fileParsed = file != null && "PARSED".equalsIgnoreCase(file.getStatus());
+        boolean runSuccess = run != null && ("SUCCESS".equalsIgnoreCase(run.getExecutionStatus()) || "COMPLETED".equalsIgnoreCase(run.getExecutionStatus()));
+        boolean taskWindowPassed = task != null && task.getWindowEnd() != null && LocalDateTime.now().isAfter(task.getWindowEnd());
+
+        // 仅当对账文件已导入、解析完成、运行成功且窗口截止时间已过时，对账窗口才算关闭
+        boolean windowClosed = fileParsed && runSuccess && taskWindowPassed;
 
         ReconMatch match = null;
         if (runNo != null && diff.getBizKey() != null) {
@@ -88,15 +90,13 @@ public class MoneyReconEvidenceService {
         boolean ambiguousChannelItem = false;
         if (match != null && match.getChannelItemId() != null) {
             channelItem = channelItemMapper.selectById(match.getChannelItemId());
-        } else if (diff.getBizKey() != null) {
-            // R10 修复：限定 run 的 fileId，避免命中历史重跑或旧账单条目；多条匹配时不任取一行，报告歧义
+        } else if (diff.getBizKey() != null && run != null && run.getFileId() != null) {
+            // 严格限定所属批次的 fileId，缺失 fileId 时严禁退化为全局流水模糊匹配
             LambdaQueryWrapper<ReconChannelItem> queryWrapper = new LambdaQueryWrapper<ReconChannelItem>()
+                    .eq(ReconChannelItem::getFileId, run.getFileId())
                     .and(q -> q.eq(ReconChannelItem::getOutTradeNo, diff.getBizKey())
                             .or()
                             .eq(ReconChannelItem::getRefundNo, diff.getBizKey()));
-            if (run != null && run.getFileId() != null) {
-                queryWrapper.eq(ReconChannelItem::getFileId, run.getFileId());
-            }
             List<ReconChannelItem> items = channelItemMapper.selectList(queryWrapper);
             if (items != null) {
                 if (items.size() == 1) {
@@ -107,7 +107,7 @@ public class MoneyReconEvidenceService {
             }
         }
 
-        // R10 修复：读取渠道真实原始 itemType，单边退款不粗暴默认为 PAYMENT
+        // 读取渠道真实原始 itemType，单边退款不粗暴默认为 PAYMENT
         String resolvedItemType = "PAYMENT";
         if (channelItem != null && channelItem.getItemType() != null && !channelItem.getItemType().isBlank()) {
             resolvedItemType = channelItem.getItemType().toUpperCase();
@@ -119,10 +119,16 @@ public class MoneyReconEvidenceService {
 
         Map<String, String> sources = new HashMap<>();
         sources.put("RECON_DIFF", MoneyCoverageStatus.OK.name());
+        sources.put("RECON_FILE", file == null ? "MISSING_SOURCE" : (fileParsed ? MoneyCoverageStatus.OK.name() : "NOT_PARSED"));
         sources.put("LOCAL_ITEM", localItem != null ? MoneyCoverageStatus.OK.name() : MoneyCoverageStatus.NOT_FOUND.name());
         sources.put("CHANNEL_ITEM", ambiguousChannelItem ? "AMBIGUOUS"
                 : (channelItem != null ? MoneyCoverageStatus.OK.name() : MoneyCoverageStatus.NOT_FOUND.name()));
-        CoverageInfo coverage = new CoverageInfo(sources, !ambiguousChannelItem, false, null, ambiguousChannelItem ? "AMBIGUOUS_CHANNEL" : "Normal");
+
+        boolean isCoverageComplete = fileParsed && !ambiguousChannelItem;
+        String coverageNotes = file == null ? "MISSING_RECON_FILE: 对账文件未导入或缺失"
+                : (!fileParsed ? "RECON_FILE_NOT_PARSED: 对账文件未解析完成"
+                : (ambiguousChannelItem ? "AMBIGUOUS_CHANNEL" : "Normal"));
+        CoverageInfo coverage = new CoverageInfo(sources, isCoverageComplete, false, null, coverageNotes);
 
         // R10 修复：真实业务日优先从 task 读取，重跑时不被执行时间掩盖
         String billDate = null;

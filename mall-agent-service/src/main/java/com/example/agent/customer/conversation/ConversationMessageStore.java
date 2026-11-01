@@ -71,15 +71,51 @@ public class ConversationMessageStore {
         for (var row : listMessages(sessionNo, null, 20)) {
             ObjectNode m = object();
             m.put("messageNo", String.valueOf(row.get("message_no")));
+            m.put("sessionNo", sessionNo);
             m.put("sessionSeq", row.get("session_seq") != null ? ((Number) row.get("session_seq")).longValue() : 0L);
             m.put("senderType", String.valueOf(row.get("sender_type")));
             m.put("role", String.valueOf(row.get("role")));
             m.put("content", String.valueOf(row.get("content")));
-            if (row.get("payload_json") != null) {
-                m.set("payload", read(row.get("payload_json")));
+            if (row.get("created_time") != null) {
+                m.put("createdTime", String.valueOf(row.get("created_time")));
             }
+
+            ArrayNode cards = array();
+            ArrayNode citations = array();
+            ArrayNode suggestedActions = array();
+
+            if (row.get("payload_json") != null) {
+                JsonNode payload = read(row.get("payload_json"));
+                m.set("payload", payload);
+                if (payload.isObject()) {
+                    if (payload.has("cards") && payload.get("cards").isArray()) {
+                        cards = (ArrayNode) payload.get("cards");
+                    } else if (payload.has("richCard")) {
+                        cards.add(payload.get("richCard"));
+                    }
+                    if (payload.has("citations") && payload.get("citations").isArray()) {
+                        citations = (ArrayNode) payload.get("citations");
+                    }
+                    if (payload.has("suggestedActions") && payload.get("suggestedActions").isArray()) {
+                        suggestedActions = (ArrayNode) payload.get("suggestedActions");
+                    }
+                } else if (payload.isArray()) {
+                    cards = (ArrayNode) payload;
+                }
+            }
+            if (citations.isEmpty() && row.get("citations_json") != null) {
+                JsonNode citeNode = read(row.get("citations_json"));
+                if (citeNode.isArray()) {
+                    citations = (ArrayNode) citeNode;
+                }
+            }
+
+            m.set("cards", cards);
+            m.set("citations", citations);
+            m.set("suggestedActions", suggestedActions);
             msgs.add(m);
         }
+        result.set("messages", msgs);
         result.set("recentMessages", msgs);
         return result;
     }

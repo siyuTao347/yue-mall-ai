@@ -12,9 +12,12 @@ import static com.example.agent.customer.CustomerJson.*;
 public class CustomerMaster {
     static final Pattern GREETING=Pattern.compile("(?:你好呀?|您好|嗨|哈喽|hello|hi|早上好|上午好|中午好|下午好|晚上好|早安|晚安)[!！?？。.,，、～~\\s]*");
     static final Pattern IDENTITY=Pattern.compile("(?:你是谁|你是什么|你是机器人吗|你是真人吗|你叫什么名字|who are you)[!！?？。.,，、～~\\s]*");
-    static final Pattern ORDER=Pattern.compile("(?i)(?<![a-z0-9])(?:SO|TR|T)\\d{6,40}(?![a-z0-9])");
-    static final Pattern DISPUTE=Pattern.compile("(?i)(?<![a-z0-9])(?:DSP|DP|D)\\d{6,40}(?![a-z0-9])");
-    static final Pattern ITEM_ID=Pattern.compile("(?i)(?:ITEM-|PROD-)(\\d{1,10})(?!\\d)|(?<=商品|编号|ID)[\\s:#：]*(\\d{1,10})(?!\\d)");
+    static final Pattern ORDER=CustomerSlotRegistry.ORDER;
+    static final Pattern DISPUTE=CustomerSlotRegistry.DISPUTE;
+    static final Pattern ITEM_ID=CustomerSlotRegistry.ITEM_ID;
+    static final Pattern ATTEMPT=CustomerSlotRegistry.ATTEMPT_NO;
+    static final Pattern REFUND=CustomerSlotRegistry.REFUND_NO;
+    static final Pattern MONEY_CASE=CustomerSlotRegistry.MONEY_CASE_NO;
     private final CustomerProperties props; private final IntentReleaseService releases; private final CustomerModels models;
     public CustomerMaster(CustomerProperties props,IntentReleaseService releases,CustomerModels models){this.props=props;this.releases=releases;this.models=models;}
     static String l1(String text,int limit){String q=normalize(text);if(q.codePointCount(0,q.length())>limit)return null;if(GREETING.matcher(q).matches())return "GREETING";if(IDENTITY.matcher(q).matches())return "BOT_IDENTITY";return null;}
@@ -37,7 +40,7 @@ public class CustomerMaster {
             ||q.matches("(?s).*(退款|退货).*(投诉|订单).*|.*订单.*(退款|退货).*");
         if(hasMultiConnector)return true;
         boolean hasPronoun=q.matches("(?s).*(那个|这个|这笔|那笔|上次|之前|刚才|第二个|第一个|它).*");
-        boolean hasExplicitId=ORDER.matcher(q).find()||DISPUTE.matcher(q).find()||ITEM_ID.matcher(q).find();
+        boolean hasExplicitId=ORDER.matcher(q).find()||DISPUTE.matcher(q).find()||ITEM_ID.matcher(q).find()||ATTEMPT.matcher(q).find()||REFUND.matcher(q).find()||MONEY_CASE.matcher(q).find();
         return hasPronoun&&!hasExplicitId;
     }
     public ObjectNode recognize(String question,String run,JsonNode context,JsonNode history,CustomerBudget budget,AtomicInteger in,AtomicInteger out){
@@ -141,10 +144,10 @@ public class CustomerMaster {
             if(i.has("rewrittenQuestion")) {
                 String rewrite=i.path("rewrittenQuestion").asText();
                 if(!i.path("rewrittenQuestion").isTextual()||rewrite.isBlank()||rewrite.length()>2000)throw error(422,"AGENT_OUTPUT_INVALID","重写问题不正确");
-                for(Pattern pattern:List.of(ORDER,DISPUTE))if(pattern.matcher(rewrite).results().anyMatch(m->!f.contains(m.group())&&!contextHasEntity(context,pattern==ORDER?"orderNo":"disputeNo",m.group())))throw error(422,"AGENT_OUTPUT_INVALID","重写问题包含无依据业务编号");
+                for(Pattern pattern:List.of(ORDER,DISPUTE,MONEY_CASE))if(pattern.matcher(rewrite).results().anyMatch(m->!f.contains(m.group())&&!contextHasEntity(context,pattern==ORDER?"orderNo":pattern==DISPUTE?"disputeNo":"moneyCaseNo",m.group())))throw error(422,"AGENT_OUTPUT_INVALID","重写问题包含无依据业务编号");
             }
             if(!i.path("slots").isObject())throw error(422,"AGENT_OUTPUT_INVALID","槽位结构不正确");
-            for(String key:List.of("orderNo","disputeNo","itemId")) {
+            for(String key:CustomerSlotRegistry.SUPPORTED_SLOTS) {
                 JsonNode value=i.path("slots").path(key);
                 if(value.isMissingNode()||value.isNull())continue;
                 if(!value.isTextual()||value.asText().isBlank())
@@ -155,6 +158,12 @@ public class CustomerMaster {
                         ||(ITEM_ID.matcher(f).results().noneMatch(m->itemValue(m).equals(value.asText()))
                            &&!contextHasEntity(context,key,value.asText()))))
                     throw error(422,"AGENT_OUTPUT_INVALID","商品编号格式不正确：itemId 须为商品标识中的数字字符串，且有原句或活跃实体依据");
+                if("attemptNo".equals(key)&&!ATTEMPT.matcher(value.asText()).matches())
+                    throw error(422,"AGENT_OUTPUT_INVALID","支付尝试编号格式不正确："+value.asText());
+                if("refundNo".equals(key)&&!REFUND.matcher(value.asText()).matches())
+                    throw error(422,"AGENT_OUTPUT_INVALID","退款单号格式不正确："+value.asText());
+                if("moneyCaseNo".equals(key)&&!MONEY_CASE.matcher(value.asText()).matches())
+                    throw error(422,"AGENT_OUTPUT_INVALID","资金案件编号格式不正确："+value.asText());
             }
         }
     }
@@ -162,8 +171,8 @@ public class CustomerMaster {
         if(confidence==null)t.putNull("confidence");else t.put("confidence",confidence);t.putNull("similarity");t.putNull("clarifyQuestion");t.set("slots",object());t.set("slotSources",object());t.set("missingSlots",array());t.set("requiredSlots",node(IntentCatalog.slots(code)));return t;}
     static void resolve(ObjectNode task,JsonNode context,String question){
         ObjectNode slots=(ObjectNode)task.get("slots"),sources=(ObjectNode)task.get("slotSources");String fragment=task.path("questionFragment").asText();
-        for(var entry:Map.of("orderNo",ORDER,"disputeNo",DISPUTE).entrySet()){var matches=entry.getValue().matcher(fragment).results().map(m->m.group().toUpperCase(Locale.ROOT)).distinct().toList();if(matches.size()==1)slots.put(entry.getKey(),matches.getFirst());else if(matches.size()>1)slots.remove(entry.getKey());}
-        var itemIds=ITEM_ID.matcher(fragment).results().map(CustomerMaster::itemValue).filter(v->!v.isBlank()).distinct().toList();if(itemIds.size()==1)slots.put("itemId",itemIds.getFirst());else if(itemIds.size()>1)slots.remove("itemId");
+        Map<String, String> extracted = CustomerSlotRegistry.extractSlots(fragment);
+        extracted.forEach(slots::put);
         slots.fields().forEachRemaining(e->sources.put(e.getKey(),fragment.contains(e.getValue().asText())?"CURRENT_MESSAGE":"CONFIRMED_CONTEXT"));
         inferRelatedSlots(slots,sources,context);
         ArrayNode missing=array();for(var required:task.path("requiredSlots")){String key=required.asText();if(!slots.hasNonNull(key)){
@@ -176,17 +185,17 @@ public class CustomerMaster {
         }
         task.set("missingSlots",missing);
         double confidence=task.path("confidence").isNull()?1:task.path("confidence").asDouble();
-        if(!missing.isEmpty() || (confidence>=.45&&confidence<.75))task.put("resolutionState","NEED_CLARIFICATION").put("clarifyQuestion",missing.isEmpty()?"请再说明一下你想查询的具体问题。":"请提供这项问题对应的"+(missing.get(0).asText().equals("orderNo")?"订单号":missing.get(0).asText().equals("disputeNo")?"售后单号":"商品编号")+"。");
+        if(!missing.isEmpty() || (confidence>=.45&&confidence<.75))task.put("resolutionState","NEED_CLARIFICATION").put("clarifyQuestion",missing.isEmpty()?"请再说明一下你想查询的具体问题。":"请提供这项问题对应的"+CustomerSlotRegistry.promptMissing(missing.get(0).asText())+"。");
         if(confidence<.45){task.put("code","OTHER");task.put("resolutionState","READY");task.set("missingSlots",array());}
     }
     static ObjectNode resume(String question,JsonNode context){
         String target=context.path("clarifyingIntentInstanceId").asText();if(target.isBlank())return null;
         for(var value:context.path("pendingIntents")){if(!target.equals(value.path("intentInstanceId").asText()))continue;ObjectNode task=value.deepCopy();String key=task.path("missingSlots").path(0).asText();
-            Pattern p=key.equals("orderNo")?ORDER:key.equals("disputeNo")?DISPUTE:key.equals("itemId")?ITEM_ID:Pattern.compile("(?!)");var matches=p.matcher(question).results().map(m->key.equals("itemId")?itemValue(m):m.group().toUpperCase(Locale.ROOT)).filter(v->!v.isBlank()).toList();
+            Pattern p=CustomerSlotRegistry.pattern(key);var matches=p.matcher(question).results().map(m->key.equals("itemId")?itemValue(m):m.group().toUpperCase(Locale.ROOT)).filter(v->!v.isBlank()).toList();
             boolean bareItemId="itemId".equals(key)&&question.strip().matches("\\d{1,10}");if(bareItemId&&matches.isEmpty())matches=List.of(question.strip());
             String remainder=bareItemId?"":p.matcher(question).replaceAll("").strip();
             // Only an unambiguous slot-only answer can resume an instance.
-            if(matches.size()!=1 || !remainder.matches("(?:是|商品|商品编号|商品ID|订单号|订单|售后单号|售后单|编号|这个|这个订单|选|选择|第一个|第二个|[:：，,。!！?？\\s])*")) {
+            if(matches.size()!=1 || !remainder.matches("(?:是|商品|商品编号|商品ID|订单号|订单|售后单号|售后单|资金案件编号|资金案件|案件编号|案件|尝试编号|退款单号|编号|这个|这个订单|选|选择|第一个|第二个|[:：，,。!！?？\\s])*")) {
                 if(question.matches("(?s).*(查询|结算|退款|投诉|另外|规则|手续费|提现|售后|订单).*") && !question.matches("(?s).*(那个|这个|不知道|不清楚).*")) return null;
                 ObjectNode retry=object().put("schemaVersion",2).put("originalQuestion",question).put("needHuman",false);
                 task.put("resolutionState","NEED_CLARIFICATION");
@@ -214,7 +223,7 @@ public class CustomerMaster {
     private static void inferRelatedSlots(ObjectNode slots,ObjectNode sources,JsonNode context) {
         JsonNode registry=context.path("entityRegistry");
         int now=context.path("turnNo").asInt(0);
-        String order=slots.path("orderNo").asText(""),dispute=slots.path("disputeNo").asText("");
+        String order=slots.path("orderNo").asText(""),dispute=slots.path("disputeNo").asText(""),moneyCase=slots.path("moneyCaseNo").asText("");
         if(!dispute.isBlank()&&order.isBlank()) {
             List<String> related=new ArrayList<>();for(JsonNode d:registry.path("disputes"))
                 if(dispute.equalsIgnoreCase(d.path("disputeNo").asText())&&recent(d,now)){String value=d.path("orderNo").asText();if(!value.isBlank())related.add(value);}
@@ -223,6 +232,15 @@ public class CustomerMaster {
             List<String> related=new ArrayList<>();for(JsonNode d:registry.path("disputes"))
                 if(order.equalsIgnoreCase(d.path("orderNo").asText())&&recent(d,now)){String value=d.path("disputeNo").asText();if(!value.isBlank())related.add(value);}
             if(related.stream().distinct().count()==1){slots.put("disputeNo",related.getFirst());sources.put("disputeNo","ENTITY_RELATION");}
+        }
+        if(!moneyCase.isBlank()&&order.isBlank()) {
+            List<String> related=new ArrayList<>();for(JsonNode mc:registry.path("moneyCases"))
+                if(moneyCase.equalsIgnoreCase(mc.path("moneyCaseNo").asText())&&recent(mc,now)){String value=mc.path("orderNo").asText();if(!value.isBlank())related.add(value);}
+            if(related.stream().distinct().count()==1){slots.put("orderNo",related.getFirst());sources.put("orderNo","ENTITY_RELATION");}
+        } else if(!order.isBlank()&&moneyCase.isBlank()) {
+            List<String> related=new ArrayList<>();for(JsonNode mc:registry.path("moneyCases"))
+                if(order.equalsIgnoreCase(mc.path("orderNo").asText())&&recent(mc,now)){String value=mc.path("moneyCaseNo").asText();if(!value.isBlank())related.add(value);}
+            if(related.stream().distinct().count()==1){slots.put("moneyCaseNo",related.getFirst());sources.put("moneyCaseNo","ENTITY_RELATION");}
         }
     }
     private static boolean recent(JsonNode entity,int now) {
@@ -251,7 +269,7 @@ public class CustomerMaster {
         return question.matches("(?s).*(这个|那个|这笔|那笔|上面|刚才|之前|第一个|第二个|它|还没|到账|结算|呢[？?。！!]?).*");
     }
     private static List<JsonNode> registryCandidates(JsonNode context,String key) {
-        String collection=switch(key){case "orderNo"->"orders";case "disputeNo"->"disputes";case "itemId"->"items";default->"";};
+        String collection=CustomerSlotRegistry.collection(key);
         String field=key;
         List<JsonNode> result=new ArrayList<>();JsonNode registry=context.path("entityRegistry").path(collection);
         if(registry.isArray())for(int index=0;index<registry.size();index++) {
@@ -281,7 +299,11 @@ public class CustomerMaster {
         return mock(question);
     }
     static ObjectNode mock(String question){ArrayNode tasks=array();for(String part:question.split("[，,；;]|再查|另外")){String q=part.strip();if(q.isEmpty()||l1(q,20)!=null)continue;String code;
-        if(human(q))code="HUMAN_HELP";else if(q.contains("退款")||q.contains("售后")||q.contains("退货"))code=q.matches(".*(进度|到哪|状态).*")?"AFTER_SALE_PROGRESS":"AFTER_SALE_GUIDE";
+        if(human(q))code="HUMAN_HELP";
+        else if(q.matches(".*(案件|资金调查|调查进展|调查结果).*")||MONEY_CASE.matcher(q).find())code="MONEY_CASE_PROGRESS";
+        else if(q.matches(".*(重复扣款|多扣|扣了两次|关闭订单.*扣款|掉单).*")||(q.contains("扣款")&&q.contains("未到账"))||q.contains("付了钱但订单显示待支付")||ATTEMPT.matcher(q).find())code="PAYMENT_ANOMALY";
+        else if(q.matches(".*(退款.*未到账|退款.*没退回来|退款.*异常|退款状态冲突).*")||REFUND.matcher(q).find())code="REFUND_ANOMALY";
+        else if(q.contains("退款")||q.contains("售后")||q.contains("退货"))code=q.matches(".*(进度|到哪|状态).*")?"AFTER_SALE_PROGRESS":"AFTER_SALE_GUIDE";
         else if(q.contains("提现"))code="WITHDRAW_RULE";else if(q.contains("手续费"))code="SETTLEMENT_RULE";else if(q.contains("结算"))code=q.contains("订单")||ORDER.matcher(q).find()?"SETTLEMENT":"SETTLEMENT_RULE";
         else if(ITEM_ID.matcher(q).find()||q.matches(".*(商品|产品).*(购买|价格|库存|介绍|怎么样).*"))code="PRE_SALE_PRODUCT";
         else if(q.matches(".*(时间记录|时间线).*"))code="ORDER_TIMELINE";else if(q.contains("订单列表")||q.contains("最近订单"))code="ORDER_SEARCH";

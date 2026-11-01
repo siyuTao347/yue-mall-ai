@@ -96,7 +96,6 @@ public class MoneyFundQueryDubboServiceImpl implements MoneyFundQueryDubboServic
             idempotencyKeys.add("FUND_REFUND:" + orderNo);
             idempotencyKeys.add("FUND_SETTLE:" + orderNo);
             idempotencyKeys.add("FUND_SETTLE_AVAILABLE:" + orderNo);
-            idempotencyKeys.add("FUND_REFUND_CHANNEL:RF_" + orderNo);
         }
         if (claims.getAttempts() != null) {
             for (String att : claims.getAttempts()) {

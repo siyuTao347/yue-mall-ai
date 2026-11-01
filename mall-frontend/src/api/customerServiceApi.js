@@ -21,12 +21,12 @@ export const customerServiceApi = {
   create: (body = {}, signal) => call('/api/agent/sessions', 'POST', body, signal),
   listSessions: (params = {}, signal) => {
     const query = new URLSearchParams(params).toString();
-    return call(`/api/agent/realtime/sessions${query ? `?${query}` : ''}`, 'GET', undefined, signal);
+    return call(`/api/agent/sessions${query ? `?${query}` : ''}`, 'GET', undefined, signal);
   },
   session: (session, signal) => call(`/api/agent/sessions/${encodeURIComponent(session)}`, 'GET', undefined, signal),
-  snapshot: (session, signal) => call(`/api/agent/realtime/sessions/${encodeURIComponent(session)}/snapshot`, 'GET', undefined, signal),
+  snapshot: (session, signal) => call(`/api/agent/sessions/${encodeURIComponent(session)}/snapshot`, 'GET', undefined, signal),
   sync: (session, afterEventSeq = 0, limit = 50, signal) =>
-    call(`/api/agent/realtime/sessions/${encodeURIComponent(session)}/sync?afterEventSeq=${afterEventSeq}&limit=${limit}`, 'GET', undefined, signal),
+    call(`/api/agent/sessions/${encodeURIComponent(session)}/sync?afterEventSeq=${afterEventSeq}&limit=${limit}`, 'GET', undefined, signal),
 
   // Messaging
   send: (session, content, clientMessageId, signal) =>
@@ -106,14 +106,14 @@ export const customerServiceApi = {
 
   // Handoff & Session controls
   requestHandoff: (session, reason = 'USER_REQUESTED') =>
-    call(`/api/agent/realtime/sessions/${encodeURIComponent(session)}/handoff`, 'POST', { reason }),
+    call(`/api/agent/sessions/${encodeURIComponent(session)}/handoffs`, 'POST', { reason }),
   markRead: (session, lastReadMessageSeq) =>
-    call(`/api/agent/realtime/sessions/${encodeURIComponent(session)}/read`, 'POST', { lastReadMessageSeq }),
+    call(`/api/agent/sessions/${encodeURIComponent(session)}/read`, 'POST', { lastReadMessageSeq }),
   close: session => call(`/api/agent/sessions/${encodeURIComponent(session)}/close`, 'POST', {}),
 
   // Rich Card action
   cardAction: (session, payload) =>
-    call(`/api/agent/realtime/sessions/${encodeURIComponent(session)}/card-actions`, 'POST', payload),
+    call(`/api/agent/sessions/${encodeURIComponent(session)}/card-actions`, 'POST', payload),
 
   // Feedback
   feedback: (run, rating, comment = '') =>

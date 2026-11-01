@@ -9,6 +9,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/entity/OrderSettlement.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/dto/OrderListQuery.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/reconciliation/application/ReconciliationExecutionService.java
+/Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/money/MoneyDomainEventPublisher.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/payment/mapper/PaymentAttemptMapper.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/dto/TradeOrchestrationContext.java
 /Users/yu/IdeaProjects/mall-parent/mall-order-service/src/main/java/com/example/item/entity/Arbitration.java

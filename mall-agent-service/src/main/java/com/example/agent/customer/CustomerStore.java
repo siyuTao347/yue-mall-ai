@@ -120,6 +120,13 @@ public class CustomerStore {
         finish(actor,session,run,master,results,response,slots,path,tools,inputTokens,outputTokens,elapsed,state,embeddingCacheHit,ttftMs,null,null);
     }
     public void finish(AgentActor actor,String session,String run,ObjectNode master,ArrayNode results,ObjectNode response,ObjectNode slots,ArrayNode path,int tools,int inputTokens,int outputTokens,long elapsed,String state,boolean embeddingCacheHit,Integer ttftMs,JsonNode memoryEvidence,JsonNode memoryCaptureContext){
+        Long expectedControlEpoch = null;
+        if (memoryCaptureContext != null && memoryCaptureContext.has("controlEpoch")) {
+            expectedControlEpoch = memoryCaptureContext.path("controlEpoch").asLong(1L);
+        }
+        finish(actor,session,run,master,results,response,slots,path,tools,inputTokens,outputTokens,elapsed,state,embeddingCacheHit,ttftMs,memoryEvidence,memoryCaptureContext,expectedControlEpoch);
+    }
+    public void finish(AgentActor actor,String session,String run,ObjectNode master,ArrayNode results,ObjectNode response,ObjectNode slots,ArrayNode path,int tools,int inputTokens,int outputTokens,long elapsed,String state,boolean embeddingCacheHit,Integer ttftMs,JsonNode memoryEvidence,JsonNode memoryCaptureContext,Long expectedControlEpoch){
         db.tx.executeWithoutResult(tx->{var gate=db.mysql.queryForMap("SELECT lease_run_no FROM t_agent_user_gate WHERE user_id=? FOR UPDATE",actor.userId());if(!run.equals(gate.get("lease_run_no")))throw error(409,"AGENT_LEASE_LOST","运行已过期");
             int n=db.mysql.update("UPDATE t_agent_run SET status=?,error_code=?,master_result_json=?,specialist_results_json=?,result_json=?,graph_path_json=?,tool_call_count=?,tool_rounds=?,input_tokens=?,output_tokens=?,latency_ms=?,embedding_cache_hit=?,ttft_ms=?,memory_evidence_json=?,finished_time=now(3) WHERE run_no=? AND status='RUNNING'",
                 state,response.path("errorCode").asText(null),write(master),write(results),write(response),write(path),tools,Math.min(tools,3),inputTokens,outputTokens,elapsed,embeddingCacheHit?1:0,ttftMs,memoryEvidence!=null?write(memoryEvidence):null,run);
@@ -127,10 +134,12 @@ public class CustomerStore {
 
             var sRow=db.mysql.queryForMap("SELECT service_mode,control_epoch FROM t_agent_session WHERE session_no=? FOR UPDATE",session);
             String serviceMode=sRow.get("service_mode")!=null?sRow.get("service_mode").toString():"BOT";
+            long currentEpoch=sRow.get("control_epoch")!=null?((Number)sRow.get("control_epoch")).longValue():1L;
             boolean isBotMode="BOT".equalsIgnoreCase(serviceMode);
+            boolean epochMatches=(expectedControlEpoch==null||expectedControlEpoch.equals(currentEpoch));
             String agentMsgNo=id("AM");
 
-            if(isBotMode){
+            if(isBotMode && epochMatches){
                 db.mysql.update("INSERT INTO t_agent_message(message_no,session_no,run_no,role,content,citations_json) VALUES(?,?,?,'AGENT',?,?)",agentMsgNo,session,run,response.path("answer").asText(),write(response.path("citations")));
                 ArrayNode chunkIds=array();for(var c:response.path("citations"))if(c.has("chunkId"))chunkIds.add(c.path("chunkId"));
                 db.mysql.update("UPDATE t_agent_run SET knowledge_chunk_ids_json=? WHERE run_no=?",write(chunkIds),run);
@@ -141,7 +150,7 @@ public class CustomerStore {
                     eventStore.appendPublicEventInTx(session,"message.created",agentEvt);
                 }
             } else {
-                log.info("CustomerStore: AI run {} completed but session {} is in mode {}, suppressing public AGENT message",run,session,serviceMode);
+                log.info("CustomerStore: AI run {} completed but session {} mode is {} (currentEpoch={}, expectedEpoch={}), suppressing public AGENT message",run,session,serviceMode,currentEpoch,expectedControlEpoch);
                 try{
                     db.mysql.update("INSERT INTO t_agent_copilot_task(task_id,session_no,task_type,payload_json,status,created_time) VALUES(?,?,'DRAFT_ANSWER',?,'COMPLETED',now(3))",id("CP"),session,write(object().put("answer",response.path("answer").asText()).put("runNo",run)));
                 }catch(Exception ex){log.warn("CustomerStore: failed to record copilot draft: {}",ex.getMessage());}

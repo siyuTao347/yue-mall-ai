@@ -18,6 +18,7 @@ public class CustomerPromptRegistry {
     public CustomerPromptRegistry() {
         this.templates = Map.of(
             "master-planner-v3", load("customer/prompts/master-planner-v3.xml.st"),
+            "master-planner-v4", load("customer/prompts/master-planner-v4.xml.st"),
             "after-sale-react-v3", load("customer/prompts/after-sale-react-v3.xml.st"),
             "response-synthesizer-v3", load("customer/prompts/response-synthesizer-v3.xml.st"),
             "response-synthesizer-v4", load("customer/prompts/response-synthesizer-v4.xml.st")

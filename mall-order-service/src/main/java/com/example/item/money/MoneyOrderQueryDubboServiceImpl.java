@@ -18,7 +18,11 @@ import com.example.item.payment.mapper.PaymentRefundOrderMapper;
 import com.example.item.reconciliation.domain.ReconDiff;
 import com.example.item.reconciliation.mapper.ReconDiffMapper;
 import org.apache.dubbo.config.annotation.DubboService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.*;
@@ -111,48 +115,103 @@ public class MoneyOrderQueryDubboServiceImpl implements MoneyOrderQueryDubboServ
 
         int pageSize = query.getPageSize() != null ? Math.min(Math.max(query.getPageSize(), 1), 100) : 50;
 
-        // 解析游标
-        CursorTokens cursorTokens = parseCursor(query.getCursor());
+        scopeKey = query.getScopeKey() != null ? query.getScopeKey() : "ORDER:" + orderNo;
+
+        // 解析并验证游标
+        CursorPayload cursorPayload;
+        try {
+            cursorPayload = parseCursor(query.getCursor(), scopeKey);
+        } catch (IllegalArgumentException e) {
+            return MoneyOrderSnapshot.unavailable(scopeKey, orderNo, MoneyErrorCodes.MONEY_PARAM_INVALID + ": " + e.getMessage());
+        }
+
+        if (cursorPayload == null) {
+            // 首轮查询：初始化水位线与集合状态
+            long hwAttempt = getMaxAttemptId(orderNo);
+            long hwRefund = getMaxRefundId(orderNo);
+            long hwEvent = getMaxEventId(orderNo);
+            long hwDiff = getMaxDiffId(orderNo);
+
+            cursorPayload = new CursorPayload();
+            cursorPayload.schemaVersion = 1;
+            cursorPayload.scopeKey = scopeKey;
+            cursorPayload.expiresAt = System.currentTimeMillis() + 600000;
+            cursorPayload.attemptHighWaterId = hwAttempt > 0 ? hwAttempt : Long.MAX_VALUE;
+            cursorPayload.refundHighWaterId = hwRefund > 0 ? hwRefund : Long.MAX_VALUE;
+            cursorPayload.eventHighWaterId = hwEvent > 0 ? hwEvent : Long.MAX_VALUE;
+            cursorPayload.diffHighWaterId = hwDiff > 0 ? hwDiff : Long.MAX_VALUE;
+            cursorPayload.attemptCompleted = false;
+            cursorPayload.refundCompleted = false;
+            cursorPayload.eventCompleted = false;
+            cursorPayload.diffCompleted = false;
+        }
 
         PaymentOrder paymentOrder = orderNo != null
                 ? paymentOrderMapper.selectOne(new LambdaQueryWrapper<PaymentOrder>().eq(PaymentOrder::getOrderNo, orderNo))
                 : null;
 
-        // 1. 查询支付尝试 (Limit + 1 探测截断)
-        List<PaymentAttempt> rawAttempts = orderNo != null
-                ? attemptMapper.selectList(new LambdaQueryWrapper<PaymentAttempt>()
-                .eq(PaymentAttempt::getOrderNo, orderNo)
-                .gt(cursorTokens.attemptId > 0, PaymentAttempt::getId, cursorTokens.attemptId)
-                .orderByAsc(PaymentAttempt::getId)
-                .last("LIMIT " + (pageSize + 1)))
-                : Collections.emptyList();
-        boolean attemptsTruncated = rawAttempts != null && rawAttempts.size() > pageSize;
-        List<PaymentAttempt> attempts = attemptsTruncated ? rawAttempts.subList(0, pageSize) : rawAttempts;
-        long lastAttemptId = (attempts != null && !attempts.isEmpty()) ? attempts.get(attempts.size() - 1).getId() : cursorTokens.attemptId;
+        // 1. 查询支付尝试 (按不可变 ID 升序，id > afterId AND id <= highWaterId，Limit + 1 探测截断)
+        List<PaymentAttempt> attempts = Collections.emptyList();
+        boolean attemptsTruncated = false;
+        long nextAttemptAfterId = cursorPayload.attemptAfterId;
+        boolean nextAttemptCompleted = cursorPayload.attemptCompleted;
+
+        if (orderNo != null && !cursorPayload.attemptCompleted && cursorPayload.attemptHighWaterId > cursorPayload.attemptAfterId) {
+            List<PaymentAttempt> rawAttempts = attemptMapper.selectList(new LambdaQueryWrapper<PaymentAttempt>()
+                    .eq(PaymentAttempt::getOrderNo, orderNo)
+                    .gt(PaymentAttempt::getId, cursorPayload.attemptAfterId)
+                    .le(PaymentAttempt::getId, cursorPayload.attemptHighWaterId)
+                    .orderByAsc(PaymentAttempt::getId)
+                    .last("LIMIT " + (pageSize + 1)));
+            attemptsTruncated = rawAttempts != null && rawAttempts.size() > pageSize;
+            attempts = attemptsTruncated ? rawAttempts.subList(0, pageSize) : (rawAttempts != null ? rawAttempts : Collections.emptyList());
+            if (!attempts.isEmpty()) {
+                nextAttemptAfterId = attempts.get(attempts.size() - 1).getId();
+            }
+            nextAttemptCompleted = !attemptsTruncated;
+        }
 
         // 2. 查询退款单 (Limit + 1 探测截断)
-        List<PaymentRefundOrder> rawRefunds = orderNo != null
-                ? refundMapper.selectList(new LambdaQueryWrapper<PaymentRefundOrder>()
-                .eq(PaymentRefundOrder::getOrderNo, orderNo)
-                .gt(cursorTokens.refundId > 0, PaymentRefundOrder::getId, cursorTokens.refundId)
-                .orderByAsc(PaymentRefundOrder::getId)
-                .last("LIMIT " + (pageSize + 1)))
-                : Collections.emptyList();
-        boolean refundsTruncated = rawRefunds != null && rawRefunds.size() > pageSize;
-        List<PaymentRefundOrder> refunds = refundsTruncated ? rawRefunds.subList(0, pageSize) : rawRefunds;
-        long lastRefundId = (refunds != null && !refunds.isEmpty()) ? refunds.get(refunds.size() - 1).getId() : cursorTokens.refundId;
+        List<PaymentRefundOrder> refunds = Collections.emptyList();
+        boolean refundsTruncated = false;
+        long nextRefundAfterId = cursorPayload.refundAfterId;
+        boolean nextRefundCompleted = cursorPayload.refundCompleted;
+
+        if (orderNo != null && !cursorPayload.refundCompleted && cursorPayload.refundHighWaterId > cursorPayload.refundAfterId) {
+            List<PaymentRefundOrder> rawRefunds = refundMapper.selectList(new LambdaQueryWrapper<PaymentRefundOrder>()
+                    .eq(PaymentRefundOrder::getOrderNo, orderNo)
+                    .gt(PaymentRefundOrder::getId, cursorPayload.refundAfterId)
+                    .le(PaymentRefundOrder::getId, cursorPayload.refundHighWaterId)
+                    .orderByAsc(PaymentRefundOrder::getId)
+                    .last("LIMIT " + (pageSize + 1)));
+            refundsTruncated = rawRefunds != null && rawRefunds.size() > pageSize;
+            refunds = refundsTruncated ? rawRefunds.subList(0, pageSize) : (rawRefunds != null ? rawRefunds : Collections.emptyList());
+            if (!refunds.isEmpty()) {
+                nextRefundAfterId = refunds.get(refunds.size() - 1).getId();
+            }
+            nextRefundCompleted = !refundsTruncated;
+        }
 
         // 3. 查询金融事件 (Limit + 1 探测截断)
-        List<PaymentFinancialEvent> rawEvents = orderNo != null
-                ? financialEventMapper.selectList(new LambdaQueryWrapper<PaymentFinancialEvent>()
-                .eq(PaymentFinancialEvent::getOrderNo, orderNo)
-                .gt(cursorTokens.eventId > 0, PaymentFinancialEvent::getId, cursorTokens.eventId)
-                .orderByAsc(PaymentFinancialEvent::getId)
-                .last("LIMIT " + (pageSize + 1)))
-                : Collections.emptyList();
-        boolean eventsTruncated = rawEvents != null && rawEvents.size() > pageSize;
-        List<PaymentFinancialEvent> events = eventsTruncated ? rawEvents.subList(0, pageSize) : rawEvents;
-        long lastEventId = (events != null && !events.isEmpty()) ? events.get(events.size() - 1).getId() : cursorTokens.eventId;
+        List<PaymentFinancialEvent> events = Collections.emptyList();
+        boolean eventsTruncated = false;
+        long nextEventAfterId = cursorPayload.eventAfterId;
+        boolean nextEventCompleted = cursorPayload.eventCompleted;
+
+        if (orderNo != null && !cursorPayload.eventCompleted && cursorPayload.eventHighWaterId > cursorPayload.eventAfterId) {
+            List<PaymentFinancialEvent> rawEvents = financialEventMapper.selectList(new LambdaQueryWrapper<PaymentFinancialEvent>()
+                    .eq(PaymentFinancialEvent::getOrderNo, orderNo)
+                    .gt(PaymentFinancialEvent::getId, cursorPayload.eventAfterId)
+                    .le(PaymentFinancialEvent::getId, cursorPayload.eventHighWaterId)
+                    .orderByAsc(PaymentFinancialEvent::getId)
+                    .last("LIMIT " + (pageSize + 1)));
+            eventsTruncated = rawEvents != null && rawEvents.size() > pageSize;
+            events = eventsTruncated ? rawEvents.subList(0, pageSize) : (rawEvents != null ? rawEvents : Collections.emptyList());
+            if (!events.isEmpty()) {
+                nextEventAfterId = events.get(events.size() - 1).getId();
+            }
+            nextEventCompleted = !eventsTruncated;
+        }
 
         // 4. 查询编排任务
         TradeOrchestrationTask orchTask = orderNo != null
@@ -163,16 +222,25 @@ public class MoneyOrderQueryDubboServiceImpl implements MoneyOrderQueryDubboServ
                 : null;
 
         // 5. 查询对账差异 (Limit + 1 探测截断)
-        List<ReconDiff> rawDiffs = orderNo != null
-                ? diffMapper.selectList(new LambdaQueryWrapper<ReconDiff>()
-                .eq(ReconDiff::getOrderNo, orderNo)
-                .gt(cursorTokens.diffId > 0, ReconDiff::getId, cursorTokens.diffId)
-                .orderByAsc(ReconDiff::getId)
-                .last("LIMIT " + (pageSize + 1)))
-                : Collections.emptyList();
-        boolean diffsTruncated = rawDiffs != null && rawDiffs.size() > pageSize;
-        List<ReconDiff> diffs = diffsTruncated ? rawDiffs.subList(0, pageSize) : rawDiffs;
-        long lastDiffId = (diffs != null && !diffs.isEmpty()) ? diffs.get(diffs.size() - 1).getId() : cursorTokens.diffId;
+        List<ReconDiff> diffs = Collections.emptyList();
+        boolean diffsTruncated = false;
+        long nextDiffAfterId = cursorPayload.diffAfterId;
+        boolean nextDiffCompleted = cursorPayload.diffCompleted;
+
+        if (orderNo != null && !cursorPayload.diffCompleted && cursorPayload.diffHighWaterId > cursorPayload.diffAfterId) {
+            List<ReconDiff> rawDiffs = diffMapper.selectList(new LambdaQueryWrapper<ReconDiff>()
+                    .eq(ReconDiff::getOrderNo, orderNo)
+                    .gt(ReconDiff::getId, cursorPayload.diffAfterId)
+                    .le(ReconDiff::getId, cursorPayload.diffHighWaterId)
+                    .orderByAsc(ReconDiff::getId)
+                    .last("LIMIT " + (pageSize + 1)));
+            diffsTruncated = rawDiffs != null && rawDiffs.size() > pageSize;
+            diffs = diffsTruncated ? rawDiffs.subList(0, pageSize) : (rawDiffs != null ? rawDiffs : Collections.emptyList());
+            if (!diffs.isEmpty()) {
+                nextDiffAfterId = diffs.get(diffs.size() - 1).getId();
+            }
+            nextDiffCompleted = !diffsTruncated;
+        }
 
         // 组装快照子对象
         List<PaymentAttemptSnapshot> attemptSnapshots = new ArrayList<>();
@@ -272,8 +340,27 @@ public class MoneyOrderQueryDubboServiceImpl implements MoneyOrderQueryDubboServ
             }
         }
 
-        boolean hasMore = attemptsTruncated || refundsTruncated || eventsTruncated || diffsTruncated;
-        String nextCursor = hasMore ? buildCursor(lastAttemptId, lastRefundId, lastEventId, lastDiffId) : null;
+        boolean hasMore = attemptsTruncated || refundsTruncated || eventsTruncated || diffsTruncated ||
+                (!nextAttemptCompleted || !nextRefundCompleted || !nextEventCompleted || !nextDiffCompleted);
+
+        CursorPayload nextPayload = new CursorPayload();
+        nextPayload.schemaVersion = 1;
+        nextPayload.scopeKey = scopeKey;
+        nextPayload.expiresAt = System.currentTimeMillis() + 600000;
+        nextPayload.attemptAfterId = nextAttemptAfterId;
+        nextPayload.attemptHighWaterId = cursorPayload.attemptHighWaterId;
+        nextPayload.attemptCompleted = nextAttemptCompleted;
+        nextPayload.refundAfterId = nextRefundAfterId;
+        nextPayload.refundHighWaterId = cursorPayload.refundHighWaterId;
+        nextPayload.refundCompleted = nextRefundCompleted;
+        nextPayload.eventAfterId = nextEventAfterId;
+        nextPayload.eventHighWaterId = cursorPayload.eventHighWaterId;
+        nextPayload.eventCompleted = nextEventCompleted;
+        nextPayload.diffAfterId = nextDiffAfterId;
+        nextPayload.diffHighWaterId = cursorPayload.diffHighWaterId;
+        nextPayload.diffCompleted = nextDiffCompleted;
+
+        String nextCursor = hasMore ? buildSignedCursor(nextPayload) : null;
 
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("ORDER", paymentOrder != null ? MoneyCoverageStatus.OK.name() : MoneyCoverageStatus.NOT_FOUND.name());
@@ -350,6 +437,127 @@ public class MoneyOrderQueryDubboServiceImpl implements MoneyOrderQueryDubboServ
         return reconEvidenceService.getEvidence(access, query);
     }
 
+    @Override
+    public IssueFundScopeProofResult issueFundScopeProof(MoneyAccessContext access, IssueFundScopeProofRequest request) {
+        if (access == null) {
+            return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_FORBIDDEN, "访问凭据 (access) 缺失，拒绝签发");
+        }
+        if (request == null) {
+            return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_PARAM_INVALID, "签发请求参数不能为空");
+        }
+
+        MoneySecuritySupport.VerifiedAccess verified;
+        try {
+            verified = MoneySecuritySupport.verifyEntryAccess(
+                    access, "mall-order-service", "ISSUE_FUND_SCOPE_PROOF", request.getScopeKey());
+        } catch (Exception e) {
+            return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_FORBIDDEN, "凭据校验未通过: " + e.getMessage());
+        }
+
+        List<String> attempts = request.getAttemptRefs() != null ? request.getAttemptRefs() : Collections.emptyList();
+        List<String> refunds = request.getRefundRefs() != null ? request.getRefundRefs() : Collections.emptyList();
+        int totalRefs = attempts.size() + refunds.size();
+        if (totalRefs > 50) {
+            return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_PARAM_INVALID, "单批范围证明引用数不能超过 50 个，当前总数: " + totalRefs);
+        }
+
+        String targetOrderNo = request.getOrderNo();
+        if (targetOrderNo != null && !targetOrderNo.isBlank()) {
+            TradeOrder order = orderMapper.selectOne(new LambdaQueryWrapper<TradeOrder>()
+                    .eq(TradeOrder::getOrderNo, targetOrderNo.trim()));
+            if (order == null) {
+                return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_SUBJECT_NOT_FOUND, "订单不存在: " + targetOrderNo);
+            }
+
+            String role = verified.getActorRole();
+            Long uid = verified.getActorUserId();
+            if ("BUYER".equalsIgnoreCase(role)) {
+                if (uid == null || !Objects.equals(order.getBuyerId(), uid)) {
+                    return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_FORBIDDEN, "无权访问此订单（买家主体不匹配）");
+                }
+            } else if ("SELLER".equalsIgnoreCase(role)) {
+                if (uid == null || !Objects.equals(order.getSellerId(), uid)) {
+                    return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_FORBIDDEN, "无权访问此订单（商家主体不匹配）");
+                }
+            } else if ("CUSTOMER_STAFF".equalsIgnoreCase(role)) {
+                if (uid != null && !Objects.equals(order.getBuyerId(), uid)) {
+                    return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_FORBIDDEN, "客服坐席主体与当前订单买家不匹配");
+                }
+            } else if (!isStaffOrFinance(role)) {
+                return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_FORBIDDEN, "未授权的访问角色: " + role);
+            }
+
+            for (String attNo : attempts) {
+                PaymentAttempt att = attemptMapper.selectOne(new LambdaQueryWrapper<PaymentAttempt>()
+                        .eq(PaymentAttempt::getAttemptNo, attNo));
+                if (att == null || !targetOrderNo.equals(att.getOrderNo())) {
+                    return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_SUBJECT_MISMATCH, "支付尝试 " + attNo + " 不属于订单 " + targetOrderNo);
+                }
+            }
+            for (String refNo : refunds) {
+                PaymentRefundOrder ref = refundMapper.selectOne(new LambdaQueryWrapper<PaymentRefundOrder>()
+                        .eq(PaymentRefundOrder::getRefundNo, refNo));
+                if (ref == null || !targetOrderNo.equals(ref.getOrderNo())) {
+                    return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_SUBJECT_MISMATCH, "退款单 " + refNo + " 不属于订单 " + targetOrderNo);
+                }
+            }
+
+            String scopeKey = request.getScopeKey() != null ? request.getScopeKey() : "ORDER:" + targetOrderNo;
+            String raw = targetOrderNo + ":" + order.getBuyerId() + ":" + order.getSellerId() + ":" + attempts.size() + ":" + refunds.size();
+            String fp = MoneySecuritySupport.computeFingerprint(raw);
+            String targetAudience = request.getTargetAudience() != null ? request.getTargetAudience() : "mall-user-service,mall-money-services";
+            String proof = MoneySecuritySupport.createScopeProof(
+                    targetOrderNo,
+                    scopeKey,
+                    order.getBuyerId(),
+                    order.getSellerId(),
+                    request.getGrantRef() != null ? request.getGrantRef() : verified.getGrantId(),
+                    request.getAllowedActions() != null ? request.getAllowedActions() : List.of("READ", "QUERY_FUND"),
+                    attempts,
+                    refunds,
+                    fp,
+                    targetAudience
+            );
+            return IssueFundScopeProofResult.builder()
+                    .success(true)
+                    .orderNo(targetOrderNo)
+                    .scopeKey(scopeKey)
+                    .scopeProofRef(proof)
+                    .scopeFingerprint(fp)
+                    .verifiedAttempts(attempts)
+                    .verifiedRefunds(refunds)
+                    .build();
+        } else if (request.getScopeKey() != null && request.getScopeKey().startsWith("RECON:")) {
+            if (!isStaffOrFinance(verified.getActorRole())) {
+                return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_FORBIDDEN, "仅财务人员获准签发未关联订单的对账范围证明");
+            }
+            String fp = MoneySecuritySupport.computeFingerprint(request.getScopeKey());
+            String targetAudience = request.getTargetAudience() != null ? request.getTargetAudience() : "mall-user-service,mall-money-services";
+            String proof = MoneySecuritySupport.createScopeProof(
+                    null,
+                    request.getScopeKey(),
+                    null,
+                    null,
+                    request.getGrantRef() != null ? request.getGrantRef() : verified.getGrantId(),
+                    request.getAllowedActions() != null ? request.getAllowedActions() : List.of("READ", "QUERY_FUND"),
+                    attempts,
+                    refunds,
+                    fp,
+                    targetAudience
+            );
+            return IssueFundScopeProofResult.builder()
+                    .success(true)
+                    .scopeKey(request.getScopeKey())
+                    .scopeProofRef(proof)
+                    .scopeFingerprint(fp)
+                    .verifiedAttempts(attempts)
+                    .verifiedRefunds(refunds)
+                    .build();
+        } else {
+            return IssueFundScopeProofResult.fail(MoneyErrorCodes.MONEY_PARAM_INVALID, "必须指定有效的 orderNo 或 RECON scopeKey");
+        }
+    }
+
     private static String extractOrderNo(MoneySnapshotQuery query) {
         if (query.getScopeKey() != null && query.getScopeKey().startsWith("ORDER:")) {
             return query.getScopeKey().substring("ORDER:".length()).trim();
@@ -378,111 +586,228 @@ public class MoneyOrderQueryDubboServiceImpl implements MoneyOrderQueryDubboServ
         return "ADMIN".equals(r) || "FINANCE".equals(r) || "CUSTOMER_STAFF".equals(r) || "SYSTEM".equals(r);
     }
 
-    private static class CursorTokens {
-        long attemptId = 0L;
-        long refundId = 0L;
-        long eventId = 0L;
-        long diffId = 0L;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    static {
+        OBJECT_MAPPER.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
     }
 
-    private static CursorTokens parseCursor(String cursor) {
-        CursorTokens tokens = new CursorTokens();
-        if (cursor == null || !cursor.startsWith("CUR:")) return tokens;
+    public static class CursorPayload {
+        public int schemaVersion = 1;
+        public String scopeKey;
+        public long expiresAt;
+        public long attemptAfterId;
+        public long attemptHighWaterId;
+        public boolean attemptCompleted;
+        public long refundAfterId;
+        public long refundHighWaterId;
+        public boolean refundCompleted;
+        public long eventAfterId;
+        public long eventHighWaterId;
+        public boolean eventCompleted;
+        public long diffAfterId;
+        public long diffHighWaterId;
+        public boolean diffCompleted;
+    }
+
+    private long getMaxAttemptId(String orderNo) {
+        if (attemptMapper == null || orderNo == null) return 0L;
+        PaymentAttempt a = attemptMapper.selectOne(new LambdaQueryWrapper<PaymentAttempt>()
+                .eq(PaymentAttempt::getOrderNo, orderNo).orderByDesc(PaymentAttempt::getId).last("LIMIT 1"));
+        return a != null && a.getId() != null ? a.getId() : 0L;
+    }
+
+    private long getMaxRefundId(String orderNo) {
+        if (refundMapper == null || orderNo == null) return 0L;
+        PaymentRefundOrder r = refundMapper.selectOne(new LambdaQueryWrapper<PaymentRefundOrder>()
+                .eq(PaymentRefundOrder::getOrderNo, orderNo).orderByDesc(PaymentRefundOrder::getId).last("LIMIT 1"));
+        return r != null && r.getId() != null ? r.getId() : 0L;
+    }
+
+    private long getMaxEventId(String orderNo) {
+        if (financialEventMapper == null || orderNo == null) return 0L;
+        PaymentFinancialEvent e = financialEventMapper.selectOne(new LambdaQueryWrapper<PaymentFinancialEvent>()
+                .eq(PaymentFinancialEvent::getOrderNo, orderNo).orderByDesc(PaymentFinancialEvent::getId).last("LIMIT 1"));
+        return e != null && e.getId() != null ? e.getId() : 0L;
+    }
+
+    private long getMaxDiffId(String orderNo) {
+        if (diffMapper == null || orderNo == null) return 0L;
+        ReconDiff d = diffMapper.selectOne(new LambdaQueryWrapper<ReconDiff>()
+                .eq(ReconDiff::getOrderNo, orderNo).orderByDesc(ReconDiff::getId).last("LIMIT 1"));
+        return d != null && d.getId() != null ? d.getId() : 0L;
+    }
+
+    private static CursorPayload parseCursor(String cursor, String expectedScopeKey) {
+        if (cursor == null || cursor.isBlank()) return null;
+        if (!cursor.startsWith("CUR_V1:")) {
+            if (cursor.startsWith("CUR:")) {
+                CursorPayload p = new CursorPayload();
+                String[] parts = cursor.substring(4).split(":");
+                if (parts.length >= 1 && !parts[0].isBlank()) p.attemptAfterId = Long.parseLong(parts[0]);
+                if (parts.length >= 2 && !parts[1].isBlank()) p.refundAfterId = Long.parseLong(parts[1]);
+                if (parts.length >= 3 && !parts[2].isBlank()) p.eventAfterId = Long.parseLong(parts[2]);
+                if (parts.length >= 4 && !parts[3].isBlank()) p.diffAfterId = Long.parseLong(parts[3]);
+                p.scopeKey = expectedScopeKey;
+                p.expiresAt = System.currentTimeMillis() + 600000;
+                return p;
+            }
+            throw new IllegalArgumentException("快照游标格式非法");
+        }
         try {
-            String[] parts = cursor.substring(4).split(":");
-            if (parts.length >= 1 && !parts[0].isBlank()) tokens.attemptId = Long.parseLong(parts[0]);
-            if (parts.length >= 2 && !parts[1].isBlank()) tokens.refundId = Long.parseLong(parts[1]);
-            if (parts.length >= 3 && !parts[2].isBlank()) tokens.eventId = Long.parseLong(parts[2]);
-            if (parts.length >= 4 && !parts[3].isBlank()) tokens.diffId = Long.parseLong(parts[3]);
-        } catch (Exception ignored) {}
-        return tokens;
+            String encoded = cursor.substring("CUR_V1:".length());
+            int dotIdx = encoded.lastIndexOf('.');
+            if (dotIdx <= 0) {
+                throw new IllegalArgumentException("快照游标缺少签名");
+            }
+            String jsonBase64 = encoded.substring(0, dotIdx);
+            String sig = encoded.substring(dotIdx + 1);
+            String expectedSig = MoneySecuritySupport.computeFingerprint("MALL_CURSOR_SALT:" + jsonBase64);
+            if (!sig.equals(expectedSig)) {
+                throw new IllegalArgumentException("快照游标签名无效或已被篡改");
+            }
+            byte[] bytes = Base64.getUrlDecoder().decode(jsonBase64);
+            CursorPayload payload = OBJECT_MAPPER.readValue(bytes, CursorPayload.class);
+            if (payload.expiresAt < System.currentTimeMillis()) {
+                throw new IllegalArgumentException("快照游标已过期");
+            }
+            if (expectedScopeKey != null && payload.scopeKey != null && !payload.scopeKey.equals(expectedScopeKey)) {
+                throw new IllegalArgumentException("快照游标作用域不匹配");
+            }
+            return payload;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("快照游标解析失败: " + e.getMessage(), e);
+        }
     }
 
-    private static String buildCursor(long lastAttemptId, long lastRefundId, long lastEventId, long lastDiffId) {
-        return "CUR:" + lastAttemptId + ":" + lastRefundId + ":" + lastEventId + ":" + lastDiffId;
+    private static String buildSignedCursor(CursorPayload payload) {
+        try {
+            byte[] bytes = OBJECT_MAPPER.writeValueAsBytes(payload);
+            String jsonBase64 = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+            String sig = MoneySecuritySupport.computeFingerprint("MALL_CURSOR_SALT:" + jsonBase64);
+            return "CUR_V1:" + jsonBase64 + "." + sig;
+        } catch (Exception e) {
+            throw new RuntimeException("生成快照游标失败", e);
+        }
+    }
+
+    private static String formatAmount(BigDecimal amount) {
+        if (amount == null) return null;
+        return amount.setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
 
     private static String buildCanonicalFactsSummary(String orderNo,
-                                                    PaymentOrder paymentOrder,
-                                                    List<PaymentAttemptSnapshot> attempts,
-                                                    List<PaymentRefundOrderSnapshot> refunds,
-                                                    List<PaymentFinancialEventSnapshot> events,
-                                                    TradeOrchestrationSnapshot orch,
-                                                    List<ReconDiffSummarySnapshot> diffs,
-                                                    CoverageInfo coverage) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("ORDER=").append(orderNo != null ? orderNo : "null").append(";");
+                                                     PaymentOrder paymentOrder,
+                                                     List<PaymentAttemptSnapshot> attempts,
+                                                     List<PaymentRefundOrderSnapshot> refunds,
+                                                     List<PaymentFinancialEventSnapshot> events,
+                                                     TradeOrchestrationSnapshot orch,
+                                                     List<ReconDiffSummarySnapshot> diffs,
+                                                     CoverageInfo coverage) {
+        Map<String, Object> canonical = new TreeMap<>();
+        canonical.put("schemaVersion", 1);
+        canonical.put("orderNo", orderNo != null ? orderNo : "");
+
         if (paymentOrder != null) {
-            sb.append("PM=").append(paymentOrder.getPaymentNo()).append("|")
-                    .append(paymentOrder.getStatus()).append("|")
-                    .append(paymentOrder.getAmount()).append("|")
-                    .append(paymentOrder.getVersion()).append(";");
+            Map<String, Object> pm = new TreeMap<>();
+            pm.put("paymentNo", paymentOrder.getPaymentNo() != null ? paymentOrder.getPaymentNo() : "");
+            pm.put("status", paymentOrder.getStatus() != null ? paymentOrder.getStatus() : "");
+            pm.put("amount", formatAmount(paymentOrder.getAmount()));
+            pm.put("version", paymentOrder.getVersion() != null ? paymentOrder.getVersion() : 0L);
+            canonical.put("paymentOrder", pm);
+        } else {
+            canonical.put("paymentOrder", null);
         }
 
-        sb.append("ATTEMPTS=[");
+        List<Map<String, Object>> attList = new ArrayList<>();
         if (attempts != null) {
             for (PaymentAttemptSnapshot a : attempts) {
-                sb.append(a.getAttemptNo()).append("|")
-                        .append(a.getStatus()).append("|")
-                        .append(a.getAmount()).append("|")
-                        .append(a.getCurrency()).append("|")
-                        .append(a.getAllocationStatus()).append("|")
-                        .append(a.getVersion()).append("|")
-                        .append(a.getChannelSuccessAt()).append(",");
+                Map<String, Object> m = new TreeMap<>();
+                m.put("attemptNo", a.getAttemptNo() != null ? a.getAttemptNo() : "");
+                m.put("status", a.getStatus() != null ? a.getStatus() : "");
+                m.put("amount", formatAmount(a.getAmount()));
+                m.put("currency", a.getCurrency() != null ? a.getCurrency() : "");
+                m.put("allocationStatus", a.getAllocationStatus() != null ? a.getAllocationStatus() : "");
+                m.put("version", a.getVersion() != null ? a.getVersion() : 0L);
+                m.put("channelSuccessAt", a.getChannelSuccessAt() != null ? a.getChannelSuccessAt() : "");
+                attList.add(m);
             }
         }
-        sb.append("];");
+        attList.sort(Comparator.comparing(m -> String.valueOf(m.get("attemptNo"))));
+        canonical.put("attempts", attList);
 
-        sb.append("REFUNDS=[");
+        List<Map<String, Object>> refList = new ArrayList<>();
         if (refunds != null) {
             for (PaymentRefundOrderSnapshot r : refunds) {
-                sb.append(r.getRefundNo()).append("|")
-                        .append(r.getStatus()).append("|")
-                        .append(r.getAmount()).append("|")
-                        .append(r.getCurrency()).append("|")
-                        .append(r.getChannelRefundNo()).append("|")
-                        .append(r.getVersion()).append("|")
-                        .append(r.getSuccessAt()).append(",");
+                Map<String, Object> m = new TreeMap<>();
+                m.put("refundNo", r.getRefundNo() != null ? r.getRefundNo() : "");
+                m.put("status", r.getStatus() != null ? r.getStatus() : "");
+                m.put("amount", formatAmount(r.getAmount()));
+                m.put("currency", r.getCurrency() != null ? r.getCurrency() : "");
+                m.put("channelRefundNo", r.getChannelRefundNo() != null ? r.getChannelRefundNo() : "");
+                m.put("version", r.getVersion() != null ? r.getVersion() : 0L);
+                m.put("successAt", r.getSuccessAt() != null ? r.getSuccessAt() : "");
+                refList.add(m);
             }
         }
-        sb.append("];");
+        refList.sort(Comparator.comparing(m -> String.valueOf(m.get("refundNo"))));
+        canonical.put("refunds", refList);
 
-        sb.append("EVENTS=[");
+        List<Map<String, Object>> evtList = new ArrayList<>();
         if (events != null) {
             for (PaymentFinancialEventSnapshot e : events) {
-                sb.append(e.getEventNo()).append("|")
-                        .append(e.getEventType()).append("|")
-                        .append(e.getEventStage()).append("|")
-                        .append(e.getAmount()).append("|")
-                        .append(e.getOccurredAt()).append(",");
+                Map<String, Object> m = new TreeMap<>();
+                m.put("eventNo", e.getEventNo() != null ? e.getEventNo() : "");
+                m.put("eventType", e.getEventType() != null ? e.getEventType() : "");
+                m.put("eventStage", e.getEventStage() != null ? e.getEventStage() : "");
+                m.put("amount", formatAmount(e.getAmount()));
+                m.put("occurredAt", e.getOccurredAt() != null ? e.getOccurredAt() : "");
+                evtList.add(m);
             }
         }
-        sb.append("];");
+        evtList.sort(Comparator.comparing(m -> String.valueOf(m.get("eventNo"))));
+        canonical.put("events", evtList);
 
         if (orch != null) {
-            sb.append("ORCH=").append(orch.getTaskNo()).append("|")
-                    .append(orch.getStatus()).append("|")
-                    .append(orch.getCurrentStep()).append(";");
+            Map<String, Object> o = new TreeMap<>();
+            o.put("taskNo", orch.getTaskNo() != null ? orch.getTaskNo() : "");
+            o.put("status", orch.getStatus() != null ? orch.getStatus() : "");
+            o.put("currentStep", orch.getCurrentStep() != null ? orch.getCurrentStep() : "");
+            canonical.put("orchestration", o);
+        } else {
+            canonical.put("orchestration", null);
         }
 
-        sb.append("DIFFS=[");
+        List<Map<String, Object>> diffList = new ArrayList<>();
         if (diffs != null) {
             for (ReconDiffSummarySnapshot d : diffs) {
-                sb.append(d.getDiffNo()).append("|")
-                        .append(d.getDiffType()).append("|")
-                        .append(d.getStatus()).append("|")
-                        .append(d.getChannelAmount()).append("|")
-                        .append(d.getLocalAmount()).append(",");
+                Map<String, Object> m = new TreeMap<>();
+                m.put("diffNo", d.getDiffNo() != null ? d.getDiffNo() : "");
+                m.put("diffType", d.getDiffType() != null ? d.getDiffType() : "");
+                m.put("status", d.getStatus() != null ? d.getStatus() : "");
+                m.put("channelAmount", formatAmount(d.getChannelAmount()));
+                m.put("localAmount", formatAmount(d.getLocalAmount()));
+                diffList.add(m);
             }
         }
-        sb.append("];");
+        diffList.sort(Comparator.comparing(m -> String.valueOf(m.get("diffNo"))));
+        canonical.put("diffs", diffList);
 
         if (coverage != null) {
-            sb.append("COV=").append(coverage.isComplete()).append("|")
-                    .append(coverage.isHasMore()).append("|")
-                    .append(coverage.getSources());
+            Map<String, Object> cov = new TreeMap<>();
+            cov.put("isComplete", coverage.isComplete());
+            cov.put("isHasMore", coverage.isHasMore());
+            cov.put("sources", coverage.getSources() != null ? new TreeMap<>(coverage.getSources()) : Collections.emptyMap());
+            canonical.put("coverage", cov);
+        } else {
+            canonical.put("coverage", null);
         }
 
-        return sb.toString();
+        try {
+            return OBJECT_MAPPER.writeValueAsString(canonical);
+        } catch (Exception e) {
+            return "{\"orderNo\":\"" + orderNo + "\"}";
+        }
     }
 }

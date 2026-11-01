@@ -60,6 +60,7 @@
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/EmailService.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/entity/MerchantCreditOperation.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/provider/FundDubboServiceImpl.java
+/Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/service/FundBusinessReferences.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/config/SlowSqlInterceptor.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/config/MybatisPlusConfig.java
 /Users/yu/IdeaProjects/mall-parent/mall-user-service/src/main/java/com/example/user/mapper/PlatformAccountMapper.java

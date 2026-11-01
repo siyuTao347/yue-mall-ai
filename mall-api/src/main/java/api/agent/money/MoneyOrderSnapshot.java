@@ -26,6 +26,14 @@ public class MoneyOrderSnapshot implements Serializable {
 
     public MoneyOrderSnapshot() {}
 
+    public static MoneyOrderSnapshot unavailable(String scopeKey, String canonicalOrderNo, String errorMsg) {
+        MoneyOrderSnapshot s = new MoneyOrderSnapshot();
+        s.setScopeKey(scopeKey);
+        s.setCanonicalOrderNo(canonicalOrderNo);
+        s.setCoverage(new CoverageInfo(java.util.Map.of("ORDER", MoneyCoverageStatus.NOT_FOUND.name()), false, false, null, errorMsg));
+        return s;
+    }
+
     public MoneyOrderSnapshot(String scopeKey, String canonicalOrderNo, String paymentNo, String paymentStatus,
                               List<PaymentAttemptSnapshot> attempts, List<PaymentRefundOrderSnapshot> refunds,
                               List<PaymentFinancialEventSnapshot> financialEvents,

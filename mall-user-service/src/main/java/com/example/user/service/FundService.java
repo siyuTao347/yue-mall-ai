@@ -326,6 +326,13 @@ public class FundService {
     private FundOperationResult execute(String businessType, String orderNo, String withdrawNo, Long userId,
                                         Long merchantId, BigDecimal amount, String idempotencyKey,
                                         FundAction action) {
+        return execute(businessType, new FundBusinessReferences(orderNo, null, null, withdrawNo),
+                userId, merchantId, amount, idempotencyKey, action);
+    }
+
+    private FundOperationResult execute(String businessType, FundBusinessReferences refs, Long userId,
+                                        Long merchantId, BigDecimal amount, String idempotencyKey,
+                                        FundAction action) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             return FundOperationResult.fail("金额必须大于 0");
         }
@@ -333,14 +340,12 @@ public class FundService {
         FundTransaction existing = transactionMapper.selectOne(new LambdaQueryWrapper<FundTransaction>()
                 .eq(FundTransaction::getIdempotencyKey, idempotencyKey));
         if (existing != null) {
-            if (!isSameIdempotentRequest(existing, businessType, orderNo, withdrawNo, userId, merchantId, amount)) {
+            if (!isSameIdempotentRequest(existing, businessType, refs.orderNo(), refs.operationId(), userId, merchantId, amount)) {
                 return FundOperationResult.fail("幂等请求参数不一致");
             }
-            if (orderNo != null && !orderNo.isBlank()) {
-                saveBusinessRef(existing.getTransactionNo(), "ORDER", orderNo, "TRANSACTION_BIND");
-            }
-            if (withdrawNo != null && !withdrawNo.isBlank()) {
-                saveBusinessRef(existing.getTransactionNo(), "OPERATION", withdrawNo, "TRANSACTION_BIND");
+            String conflict = checkAndBackfillRefConflict(existing.getTransactionNo(), refs);
+            if (conflict != null) {
+                return FundOperationResult.fail(conflict);
             }
             return FundOperationResult.success(existing.getTransactionNo());
         }
@@ -348,8 +353,8 @@ public class FundService {
         FundTransaction transaction = new FundTransaction();
         transaction.setTransactionNo("FUND" + UUID.randomUUID().toString().replace("-", ""));
         transaction.setBusinessType(businessType);
-        transaction.setOrderNo(orderNo);
-        transaction.setWithdrawNo(withdrawNo);
+        transaction.setOrderNo(refs.orderNo());
+        transaction.setWithdrawNo(refs.operationId());
         transaction.setMerchantId(merchantId);
         transaction.setUserId(userId);
         transaction.setAmount(amount);
@@ -362,23 +367,28 @@ public class FundService {
         } catch (org.springframework.dao.DuplicateKeyException e) {
             FundTransaction winner = transactionMapper.selectOne(new LambdaQueryWrapper<FundTransaction>()
                     .eq(FundTransaction::getIdempotencyKey, idempotencyKey));
-            if (winner == null || !isSameIdempotentRequest(winner, businessType, orderNo, withdrawNo,
+            if (winner == null || !isSameIdempotentRequest(winner, businessType, refs.orderNo(), refs.operationId(),
                     userId, merchantId, amount)) {
                 return FundOperationResult.fail("幂等请求参数不一致");
             }
-            if (orderNo != null && !orderNo.isBlank()) {
-                saveBusinessRef(winner.getTransactionNo(), "ORDER", orderNo, "TRANSACTION_BIND");
-            }
-            if (withdrawNo != null && !withdrawNo.isBlank()) {
-                saveBusinessRef(winner.getTransactionNo(), "OPERATION", withdrawNo, "TRANSACTION_BIND");
+            String conflict = checkAndBackfillRefConflict(winner.getTransactionNo(), refs);
+            if (conflict != null) {
+                return FundOperationResult.fail(conflict);
             }
             return FundOperationResult.success(winner.getTransactionNo());
         }
-        if (orderNo != null && !orderNo.isBlank()) {
-            saveBusinessRef(transaction.getTransactionNo(), "ORDER", orderNo, "TRANSACTION_BIND");
+
+        if (refs.orderNo() != null && !refs.orderNo().isBlank()) {
+            saveBusinessRef(transaction.getTransactionNo(), "ORDER", refs.orderNo(), "TRANSACTION_BIND");
         }
-        if (withdrawNo != null && !withdrawNo.isBlank()) {
-            saveBusinessRef(transaction.getTransactionNo(), "OPERATION", withdrawNo, "TRANSACTION_BIND");
+        if (refs.attemptNo() != null && !refs.attemptNo().isBlank()) {
+            saveBusinessRef(transaction.getTransactionNo(), "ATTEMPT", refs.attemptNo(), "TRANSACTION_BIND");
+        }
+        if (refs.refundNo() != null && !refs.refundNo().isBlank()) {
+            saveBusinessRef(transaction.getTransactionNo(), "REFUND", refs.refundNo(), "TRANSACTION_BIND");
+        }
+        if (refs.operationId() != null && !refs.operationId().isBlank()) {
+            saveBusinessRef(transaction.getTransactionNo(), "OPERATION", refs.operationId(), "TRANSACTION_BIND");
         }
         action.apply(transaction);
         return FundOperationResult.success(transaction.getTransactionNo());
@@ -402,34 +412,55 @@ public class FundService {
         }
     }
 
-    private String checkAndBackfillRefConflict(String txNo, String attemptNo, String refundNo) {
-        if (businessRefMapper == null || txNo == null) return null;
-        List<com.example.user.entity.FundBusinessRef> refs = businessRefMapper.selectByTransactionNos(List.of(txNo));
+    private String checkAndBackfillRefConflict(String txNo, FundBusinessReferences refs) {
+        if (businessRefMapper == null || txNo == null || refs == null) return null;
+        List<com.example.user.entity.FundBusinessRef> existingRefs = businessRefMapper.selectByTransactionNos(List.of(txNo));
+        boolean hasOrder = false;
         boolean hasAttempt = false;
         boolean hasRefund = false;
-        if (refs != null) {
-            for (com.example.user.entity.FundBusinessRef ref : refs) {
-                if ("ATTEMPT".equalsIgnoreCase(ref.getRefType())) {
+        boolean hasOp = false;
+        if (existingRefs != null) {
+            for (com.example.user.entity.FundBusinessRef r : existingRefs) {
+                if ("ORDER".equalsIgnoreCase(r.getRefType())) {
+                    hasOrder = true;
+                    if (refs.orderNo() != null && !refs.orderNo().isBlank() && !refs.orderNo().equals(r.getRefNo())) {
+                        return "幂等请求业务引用冲突: orderNo 不一致";
+                    }
+                } else if ("ATTEMPT".equalsIgnoreCase(r.getRefType())) {
                     hasAttempt = true;
-                    if (attemptNo != null && !attemptNo.isBlank() && !attemptNo.equals(ref.getRefNo())) {
+                    if (refs.attemptNo() != null && !refs.attemptNo().isBlank() && !refs.attemptNo().equals(r.getRefNo())) {
                         return "幂等请求业务引用冲突: attemptNo 不一致";
                     }
-                } else if ("REFUND".equalsIgnoreCase(ref.getRefType())) {
+                } else if ("REFUND".equalsIgnoreCase(r.getRefType())) {
                     hasRefund = true;
-                    if (refundNo != null && !refundNo.isBlank() && !refundNo.equals(ref.getRefNo())) {
+                    if (refs.refundNo() != null && !refs.refundNo().isBlank() && !refs.refundNo().equals(r.getRefNo())) {
                         return "幂等请求业务引用冲突: refundNo 不一致";
+                    }
+                } else if ("OPERATION".equalsIgnoreCase(r.getRefType())) {
+                    hasOp = true;
+                    if (refs.operationId() != null && !refs.operationId().isBlank() && !refs.operationId().equals(r.getRefNo())) {
+                        return "幂等请求业务引用冲突: operationId 不一致";
                     }
                 }
             }
         }
-        // 如果原本缺失业务引用（如升级前数据重放），在当前事务内安全补齐
-        if (!hasAttempt && attemptNo != null && !attemptNo.isBlank()) {
-            saveBusinessRef(txNo, "ATTEMPT", attemptNo, "TRANSACTION_BIND");
+        if (!hasOrder && refs.orderNo() != null && !refs.orderNo().isBlank()) {
+            saveBusinessRef(txNo, "ORDER", refs.orderNo(), "TRANSACTION_BIND");
         }
-        if (!hasRefund && refundNo != null && !refundNo.isBlank()) {
-            saveBusinessRef(txNo, "REFUND", refundNo, "TRANSACTION_BIND");
+        if (!hasAttempt && refs.attemptNo() != null && !refs.attemptNo().isBlank()) {
+            saveBusinessRef(txNo, "ATTEMPT", refs.attemptNo(), "TRANSACTION_BIND");
+        }
+        if (!hasRefund && refs.refundNo() != null && !refs.refundNo().isBlank()) {
+            saveBusinessRef(txNo, "REFUND", refs.refundNo(), "TRANSACTION_BIND");
+        }
+        if (!hasOp && refs.operationId() != null && !refs.operationId().isBlank()) {
+            saveBusinessRef(txNo, "OPERATION", refs.operationId(), "TRANSACTION_BIND");
         }
         return null;
+    }
+
+    private String checkAndBackfillRefConflict(String txNo, String attemptNo, String refundNo) {
+        return checkAndBackfillRefConflict(txNo, new FundBusinessReferences(null, attemptNo, refundNo, null));
     }
 
     public void backfillLegacyReferencesIfMissing(FundTransaction tx) {

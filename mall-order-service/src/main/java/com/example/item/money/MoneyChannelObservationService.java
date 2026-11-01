@@ -93,24 +93,53 @@ public class MoneyChannelObservationService {
         );
 
         ChannelPaymentResult result = strategy.queryPayment(cmd);
-        boolean exists = result != null && result.exists();
-        // R04 修复：未确认状态保留 UNKNOWN，不凭空假设 SUCCESS
-        String rawStatus = (result != null && result.status() != null)
+        ChannelEvidenceExistence existence = ChannelEvidenceExistence.UNKNOWN;
+        if (result != null) {
+            if (result.exists()) {
+                existence = ChannelEvidenceExistence.EXISTS;
+            } else if ("NOT_FOUND".equalsIgnoreCase(result.status())) {
+                existence = ChannelEvidenceExistence.NOT_FOUND;
+            }
+        }
+
+        String rawStatus = (result != null && result.status() != null && !result.status().isBlank())
                 ? result.status()
-                : (exists ? "UNKNOWN" : "NOT_FOUND");
+                : (existence == ChannelEvidenceExistence.NOT_FOUND ? "NOT_FOUND" : "UNKNOWN");
         BigDecimal amount = result != null ? result.amount() : null;
         String currency = result != null ? result.currency() : null;
 
-        // R04 修复：渠道响应未直接证明商户时保持未验证 (false)，不把入参当作响应证明
-        boolean merchantMatched = false;
-        boolean amountMatched = result != null && result.amount() != null && attempt.getAmount() != null
-                && result.amount().compareTo(attempt.getAmount()) == 0;
-        boolean currencyMatched = currency != null && attempt.getCurrency() != null
-                && currency.equalsIgnoreCase(attempt.getCurrency());
+        FieldMatchQuality merchantMatch = FieldMatchQuality.UNVERIFIED;
+        FieldMatchQuality amountMatch = (amount != null && attempt.getAmount() != null)
+                ? (amount.compareTo(attempt.getAmount()) == 0 ? FieldMatchQuality.MATCHED : FieldMatchQuality.MISMATCH)
+                : FieldMatchQuality.UNVERIFIED;
+        FieldMatchQuality currencyMatch = (currency != null && attempt.getCurrency() != null)
+                ? (currency.equalsIgnoreCase(attempt.getCurrency()) ? FieldMatchQuality.MATCHED : FieldMatchQuality.MISMATCH)
+                : FieldMatchQuality.UNVERIFIED;
+
+        boolean merchantMatched = (merchantMatch == FieldMatchQuality.MATCHED);
+        boolean amountMatched = (amountMatch == FieldMatchQuality.MATCHED);
+        boolean currencyMatched = (currencyMatch == FieldMatchQuality.MATCHED);
 
         String obsNo = "OBS_" + UUID.randomUUID().toString().replace("-", "").substring(0, 24);
         String channelSuccessAtStr = (result != null && result.channelSuccessAt() != null) ? result.channelSuccessAt().toString() : null;
         String observedAtStr = Instant.now().toString();
+
+        ChannelPaymentEvidence paymentEvidence = new ChannelPaymentEvidence(
+                existence,
+                rawStatus,
+                profile.channelMerchantNo(),
+                attempt.getOutTradeNo(),
+                result != null && result.channelTradeNo() != null ? result.channelTradeNo() : attempt.getChannelTradeNo(),
+                amount,
+                currency,
+                channelSuccessAtStr,
+                observedAtStr,
+                profile.paymentMethod() != null ? profile.paymentMethod().name() : null,
+                "MOCK",
+                merchantMatch,
+                amountMatch,
+                currencyMatch
+        );
 
         MoneyChannelObservation observation = new MoneyChannelObservation(
                 obsNo,
@@ -118,9 +147,9 @@ public class MoneyChannelObservationService {
                 attemptNo,
                 null,
                 "SUCCESS",
-                exists,
+                existence == ChannelEvidenceExistence.EXISTS,
                 rawStatus,
-                amount != null ? amount : BigDecimal.ZERO,
+                amount,
                 currency,
                 profile.channelMerchantNo(),
                 result != null && result.channelTradeNo() != null ? result.channelTradeNo() : attempt.getChannelTradeNo(),
@@ -134,6 +163,11 @@ public class MoneyChannelObservationService {
                 null, // 先不填 AUDIT 引用
                 null
         );
+        observation.setChannelExistence(existence);
+        observation.setMerchantMatch(merchantMatch);
+        observation.setAmountMatch(amountMatch);
+        observation.setCurrencyMatch(currencyMatch);
+        observation.setPaymentEvidence(paymentEvidence);
 
         // R12 修复：审计持久化成功后才发出对应的 AUDIT 引用；失败时显式标记不可持久验证
         boolean persisted = recordAudit(obsNo, scopeKey != null ? scopeKey : "ORDER:" + attempt.getOrderNo(), attemptNo, null,
@@ -177,21 +211,50 @@ public class MoneyChannelObservationService {
         );
 
         ChannelRefundResult result = strategy.queryRefund(query);
-        // R04 修复：区分 NOT_FOUND、成功与业务状态，不把 NOT_FOUND 解释为 exists=true
-        boolean isNotFound = result != null && "NOT_FOUND".equalsIgnoreCase(result.status());
-        boolean exists = result != null && result.success() && !isNotFound && !"UNKNOWN".equalsIgnoreCase(result.status());
-        String rawStatus = result != null && result.status() != null ? result.status() : (exists ? "PROCESSING" : "NOT_FOUND");
+        ChannelEvidenceExistence existence = ChannelEvidenceExistence.UNKNOWN;
+        if (result != null) {
+            if ("NOT_FOUND".equalsIgnoreCase(result.status())) {
+                existence = ChannelEvidenceExistence.NOT_FOUND;
+            } else if (result.success() && !"UNKNOWN".equalsIgnoreCase(result.status())) {
+                existence = ChannelEvidenceExistence.EXISTS;
+            }
+        }
+
+        String rawStatus = (result != null && result.status() != null && !result.status().isBlank())
+                ? result.status()
+                : (existence == ChannelEvidenceExistence.NOT_FOUND ? "NOT_FOUND" : "UNKNOWN");
         BigDecimal amount = result != null ? result.amount() : null;
 
-        // R04 修复：ChannelRefundResult 缺少商户和币种证据，显式标为未验证 (false)，不借用本地参数当作渠道证据
-        boolean amountMatched = result != null && result.amount() != null && refund.getAmount() != null
-                && result.amount().compareTo(refund.getAmount()) == 0;
+        FieldMatchQuality amountMatch = (amount != null && refund.getAmount() != null)
+                ? (amount.compareTo(refund.getAmount()) == 0 ? FieldMatchQuality.MATCHED : FieldMatchQuality.MISMATCH)
+                : FieldMatchQuality.UNVERIFIED;
+        FieldMatchQuality merchantMatch = FieldMatchQuality.UNVERIFIED;
+        FieldMatchQuality currencyMatch = FieldMatchQuality.UNVERIFIED;
+
         boolean merchantMatched = false;
+        boolean amountMatched = (amountMatch == FieldMatchQuality.MATCHED);
         boolean currencyMatched = false;
 
         String obsNo = "OBS_" + UUID.randomUUID().toString().replace("-", "").substring(0, 24);
         String successAtStr = result != null && result.successAt() != null ? result.successAt().toString() : null;
         String observedAtStr = Instant.now().toString();
+
+        ChannelRefundEvidence refundEvidence = new ChannelRefundEvidence(
+                existence,
+                rawStatus,
+                profile.channelMerchantNo(),
+                refundNo,
+                result != null ? result.channelRefundNo() : refund.getChannelRefundNo(),
+                amount,
+                refund.getCurrency(),
+                successAtStr,
+                observedAtStr,
+                profile.paymentMethod() != null ? profile.paymentMethod().name() : null,
+                "MOCK",
+                merchantMatch,
+                amountMatch,
+                currencyMatch
+        );
 
         MoneyChannelObservation observation = new MoneyChannelObservation(
                 obsNo,
@@ -199,10 +262,10 @@ public class MoneyChannelObservationService {
                 refund.getOriginalAttemptNo(),
                 refundNo,
                 "SUCCESS",
-                exists,
+                existence == ChannelEvidenceExistence.EXISTS,
                 rawStatus,
-                amount != null ? amount : BigDecimal.ZERO,
-                null,
+                amount,
+                refund.getCurrency(),
                 profile.channelMerchantNo(),
                 null,
                 result != null ? result.channelRefundNo() : refund.getChannelRefundNo(),
@@ -215,6 +278,11 @@ public class MoneyChannelObservationService {
                 null,
                 null
         );
+        observation.setChannelExistence(existence);
+        observation.setMerchantMatch(merchantMatch);
+        observation.setAmountMatch(amountMatch);
+        observation.setCurrencyMatch(currencyMatch);
+        observation.setRefundEvidence(refundEvidence);
 
         // R12 修复：仅在落库成功时生成 AUDIT:obsNo
         boolean persisted = recordAudit(obsNo, scopeKey != null ? scopeKey : "ORDER:" + refund.getOrderNo(),

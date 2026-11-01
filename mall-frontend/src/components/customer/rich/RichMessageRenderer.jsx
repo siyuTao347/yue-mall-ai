@@ -5,6 +5,8 @@ import { RatingCard } from './RatingCard';
 import { DynamicFormCard } from './DynamicFormCard';
 import { HandoffStatusCard } from './HandoffStatusCard';
 import { WorkflowProgressCard } from './WorkflowProgressCard';
+import { MoneyInvestigationCard } from './MoneyInvestigationCard';
+import { MoneyInputCard } from './MoneyInputCard';
 
 export const RichMessageRenderer = ({ cards, onCardAction }) => {
   if (!cards || !Array.isArray(cards) || cards.length === 0) {
@@ -26,6 +28,10 @@ export const RichMessageRenderer = ({ cards, onCardAction }) => {
         return <HandoffStatusCard key={key} card={card} onAction={onCardAction} />;
       case 'workflow_progress':
         return <WorkflowProgressCard key={key} card={card} onAction={onCardAction} />;
+      case 'money_investigation':
+        return <MoneyInvestigationCard key={key} card={card} onAction={onCardAction} />;
+      case 'money_input':
+        return <MoneyInputCard key={key} card={card} onAction={onCardAction} />;
       default:
         return (
           <div key={key} className="rich-card-fallback">

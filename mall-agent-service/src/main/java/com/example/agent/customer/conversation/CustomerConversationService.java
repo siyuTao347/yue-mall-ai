@@ -54,7 +54,8 @@ public class CustomerConversationService {
         if (clientMessageId == null || !clientMessageId.matches("[A-Za-z0-9_-]{1,64}")) {
             throw error(400, "AGENT_MESSAGE_INVALID", "消息标识不合法");
         }
-        String effectiveSenderType = senderType != null ? senderType : ("ADMIN".equalsIgnoreCase(actor.role()) ? "STAFF" : "USER");
+        boolean isStaff = "STAFF".equalsIgnoreCase(actor.role()) || "ADMIN".equalsIgnoreCase(actor.role());
+        String effectiveSenderType = isStaff ? "STAFF" : "USER";
         String requestHash = hash(content + ":" + effectiveSenderType);
         String scopeKey = "SESSION:" + sessionNo;
 
@@ -75,7 +76,6 @@ public class CustomerConversationService {
             long currentEpoch = s.get("control_epoch") != null ? ((Number) s.get("control_epoch")).longValue() : 1L;
 
             // 权限校验
-            boolean isStaff = "STAFF".equalsIgnoreCase(effectiveSenderType) || "ADMIN".equalsIgnoreCase(actor.role());
             if (!isStaff && actor.userId() != sessionUserId) {
                 throw error(403, "AGENT_PERMISSION_DENIED", "无法向他人会话发送消息");
             }

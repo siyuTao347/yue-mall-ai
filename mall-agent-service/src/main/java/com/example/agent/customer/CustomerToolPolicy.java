@@ -8,13 +8,15 @@ import static com.example.agent.customer.CustomerJson.error;
 /** Server-side capabilities; neither prompts nor tool arguments can widen these sets. */
 public final class CustomerToolPolicy {
     private CustomerToolPolicy() {}
-    private static final Map<String, Set<String>> TOOLS = Map.of(
-        "MASTER_AGENT", Set.of("queryMyOrders"),
-        "ORDER_AGENT", Set.of("queryMyOrders", "queryOrder", "queryOrderTimeline", "queryDeliveryEvidenceSummary"),
-        "AFTER_SALE_AGENT", Set.of("queryOrder", "queryDispute", "queryDeliveryEvidenceSummary", "searchKnowledge"),
-        "RULE_AGENT", Set.of("searchKnowledge"),
-        "PRE_SALE_AGENT", Set.of("queryPublicItem", "searchKnowledge"),
-        "COMPLAINT_AGENT", Set.of("createHandoff", "queryOrder", "queryDispute"));
+    private static final Map<String, Set<String>> TOOLS = Map.ofEntries(
+        Map.entry("MASTER_AGENT", Set.of("queryMyOrders")),
+        Map.entry("ORDER_AGENT", Set.of("queryMyOrders", "queryOrder", "queryOrderTimeline", "queryDeliveryEvidenceSummary")),
+        Map.entry("AFTER_SALE_AGENT", Set.of("queryOrder", "queryDispute", "queryDeliveryEvidenceSummary", "searchKnowledge")),
+        Map.entry("RULE_AGENT", Set.of("searchKnowledge")),
+        Map.entry("PRE_SALE_AGENT", Set.of("queryPublicItem", "searchKnowledge")),
+        Map.entry("COMPLAINT_AGENT", Set.of("createHandoff", "queryOrder", "queryDispute")),
+        Map.entry("MONEY_BRIDGE", Set.of("resolveMoneySubject", "queryMoneyPublicSummary", "registerMoneyInvestigation", "queryMoneyCaseProjection"))
+    );
 
     public static void require(String agent, String tool) {
         if (!TOOLS.getOrDefault(agent, Set.of()).contains(tool))

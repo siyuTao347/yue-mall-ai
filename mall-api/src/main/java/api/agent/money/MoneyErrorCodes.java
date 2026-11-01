@@ -11,6 +11,11 @@ public final class MoneyErrorCodes {
     public static final String MONEY_SCOPE_MISMATCH = "MONEY_SCOPE_MISMATCH";
     public static final String MONEY_SUBJECT_NOT_FOUND = "MONEY_SUBJECT_NOT_FOUND";
     public static final String MONEY_SUBJECT_AMBIGUOUS = "MONEY_SUBJECT_AMBIGUOUS";
+    public static final String MONEY_SUBJECT_MISMATCH = "MONEY_SUBJECT_MISMATCH";
+    public static final String MONEY_PARAM_INVALID = "MONEY_PARAM_INVALID";
+    public static final String MONEY_CASE_NOT_FOUND = "MONEY_CASE_NOT_FOUND";
+    public static final String MONEY_TASK_NOT_FOUND = "MONEY_TASK_NOT_FOUND";
+    public static final String MONEY_VERSION_CONFLICT = "MONEY_VERSION_CONFLICT";
     public static final String MONEY_CHANNEL_UNAVAILABLE = "MONEY_CHANNEL_UNAVAILABLE";
     public static final String MONEY_CHANNEL_TIMEOUT = "MONEY_CHANNEL_TIMEOUT";
     public static final String MONEY_PROFILE_UNRESOLVED = "MONEY_PROFILE_UNRESOLVED";

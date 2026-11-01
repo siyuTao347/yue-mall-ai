@@ -58,12 +58,12 @@ class CustomerRealtimeClient {
     }
   }
 
-  _dispatchEvent(eventType, payload) {
+  _dispatchEvent(eventType, payload, envelope) {
     const listeners = this.eventListeners.get(eventType);
     if (listeners) {
       for (const listener of listeners) {
         try {
-          listener(payload);
+          listener(payload, envelope);
         } catch (err) {
           console.error(`[RealtimeClient] error in listener for ${eventType}:`, err);
         }
@@ -75,7 +75,7 @@ class CustomerRealtimeClient {
     if (wildcard) {
       for (const listener of wildcard) {
         try {
-          listener(eventType, payload);
+          listener(eventType, payload, envelope);
         } catch (err) {
           console.error('[RealtimeClient] error in wildcard listener:', err);
         }
@@ -134,7 +134,7 @@ class CustomerRealtimeClient {
             return;
           }
 
-          this._dispatchEvent(type, payload);
+          this._dispatchEvent(type, payload, envelope);
         } catch (err) {
           console.warn('[RealtimeClient] Failed to parse message:', event.data, err);
         }

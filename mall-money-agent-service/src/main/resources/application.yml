@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: mall-money-agent-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:100.121.74.115:8848}
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${MONEY_MYSQL_URL:jdbc:mysql://100.121.74.115:3306/db_money_agent?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=UTC}
@@ -25,16 +31,22 @@ dubbo:
   application:
     name: mall-money-agent-service
     qos-enable: false
+    register-mode: interface
+    service-discovery:
+      migration: FORCE_INTERFACE
   protocol:
     name: dubbo
     port: -1
   registry:
-    address: nacos://${NACOS_SERVER_ADDR:100.121.74.115:8848}
+    address: ${DUBBO_REGISTRY_ADDRESS:nacos://${NACOS_SERVER_ADDR:100.121.74.115:8848}/}
     check: false
   consumer:
     check: false
     timeout: 5000
     retries: 0
+
+seata:
+  enabled: false
 
 money-agent:
   enabled: true

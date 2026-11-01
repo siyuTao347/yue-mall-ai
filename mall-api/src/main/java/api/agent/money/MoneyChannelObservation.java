@@ -30,6 +30,12 @@ public class MoneyChannelObservation implements Serializable {
     private Boolean merchantMatched;
     private Boolean amountMatched;
     private Boolean currencyMatched;
+    private ChannelEvidenceExistence channelExistence;
+    private FieldMatchQuality merchantMatch;
+    private FieldMatchQuality amountMatch;
+    private FieldMatchQuality currencyMatch;
+    private ChannelPaymentEvidence paymentEvidence;
+    private ChannelRefundEvidence refundEvidence;
     private String evidenceRef;
     private String errorMsg;
 
@@ -70,9 +76,51 @@ public class MoneyChannelObservation implements Serializable {
         o.setRefundNo(refundNo);
         o.setTransportStatus("UNAVAILABLE");
         o.setExists(false);
+        o.setChannelExistence(ChannelEvidenceExistence.UNKNOWN);
+        o.setMerchantMatch(FieldMatchQuality.UNVERIFIED);
+        o.setAmountMatch(FieldMatchQuality.UNVERIFIED);
+        o.setCurrencyMatch(FieldMatchQuality.UNVERIFIED);
         o.setErrorMsg(errorMsg);
         return o;
     }
+
+    public ChannelEvidenceExistence getChannelExistence() { return channelExistence; }
+    public void setChannelExistence(ChannelEvidenceExistence channelExistence) {
+        this.channelExistence = channelExistence;
+        if (channelExistence != null) {
+            this.exists = (channelExistence == ChannelEvidenceExistence.EXISTS);
+        }
+    }
+
+    public FieldMatchQuality getMerchantMatch() { return merchantMatch; }
+    public void setMerchantMatch(FieldMatchQuality merchantMatch) {
+        this.merchantMatch = merchantMatch;
+        if (merchantMatch != null) {
+            this.merchantMatched = (merchantMatch == FieldMatchQuality.MATCHED);
+        }
+    }
+
+    public FieldMatchQuality getAmountMatch() { return amountMatch; }
+    public void setAmountMatch(FieldMatchQuality amountMatch) {
+        this.amountMatch = amountMatch;
+        if (amountMatch != null) {
+            this.amountMatched = (amountMatch == FieldMatchQuality.MATCHED);
+        }
+    }
+
+    public FieldMatchQuality getCurrencyMatch() { return currencyMatch; }
+    public void setCurrencyMatch(FieldMatchQuality currencyMatch) {
+        this.currencyMatch = currencyMatch;
+        if (currencyMatch != null) {
+            this.currencyMatched = (currencyMatch == FieldMatchQuality.MATCHED);
+        }
+    }
+
+    public ChannelPaymentEvidence getPaymentEvidence() { return paymentEvidence; }
+    public void setPaymentEvidence(ChannelPaymentEvidence paymentEvidence) { this.paymentEvidence = paymentEvidence; }
+
+    public ChannelRefundEvidence getRefundEvidence() { return refundEvidence; }
+    public void setRefundEvidence(ChannelRefundEvidence refundEvidence) { this.refundEvidence = refundEvidence; }
 
     public String getObservationNo() { return observationNo; }
     public void setObservationNo(String observationNo) { this.observationNo = observationNo; }

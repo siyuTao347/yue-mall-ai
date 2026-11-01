@@ -24,5 +24,9 @@ public interface MoneyOrderQueryDubboService {
      * 获取对账差异原始条目与窗口闭合回溯证据
      */
     MoneyReconEvidence getReconEvidence(MoneyAccessContext access, MoneyReconQuery query);
-}
 
+    /**
+     * 分批核验并签发资金范围证明（供 User 服务查询资金流水使用，单批上限 50 引用）
+     */
+    IssueFundScopeProofResult issueFundScopeProof(MoneyAccessContext access, IssueFundScopeProofRequest request);
+}

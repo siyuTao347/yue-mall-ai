@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { customerStaffApi as staffApi, customerServiceApi as api } from '../../api/customerServiceApi';
+import { moneyAgentApi } from '../../api/moneyAgentApi';
 import { realtimeClient } from '../../api/customerRealtimeClient';
 import { RichMessageRenderer } from './rich/RichMessageRenderer';
 
@@ -16,6 +17,7 @@ export const CustomerStaffWorkspace = () => {
   const [transferTarget, setTransferTarget] = useState({ skillGroupId: 1, reason: '' });
   const [copilotSuggestions, setCopilotSuggestions] = useState([]);
   const [copilotSummary, setCopilotSummary] = useState(null);
+  const [moneyCases, setMoneyCases] = useState([]);
   const [sopTask, setSopTask] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -69,6 +71,14 @@ export const CustomerStaffWorkspace = () => {
         createdTime: m.created_time || m.createdTime
       }));
       setSessionMessages(list);
+
+      // Load session money cases
+      try {
+        const mcData = await moneyAgentApi.listStaffSessionCases(sessionNo);
+        setMoneyCases(mcData?.cases || []);
+      } catch (e) {
+        console.warn('Failed to load session money cases:', e);
+      }
 
       // Subscribe to real-time events for this session
       realtimeClient.subscribeSession(sessionNo);
@@ -397,6 +407,38 @@ export const CustomerStaffWorkspace = () => {
                   >
                     <p>{sug.text || sug}</p>
                     <span className="use-badge">一键填入 ↵</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Money Investigation Summary for Session */}
+          {moneyCases.length > 0 && (
+            <div className="copilot-card">
+              <h5>💰 关联资金调查案件 ({moneyCases.length}):</h5>
+              <div className="space-y-2 mt-2">
+                {moneyCases.map((mc, idx) => (
+                  <div key={idx} className="p-2 bg-blue-50/60 rounded border border-blue-100 text-xs">
+                    <div className="flex justify-between font-mono font-medium text-gray-800">
+                      <span>{mc.caseNo || mc.case_no}</span>
+                      <span className="text-blue-700">{mc.caseState || 'OPEN'}</span>
+                    </div>
+                    <div className="text-[11px] text-gray-600 mt-1">
+                      订单: {mc.orderNo || '-'} | 分类: {mc.problemFamily || '-'}
+                    </div>
+                    {mc.summary && (
+                      <div className="text-[11px] text-gray-700 bg-white p-1.5 rounded mt-1.5 border border-gray-100">
+                        {mc.summary}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setStaffInput(`经资金调查核实：${mc.summary || '核查处理中'}`)}
+                      className="mt-1 text-[11px] text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      填入核实结论 ↵
+                    </button>
                   </div>
                 ))}
               </div>

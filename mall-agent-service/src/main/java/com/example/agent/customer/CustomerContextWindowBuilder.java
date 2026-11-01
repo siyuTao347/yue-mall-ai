@@ -32,8 +32,8 @@ final class CustomerContextWindowBuilder {
     static JsonNode activeEntities(JsonNode context) {
         ObjectNode result=object();if(context.path("activeFocus").isObject())result.set("activeFocus",context.path("activeFocus").deepCopy());
         JsonNode registry=context.path("entityRegistry");
-        for(String name:List.of("orders","disputes","items")) {
-            JsonNode entries=registry.path(name);if(!entries.isArray()||entries.isEmpty())entries=context.path("confirmedEntities").path(switch(name){case "orders"->"orderNo";case "disputes"->"disputeNo";default->"itemId";});
+        for(String name:List.of("orders","disputes","items","moneyCases")) {
+            JsonNode entries=registry.path(name);if(!entries.isArray()||entries.isEmpty())entries=context.path("confirmedEntities").path(switch(name){case "orders"->"orderNo";case "disputes"->"disputeNo";case "items"->"itemId";default->"moneyCaseNo";});
             if(!entries.isArray())continue;
             List<JsonNode> latest=new ArrayList<>();for(int i=entries.size()-1;i>=0;i--)latest.add(entries.get(i));
             latest.sort(Comparator.comparingInt((JsonNode entry)->entry.path("lastMentionedTurn").asInt(0)).reversed());

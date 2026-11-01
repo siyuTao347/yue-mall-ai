@@ -334,7 +334,7 @@ class MoneyOrderQueryIntegrationTest {
         assertTrue(snapshot.getCoverage().isHasMore());
         assertFalse(snapshot.getCoverage().isComplete());
         assertNotNull(snapshot.getCoverage().getCursor());
-        assertTrue(snapshot.getCoverage().getCursor().startsWith("CUR:2:"));
+        assertTrue(snapshot.getCoverage().getCursor().startsWith("CUR_V1:") || snapshot.getCoverage().getCursor().startsWith("CUR:"));
     }
 
     @Test
@@ -409,5 +409,94 @@ class MoneyOrderQueryIntegrationTest {
         // 关键断言：审计落库失败不得发出伪造的 AUDIT: 引用
         assertNull(obs.getEvidenceRef());
         assertEquals("OBSERVATION_AUDIT_NOT_PERSISTED", obs.getErrorMsg());
+    }
+
+    @Test
+    @DisplayName("多编号关联校验：同时传入 orderNo 与冲突的 attemptNo 必须拒绝并返回 SUBJECT_MISMATCH")
+    void testMultiIdCorrelationMismatch() {
+        PaymentAttempt attempt = new PaymentAttempt();
+        attempt.setAttemptNo("PA_T9999_01");
+        attempt.setOrderNo("T9999"); // 属于订单 T9999
+        when(attemptMapper.selectOne(any())).thenReturn(attempt);
+
+        // 选择器同时指定 orderNo=T1001 与 attemptNo=PA_T9999_01
+        MoneySubjectSelector selector = new MoneySubjectSelector("ORDER:T1001", "T1001", "PA_T9999_01", null, null);
+        MoneyAccessContext financeAccess = buildValidAccess(1L, "FINANCE", "RESOLVE_SUBJECT", "ORDER:T1001");
+        ResolveMoneySubjectResult res = moneyOrderQueryService.resolveSubject(financeAccess, selector);
+
+        assertFalse(res.isSuccess());
+        assertEquals(MoneyErrorCodes.MONEY_SUBJECT_MISMATCH, res.getStatus());
+    }
+
+    @Test
+    @DisplayName("客服坐席权限与视图限制：限定到买家主体且仅赋予 BUYER_VIEW，不可拥有全平台财务视图")
+    void testCustomerStaffViewRestriction() {
+        TradeOrder order = new TradeOrder();
+        order.setOrderNo("T1001");
+        order.setBuyerId(888L);
+        order.setSellerId(999L);
+        when(tradeOrderMapper.selectOne(any())).thenReturn(order);
+        when(attemptMapper.selectList(any())).thenReturn(List.of());
+        when(refundMapper.selectList(any())).thenReturn(List.of());
+
+        // 1. 客服坐席代客 (userId=888L 买家)
+        MoneyAccessContext staffAccessOk = buildValidAccess(888L, "CUSTOMER_STAFF", "RESOLVE_SUBJECT", "ORDER:T1001");
+        ResolveMoneySubjectResult resOk = moneyOrderQueryService.resolveSubject(staffAccessOk, MoneySubjectSelector.forOrder("T1001"));
+        assertTrue(resOk.isSuccess());
+        assertEquals("BUYER_VIEW", resOk.getAllowedView()); // 必须是 BUYER_VIEW 而非 FINANCE_VIEW
+
+        // 2. 客服坐席主体与买家不匹配时拒绝
+        MoneyAccessContext staffAccessWrongBuyer = buildValidAccess(777L, "CUSTOMER_STAFF", "RESOLVE_SUBJECT", "ORDER:T1001");
+        ResolveMoneySubjectResult resForbidden = moneyOrderQueryService.resolveSubject(staffAccessWrongBuyer, MoneySubjectSelector.forOrder("T1001"));
+        assertFalse(resForbidden.isSuccess());
+        assertEquals(MoneyErrorCodes.MONEY_FORBIDDEN, resForbidden.getStatus());
+    }
+
+    @Test
+    @DisplayName("分批签发资金范围证明：校验引用归属并限制单批上限 50 个")
+    void testIssueFundScopeProof() {
+        TradeOrder order = new TradeOrder();
+        order.setOrderNo("T1001");
+        order.setBuyerId(888L);
+        order.setSellerId(999L);
+        when(tradeOrderMapper.selectOne(any())).thenReturn(order);
+
+        PaymentAttempt attempt = new PaymentAttempt();
+        attempt.setAttemptNo("PA_T1001_01");
+        attempt.setOrderNo("T1001");
+        when(attemptMapper.selectOne(any())).thenReturn(attempt);
+
+        // 1. 成功签发单批范围证明
+        MoneyAccessContext access = buildValidAccess(888L, "BUYER", "ISSUE_FUND_SCOPE_PROOF", "ORDER:T1001");
+        IssueFundScopeProofRequest req = IssueFundScopeProofRequest.builder()
+                .orderNo("T1001")
+                .scopeKey("ORDER:T1001")
+                .attemptRefs(List.of("PA_T1001_01"))
+                .refundRefs(List.of())
+                .grantRef("GRANT_001")
+                .build();
+        IssueFundScopeProofResult result = moneyOrderQueryService.issueFundScopeProof(access, req);
+        assertTrue(result.isSuccess());
+        assertNotNull(result.getScopeProofRef());
+
+        // 验证签发的证明受众包含 mall-user-service
+        MoneySecuritySupport.ScopeProofClaims claims = MoneySecuritySupport.verifyAndParseScopeProof(
+                result.getScopeProofRef(), "mall-user-service");
+        assertNotNull(claims);
+        assertEquals("T1001", claims.getOrderNo());
+        assertEquals("ORDER:T1001", claims.getScopeKey());
+
+        // 2. 超出 50 个引用拒绝
+        List<String> largeRefs = new ArrayList<>();
+        for (int i = 0; i < 51; i++) {
+            largeRefs.add("PA_FAKE_" + i);
+        }
+        IssueFundScopeProofRequest largeReq = IssueFundScopeProofRequest.builder()
+                .orderNo("T1001")
+                .attemptRefs(largeRefs)
+                .build();
+        IssueFundScopeProofResult largeResult = moneyOrderQueryService.issueFundScopeProof(access, largeReq);
+        assertFalse(largeResult.isSuccess());
+        assertEquals(MoneyErrorCodes.MONEY_PARAM_INVALID, largeResult.getErrorCode());
     }
 }

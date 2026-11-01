@@ -5,6 +5,7 @@ import api.response.ApiResponse;
 import com.example.agent.customer.CustomerDatabase;
 import com.example.agent.customer.conversation.ConversationMessageStore;
 import com.example.agent.customer.conversation.CustomerConversationService;
+import com.example.agent.customer.conversation.CustomerSessionAccessService;
 import com.example.agent.customer.conversation.SessionEventStore;
 import com.example.agent.customer.handoff.CustomerHandoffService;
 import com.example.agent.customer.richui.CardActionService;
@@ -27,6 +28,7 @@ public class CustomerRealtimeController {
     private final CustomerConversationService conversationService;
     private final CustomerHandoffService handoffService;
     private final CardActionService cardActionService;
+    private final CustomerSessionAccessService sessionAccessService;
     private final CustomerDatabase db;
 
     public CustomerRealtimeController(RealtimeTicketService ticketService,
@@ -35,6 +37,7 @@ public class CustomerRealtimeController {
                                       CustomerConversationService conversationService,
                                       CustomerHandoffService handoffService,
                                       CardActionService cardActionService,
+                                      CustomerSessionAccessService sessionAccessService,
                                       CustomerDatabase db) {
         this.ticketService = ticketService;
         this.messageStore = messageStore;
@@ -42,6 +45,7 @@ public class CustomerRealtimeController {
         this.conversationService = conversationService;
         this.handoffService = handoffService;
         this.cardActionService = cardActionService;
+        this.sessionAccessService = sessionAccessService;
         this.db = db;
     }
 
@@ -55,7 +59,7 @@ public class CustomerRealtimeController {
         ));
     }
 
-    @GetMapping("/sessions")
+    @GetMapping({"/sessions", "/realtime/sessions"})
     public Object listSessions(AgentActor actor) {
         List<Map<String, Object>> sessions = db.mysql.queryForList(
                 "SELECT session_no, status, service_mode, active_handoff_no, last_active_time, created_time " +
@@ -65,15 +69,17 @@ public class CustomerRealtimeController {
         return ApiResponse.success(sessions);
     }
 
-    @GetMapping("/sessions/{session}/snapshot")
+    @GetMapping({"/sessions/{session}/snapshot", "/realtime/sessions/{session}/snapshot"})
     public Object snapshot(AgentActor actor, @PathVariable String session) {
+        sessionAccessService.validateAndGetSession(actor, session);
         return ApiResponse.success(messageStore.getSessionSnapshot(session));
     }
 
-    @GetMapping("/sessions/{session}/sync")
+    @GetMapping({"/sessions/{session}/sync", "/realtime/sessions/{session}/sync"})
     public Object sync(AgentActor actor, @PathVariable String session,
                        @RequestParam(defaultValue = "0") long afterEventSeq,
                        @RequestParam(defaultValue = "100") int limit) {
+        sessionAccessService.validateAndGetSession(actor, session);
         var events = eventStore.listEventsAfter(session, afterEventSeq, limit);
         long highWatermark = eventStore.getHighWatermark(session);
         return ApiResponse.success(Map.of(
@@ -83,22 +89,25 @@ public class CustomerRealtimeController {
         ));
     }
 
-    @PostMapping("/sessions/{session}/read")
+    @PostMapping({"/sessions/{session}/read", "/realtime/sessions/{session}/read"})
     public Object markRead(AgentActor actor, @PathVariable String session, @RequestBody Map<String, Object> body) {
+        sessionAccessService.validateAndGetSession(actor, session);
         long seq = body.get("lastReadMessageSeq") != null ? ((Number) body.get("lastReadMessageSeq")).longValue() : 0L;
         conversationService.markRead(actor, session, seq);
         return ApiResponse.success(Map.of("marked", true));
     }
 
-    @PostMapping("/sessions/{session}/handoffs")
+    @PostMapping({"/sessions/{session}/handoffs", "/sessions/{session}/handoff", "/realtime/sessions/{session}/handoffs", "/realtime/sessions/{session}/handoff"})
     public Object requestHandoff(AgentActor actor, @PathVariable String session, @RequestBody(required = false) Map<String, Object> body) {
+        sessionAccessService.validateActiveSession(actor, session);
         String reason = body != null && body.containsKey("reason") ? String.valueOf(body.get("reason")) : "用户请求人工客服";
         var res = handoffService.requestHandoff(actor, session, reason, "NORMAL", null, reason, null);
         return ApiResponse.success(res);
     }
 
-    @PostMapping("/sessions/{session}/card-actions")
+    @PostMapping({"/sessions/{session}/card-actions", "/realtime/sessions/{session}/card-actions"})
     public Object cardAction(AgentActor actor, @PathVariable String session, @RequestBody JsonNode body) {
+        sessionAccessService.validateAndGetSession(actor, session);
         String cardId = body.path("cardId").asText("");
         String actionId = body.path("actionId").asText("");
         int revision = body.path("revision").asInt(1);

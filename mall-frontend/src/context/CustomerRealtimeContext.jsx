@@ -30,6 +30,7 @@ export const CustomerRealtimeProvider = ({ children }) => {
   activeSessionRef.current = session;
   const isDialogOpenRef = useRef(isDialogOpen);
   isDialogOpenRef.current = isDialogOpen;
+  const lastEventSeqRef = useRef(0);
 
   const storageKey = user ? `mall.customerService.session.${user.id}` : null;
 
@@ -57,18 +58,35 @@ export const CustomerRealtimeProvider = ({ children }) => {
         setSession(saved);
         setServiceMode(snap.serviceMode || 'BOT');
         setControlEpoch(snap.controlEpoch || 1);
+        lastEventSeqRef.current = snap.snapshotSeq != null ? Number(snap.snapshotSeq) : (snap.lastEventSeq != null ? Number(snap.lastEventSeq) : 0);
         if (snap.handoff) setHandoffInfo(snap.handoff);
 
-        const list = (snap.messages || []).map(m => ({
-          id: m.message_no || m.messageNo,
-          role: m.role,
-          content: m.content,
-          cards: m.cards || (m.result?.cards) || (m.richCard ? [m.richCard] : []),
-          citations: m.citations || m.result?.citations || [],
-          suggestedActions: m.suggestedActions || m.result?.suggestedActions || [],
-          createdTime: m.created_time || m.createdTime,
-          clientMessageId: m.client_message_id || m.clientMessageId
-        }));
+        const rawMessages = snap.messages || snap.recentMessages || [];
+        const list = rawMessages.map(m => {
+          let cards = m.cards;
+          let citations = m.citations;
+          let suggestedActions = m.suggestedActions;
+          const payload = m.payload;
+          if ((!cards || cards.length === 0) && payload) {
+            if (Array.isArray(payload)) cards = payload;
+            else if (payload.cards) cards = payload.cards;
+            else if (payload.richCard) cards = [payload.richCard];
+          }
+          if ((!cards || cards.length === 0) && m.richCard) cards = [m.richCard];
+          if ((!citations || citations.length === 0) && payload?.citations) citations = payload.citations;
+          if ((!suggestedActions || suggestedActions.length === 0) && payload?.suggestedActions) suggestedActions = payload.suggestedActions;
+
+          return {
+            id: m.message_no || m.messageNo,
+            role: m.role,
+            content: m.content,
+            cards: cards || [],
+            citations: citations || [],
+            suggestedActions: suggestedActions || [],
+            createdTime: m.created_time || m.createdTime,
+            clientMessageId: m.client_message_id || m.clientMessageId
+          };
+        });
         setMessages(list);
 
         // Subscribe via realtime client
@@ -106,23 +124,20 @@ export const CustomerRealtimeProvider = ({ children }) => {
 
   // Handle incoming realtime events
   useEffect(() => {
-    const unsubEvent = realtimeClient.on('*', (eventType, payload) => {
-      const currentSessionNo = activeSessionRef.current;
-      if (payload?.sessionNo && payload.sessionNo !== currentSessionNo) {
-        return;
-      }
-
+    const processEvent = (eventType, payload, envelope) => {
       switch (eventType) {
         case 'message.created': {
           const msg = payload.message || payload;
           const msgNo = msg.messageNo || msg.message_no || msg.id;
           const clientMsgId = msg.clientMessageId || msg.client_message_id;
+          const runNo = msg.runNo || msg.run_no;
 
           setMessages(prev => {
-            // Check if matches optimistic message
+            // Check if matches optimistic message or same message/run
             const existingIdx = prev.findIndex(m =>
               (clientMsgId && m.clientMessageId === clientMsgId) ||
-              (msgNo && m.id === msgNo)
+              (msgNo && m.id === msgNo) ||
+              (runNo && m.runNo === runNo)
             );
 
             const formatted = {
@@ -134,6 +149,7 @@ export const CustomerRealtimeProvider = ({ children }) => {
               suggestedActions: msg.suggestedActions || [],
               createdTime: msg.createdTime || Date.now(),
               clientMessageId: clientMsgId,
+              runNo: runNo,
               streaming: false
             };
 
@@ -152,12 +168,21 @@ export const CustomerRealtimeProvider = ({ children }) => {
         }
 
         case 'stage.progress': {
+          const msgNo = payload.messageNo;
+          const runNo = payload.runNo;
+          const clientMsgId = payload.clientMessageId;
+
           setMessages(prev => {
-            const last = prev[prev.length - 1];
-            if (last && last.role === 'AGENT' && last.streaming) {
+            const idx = prev.findIndex(m =>
+              (msgNo && m.id === msgNo) ||
+              (runNo && m.runNo === runNo) ||
+              (clientMsgId && m.clientMessageId === clientMsgId)
+            );
+            const targetIdx = idx >= 0 ? idx : (prev.length > 0 && prev[prev.length - 1].role === 'AGENT' && prev[prev.length - 1].streaming ? prev.length - 1 : -1);
+            if (targetIdx >= 0) {
               const updated = [...prev];
-              updated[prev.length - 1] = {
-                ...last,
+              updated[targetIdx] = {
+                ...updated[targetIdx],
                 stage: payload.label || '正在处理…'
               };
               return updated;
@@ -168,13 +193,22 @@ export const CustomerRealtimeProvider = ({ children }) => {
         }
 
         case 'answer.delta': {
+          const msgNo = payload.messageNo;
+          const runNo = payload.runNo;
+          const clientMsgId = payload.clientMessageId;
+
           setMessages(prev => {
-            const last = prev[prev.length - 1];
-            if (last && last.role === 'AGENT') {
+            const idx = prev.findIndex(m =>
+              (msgNo && m.id === msgNo) ||
+              (runNo && m.runNo === runNo) ||
+              (clientMsgId && m.clientMessageId === clientMsgId)
+            );
+            const targetIdx = idx >= 0 ? idx : (prev.length > 0 && prev[prev.length - 1].role === 'AGENT' ? prev.length - 1 : -1);
+            if (targetIdx >= 0) {
               const updated = [...prev];
-              updated[prev.length - 1] = {
-                ...last,
-                content: (last.content || '') + (payload.delta || ''),
+              updated[targetIdx] = {
+                ...updated[targetIdx],
+                content: (updated[targetIdx].content || '') + (payload.delta || ''),
                 stage: ''
               };
               return updated;
@@ -186,11 +220,54 @@ export const CustomerRealtimeProvider = ({ children }) => {
 
         case 'card.updated': {
           const updatedCard = payload.card || payload;
+          const updatedCardId = updatedCard.cardId || updatedCard.id;
+          if (!updatedCardId) return;
+
           setMessages(prev => prev.map(m => {
             if (!m.cards || !m.cards.length) return m;
             return {
               ...m,
-              cards: m.cards.map(c => c.cardId === updatedCard.cardId ? { ...c, ...updatedCard } : c)
+              cards: m.cards.map(c => {
+                if ((c.cardId || c.id) === updatedCardId) {
+                  const existingRev = c.revision != null ? Number(c.revision) : 0;
+                  const newRev = updatedCard.revision != null ? Number(updatedCard.revision) : 0;
+                  if (newRev > existingRev) {
+                    return { ...c, ...updatedCard };
+                  }
+                }
+                return c;
+              })
+            };
+          }));
+          break;
+        }
+
+        case 'money.case.changed': {
+          const caseNo = payload.caseNo;
+          const projectionRevision = payload.projectionRevision != null ? Number(payload.projectionRevision) : 0;
+          setMessages(prev => prev.map(m => {
+            if (!m.cards || !m.cards.length) return m;
+            return {
+              ...m,
+              cards: m.cards.map(c => {
+                if (c.data?.caseNo === caseNo || c.caseNo === caseNo) {
+                  const curRev = c.data?.projectionRevision != null ? Number(c.data.projectionRevision) : (c.revision != null ? Number(c.revision) : 0);
+                  if (projectionRevision > curRev) {
+                    return {
+                      ...c,
+                      revision: projectionRevision,
+                      data: {
+                        ...c.data,
+                        caseState: payload.caseState || c.data?.caseState,
+                        taskState: payload.taskState || c.data?.taskState,
+                        projectionRevision: projectionRevision,
+                        summary: payload.summary || c.data?.summary
+                      }
+                    };
+                  }
+                }
+                return c;
+              })
             };
           }));
           break;
@@ -224,6 +301,39 @@ export const CustomerRealtimeProvider = ({ children }) => {
         default:
           break;
       }
+    };
+
+    const unsubEvent = realtimeClient.on('*', (eventType, payload, envelope) => {
+      const currentSessionNo = activeSessionRef.current;
+      const targetSessionNo = envelope?.sessionNo || payload?.sessionNo;
+      if (targetSessionNo && targetSessionNo !== currentSessionNo) {
+        return;
+      }
+
+      const eventSeq = envelope?.eventSeq != null ? Number(envelope.eventSeq) : null;
+      if (eventSeq != null && eventSeq > 0) {
+        if (eventSeq <= lastEventSeqRef.current) {
+          return; // Duplicate event, skip
+        }
+        if (lastEventSeqRef.current > 0 && eventSeq > lastEventSeqRef.current + 1 && currentSessionNo) {
+          // Gap detected: sync missing events
+          const startSeq = lastEventSeqRef.current;
+          api.sync(currentSessionNo, startSeq).then(syncData => {
+            if (syncData?.events && Array.isArray(syncData.events)) {
+              for (const missingEnv of syncData.events) {
+                const mSeq = missingEnv?.eventSeq != null ? Number(missingEnv.eventSeq) : 0;
+                if (mSeq > lastEventSeqRef.current) {
+                  lastEventSeqRef.current = mSeq;
+                  processEvent(missingEnv.type || missingEnv.eventType, missingEnv.payload !== undefined ? missingEnv.payload : missingEnv, missingEnv);
+                }
+              }
+            }
+          }).catch(err => console.warn('Failed to sync missing events:', err));
+        }
+        lastEventSeqRef.current = Math.max(lastEventSeqRef.current, eventSeq);
+      }
+
+      processEvent(eventType, payload, envelope);
     });
 
     return () => {
@@ -250,6 +360,7 @@ export const CustomerRealtimeProvider = ({ children }) => {
     setSession(newSessionNo);
     setServiceMode('BOT');
     setControlEpoch(1);
+    lastEventSeqRef.current = 0;
     try {
       if (storageKey) sessionStorage.setItem(storageKey, newSessionNo);
     } catch {

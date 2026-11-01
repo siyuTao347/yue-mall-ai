@@ -36,17 +36,23 @@ public class CustomerRunner {
     private final com.example.agent.customer.memory.CustomerMemoryFacade memoryFacade;
     private final com.example.agent.customer.memory.MemoryQueryEnricher queryEnricher;
     private final com.example.agent.customer.memory.MemoryProperties memoryProps;
+    private final com.example.agent.customer.money.CustomerMoneyBridgeService moneyBridgeService;
+    private final com.example.agent.customer.money.CustomerMoneyContextLoader moneyContextLoader;
     private final CompiledGraph graph;
     public CustomerRunner(CustomerStore store,CustomerMaster master,CustomerProperties props,CustomerModels models,CustomerKnowledgeService knowledge,IntentReleaseService releases){
-        this(store,master,props,models,knowledge,releases,null,null,null);
+        this(store,master,props,models,knowledge,releases,null,null,null,null,null);
     }
     @org.springframework.beans.factory.annotation.Autowired
     public CustomerRunner(CustomerStore store,CustomerMaster master,CustomerProperties props,CustomerModels models,CustomerKnowledgeService knowledge,IntentReleaseService releases,
                           @org.springframework.beans.factory.annotation.Autowired(required=false) com.example.agent.customer.memory.CustomerMemoryFacade memoryFacade,
                           @org.springframework.beans.factory.annotation.Autowired(required=false) com.example.agent.customer.memory.MemoryQueryEnricher queryEnricher,
-                          @org.springframework.beans.factory.annotation.Autowired(required=false) com.example.agent.customer.memory.MemoryProperties memoryProps){
+                          @org.springframework.beans.factory.annotation.Autowired(required=false) com.example.agent.customer.memory.MemoryProperties memoryProps,
+                          @org.springframework.beans.factory.annotation.Autowired(required=false) com.example.agent.customer.money.CustomerMoneyBridgeService moneyBridgeService,
+                          @org.springframework.beans.factory.annotation.Autowired(required=false) com.example.agent.customer.money.CustomerMoneyContextLoader moneyContextLoader){
         this.store=store;this.master=master;this.props=props;this.models=models;this.knowledge=knowledge;this.releases=releases;
         this.memoryFacade=memoryFacade;this.queryEnricher=queryEnricher;this.memoryProps=memoryProps;
+        this.moneyBridgeService=moneyBridgeService;
+        this.moneyContextLoader=moneyContextLoader;
         this.graph=compileGraph();
     }
     static final class Run {
@@ -55,6 +61,7 @@ public class CustomerRunner {
         final AtomicInteger tools=new AtomicInteger(),input=new AtomicInteger(),output=new AtomicInteger();final AtomicLong ttftMs=new AtomicLong(-1);final AtomicBoolean active=new AtomicBoolean(true),embeddingCacheHit=new AtomicBoolean(false);
         final ArrayNode path=array(),results=array();final Object pathLock=new Object();ObjectNode classified=object(),response=object(),slots=object();String handoff;int clarifications;boolean clarificationShown,answerStreamed;ArrayNode queue=array();
         com.example.agent.customer.memory.MemoryModels.MemorySnapshot memorySnapshot;ObjectNode memoryCaptureContext;
+        boolean containsMoneyIntent;Long expectedControlEpoch;
         Run(AgentActor actor,String session,String no,String q,JsonNode previous,CustomerProperties props,long startedNanos,java.util.function.BiConsumer<String,String> stageSink,Consumer<String> deltaSink,Consumer<JsonNode> lifecycleSink){this.actor=actor;this.session=session;this.no=no;this.question=q;this.previous=previous;this.startedNanos=startedNanos;this.stageSink=stageSink;this.deltaSink=deltaSink;this.lifecycleSink=lifecycleSink;this.traceId=Objects.toString(api.context.TraceContext.getTraceId(),no);budget=new CustomerBudget(props.getRunTimeoutMs());clarifications=previous.path("clarificationAttempts").asInt();}
     }
     public JsonNode send(AgentActor actor,String session,String clientId,String raw){
@@ -73,10 +80,14 @@ public class CustomerRunner {
         JsonNode previous=read(started.session().get("slot_json"));
         if(previous.isObject())((ObjectNode)previous).put("summary",Objects.toString(started.session().get("summary"),"")).put("lastIntent",Objects.toString(started.session().get("last_intent"),""));
         Run run=new Run(actor,session,started.runNo(),question,previous,props,requestStarted,stageSink,deltaSink,lifecycleSink);String status="SUCCEEDED";
+        run.expectedControlEpoch = started.session() != null && started.session().get("control_epoch") != null
+                ? ((Number) started.session().get("control_epoch")).longValue()
+                : 1L;
         run.memoryCaptureContext=object().put("userMessageNo",Objects.toString(started.userMessageNo(),""))
             .put("userMessage",question)
             .put("sourceSequence",started.sourceSequence()!=null?started.sourceSequence():0L)
             .put("epoch",started.epoch()!=null?started.epoch():1L)
+            .put("controlEpoch",run.expectedControlEpoch)
             .put("subjectKey",Objects.toString(started.subjectKey(),""))
             .put("captureAllowed",started.sourceSequence()!=null);
         RUN_REGISTRY.put(run.no,run);
@@ -115,7 +126,15 @@ public class CustomerRunner {
         try {
             StateGraph graph=new StateGraph();
             graph.addNode("INPUT_GUARD",node_async(state->{Run run=run(state);addPath(run,"INPUT_GUARD");stage(run,"INPUT_GUARD","正在接收问题…");run.budget.remaining();return graphState(run);}));
-            graph.addNode("LOAD_CONTEXT",node_async(state->{Run run=run(state);addPath(run,"LOAD_CONTEXT");stage(run,"LOAD_CONTEXT","正在读取会话上下文…");return graphState(run);}));
+            graph.addNode("LOAD_CONTEXT",node_async(state->{
+                Run run=run(state);
+                addPath(run,"LOAD_CONTEXT");
+                stage(run,"LOAD_CONTEXT","正在读取会话上下文…");
+                if(moneyContextLoader!=null&&run.previous!=null&&run.previous.isObject()&&run.actor!=null){
+                    moneyContextLoader.loadContext(run.actor.userId(),(ObjectNode)run.previous);
+                }
+                return graphState(run);
+            }));
             graph.addNode("MASTER_AGENT",node_async(state->{Run run=run(state);addPath(run,"MASTER_AGENT");stage(run,"MASTER_AGENT","正在识别问题…");run.classified=master.recognize(run.question,run.no,run.previous,store.history(run.session),run.budget,run.input,run.output);addPath(run,run.classified.path("recognition").path("source").asText());return graphState(run);}));
             graph.addNode("MEMORY_RECALL",node_async(state->{Run run=run(state);addPath(run,"MEMORY_RECALL");recallMemory(run);return graphState(run);}));
             graph.addNode("SLOT_RESOLVE",node_async(state->{Run run=run(state);addPath(run,"SLOT_RESOLVE");prepare(run);return graphState(run);}));
@@ -278,6 +297,7 @@ public class CustomerRunner {
             else if(code.equals("BOT_IDENTITY"))result.put("answer","我是平台智能客服，可以帮你查询订单、售后进度和平台规则，也可以协助转人工。");
             else if(code.equals("OTHER"))result.put("answer","请说明你想咨询的订单、售后或平台规则问题，也可以发送“转人工”。");
             else if(code.startsWith("PRE_SALE")&&!props.isPreSaleEnabled())result.put("answer","售前咨询暂未开放，请查看商品详情或联系人工。");
+            else if("MONEY_BRIDGE".equals(agent))money(r,task,result);
             else if(agent.equals("ORDER_AGENT"))order(r,task,result);
             else if(code.equals("AFTER_SALE_PROGRESS")||code.equals("AFTER_SALE_STATUS_COMBINED"))dispute(r,task,result);
             else if(agent.equals("PRE_SALE_AGENT"))preSale(r,task,result);
@@ -298,6 +318,42 @@ public class CustomerRunner {
         long start=System.nanoTime();JsonNode result=object();boolean ok=false;
         try{result=node(r.budget.call(3000,work::get));if(result==null||result.isNull())throw error(503,"AGENT_TOOL_EMPTY","工具没有返回事实");CustomerOutputGuard.redactPayload(result);ok=true;return result;}
         finally{if(r.active.get())store.tool(r.no,r.session,task.path("intentInstanceId").asText(),agent,name,seq,args,result,ok,(System.nanoTime()-start)/1000000);}
+    }
+    private void money(Run r, ObjectNode task, ObjectNode result) {
+        r.containsMoneyIntent = true;
+        String code = task.path("code").asText();
+        String orderNo = task.path("slots").path("orderNo").asText(null);
+        String caseNo = task.path("slots").path("moneyCaseNo").asText(null);
+        Map<String, String> slots = new HashMap<>();
+        if (orderNo != null && !orderNo.isBlank()) slots.put("orderNo", orderNo);
+        if (caseNo != null && !caseNo.isBlank()) slots.put("moneyCaseNo", caseNo);
+        if (task.path("slots").hasNonNull("attemptNo")) slots.put("attemptNo", task.path("slots").path("attemptNo").asText());
+        if (task.path("slots").hasNonNull("refundNo")) slots.put("refundNo", task.path("slots").path("refundNo").asText());
+
+        if (moneyBridgeService != null) {
+            CustomerToolPolicy.require("MONEY_BRIDGE", "registerMoneyInvestigation");
+            int sequence = r.tools.incrementAndGet();
+            if (sequence > 6) throw error(429, "AGENT_TOOL_LIMIT", "工具调用达到上限");
+            long started = System.nanoTime();
+
+            var bridgeResp = moneyBridgeService.handleMoneyIntent(code, r.session, r.actor != null ? r.actor.userId() : 0L, slots);
+            result.put("answer", bridgeResp.replyText());
+
+            if (orderNo != null && !orderNo.isBlank()) {
+                result.put("bizType", "ORDER").put("bizNo", orderNo);
+                result.set("evidence", array().add(object().put("orderNo", orderNo).put("sourceKind", "VERIFIED_ORDER_SCOPE")));
+            }
+
+            ObjectNode moneyNode = object();
+            moneyNode.put("caseNo", bridgeResp.caseNo());
+            moneyNode.put("taskNo", bridgeResp.taskNo());
+            result.set("money", moneyNode);
+
+            store.tool(r.no, r.session, task.path("intentInstanceId").asText(), "MONEY_BRIDGE", "registerMoneyInvestigation",
+                    sequence, slots, moneyNode, true, (System.nanoTime() - started) / 1000000);
+        } else {
+            result.put("answer", "资金核实服务暂未初始化，请稍后重试或联系人工专席。");
+        }
     }
     private void order(Run r,ObjectNode task,ObjectNode result){String code=task.path("code").asText(),no=task.path("slots").path("orderNo").asText();
         if(code.equals("ORDER_SEARCH")){JsonNode choices=tool(r,task,"queryMyOrders",Map.of("limit",5),()->orders.queryMyOrders(r.actor,5));result.set("choices",choices);result.put("answer",choices.isEmpty()?"没有找到你的订单。":"以下是你的最近订单，请选择要查询的订单。");return;}
@@ -397,7 +453,7 @@ public class CustomerRunner {
     private static String label(String value){return switch(value){case "WAIT_PAY","INIT"->"待支付";case "PAID","SUCCESS"->"已支付";case "WAIT_DELIVERY"->"待交付";case "DELIVERED"->"已交付";case "VIEWED"->"已查看";case "CONFIRMED"->"已确认";case "FROZEN"->"已托管";case "SETTLE_PENDING","SETTLING"->"结算处理中";case "SETTLED"->"已结算";case "REFUNDING"->"退款处理中";case "REFUNDED"->"已退款";case "CANCELLED","CLOSED"->"已关闭";case "OPEN","PROCESSING"->"处理中";case "RESOLVED"->"已处理";case "NONE"->"无";default->value;};}
     private void respond(Run r){addPath(r,"RESPONSE_AGENT");ArrayNode pending=array(),citations=array(),actions=array();ObjectNode entities=r.previous.path("confirmedEntities").isObject()?(ObjectNode)r.previous.path("confirmedEntities").deepCopy():object();
         ObjectNode registry=r.previous.path("entityRegistry").isObject()?(ObjectNode)r.previous.path("entityRegistry").deepCopy():object();
-        registry.withArray("orders");registry.withArray("disputes");registry.withArray("items");
+        registry.withArray("orders");registry.withArray("disputes");registry.withArray("items");registry.withArray("moneyCases");
         int turn=r.previous.path("turnNo").asInt(0)+1;String mentionedAt=java.time.Instant.now().toString();
         Set<String> current=new HashSet<>();r.classified.path("intents").forEach(i->current.add(i.path("intentInstanceId").asText()));
         for(var old:r.previous.path("pendingIntents"))if(!current.contains(old.path("intentInstanceId").asText()))pending.add(old.deepCopy());
@@ -405,7 +461,7 @@ public class CustomerRunner {
         for(var t:r.classified.path("intents"))subQuestions.add(object().put("intentInstanceId",t.path("intentInstanceId").asText()).put("code",t.path("code").asText()).put("executionStage",t.path("executionStage").asInt(1)).put("question",t.path("rewrittenQuestion").asText(t.path("questionFragment").asText())).put("resolutionState",t.path("resolutionState").asText()));
         for(var result:r.results){
             ObjectNode facts=object().put("intentInstanceId",result.path("intentInstanceId").asText()).put("code",result.path("code").asText());
-            for(String field:List.of("evidence","order","timeline","deliveryEvidenceSummary","choices"))if(result.has(field))facts.set(field,result.path(field).deepCopy());
+            for(String field:List.of("evidence","order","timeline","deliveryEvidenceSummary","choices","money"))if(result.has(field))facts.set(field,result.path(field).deepCopy());
             for(JsonNode task:r.classified.path("intents"))if(task.path("intentInstanceId").asText().equals(result.path("intentInstanceId").asText())&&task.path("dependencyFacts").isArray()&&!task.path("dependencyFacts").isEmpty())facts.set("priorStageFacts",task.path("dependencyFacts").deepCopy());
             answerFacts.add(facts);
             ArrayNode remapped=array();Map<String,String> localCitationIds=new HashMap<>();for(var source:result.path("citations")) {
@@ -460,7 +516,13 @@ public class CustomerRunner {
                     }
                 }
             }else{
-                String generated=models.synthesizeResponse(r.question,subQuestions,answerFacts,citations,r.budget,r.input,r.output,delta->{r.ttftMs.compareAndSet(-1,Math.max(0,TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-r.startedNanos)));r.answerStreamed=true;try{r.deltaSink.accept(delta);}catch(RuntimeException ignored){}});
+                String generated=models.synthesizeResponse(r.question,subQuestions,answerFacts,citations,r.budget,r.input,r.output,delta->{
+                    r.ttftMs.compareAndSet(-1,Math.max(0,TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-r.startedNanos)));
+                    if (!r.containsMoneyIntent) {
+                        r.answerStreamed=true;
+                        try{r.deltaSink.accept(delta);}catch(RuntimeException ignored){}
+                    }
+                });
                 if(generated!=null&&!generated.isBlank()) {
                     answer=new StringBuilder(generated.strip());
                     if(r.results.size()==1)((ObjectNode)r.results.get(0)).put("answer",generated.strip());

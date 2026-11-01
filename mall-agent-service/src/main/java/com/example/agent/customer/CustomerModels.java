@@ -59,7 +59,7 @@ public class CustomerModels {
     public boolean mock(){return master==null;}
     public String classify(String question,String context,CustomerBudget budget,AtomicInteger in,AtomicInteger out){
         JsonNode parsed=read(context);JsonNode memory=parsed.path("pending");
-        String system=prompts.render("master-planner-v3",Map.of(
+        String system=prompts.render("master-planner-v4",Map.of(
             "maxIntents",props.getMaxIntents(),
             "rollingSummary",CustomerContextWindowBuilder.rollingSummary(memory),
             "activeEntitiesJson",write(CustomerContextWindowBuilder.activeEntities(memory)),
